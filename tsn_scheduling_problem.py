@@ -7,12 +7,10 @@ from collections import deque
 import numpy as np
 import networkx as nx
 
-from usecase_generator_json import UsecaseGenerator, Usecase
-from instancesLoader_json import InstancesLoader
+from usecase_generator import UsecaseGenerator, Usecase
 
 import matplotlib.pyplot as plt
-from matplotlib import cm
-import matplotlib.patches as mpatches
+
 
 
 # constants
@@ -68,7 +66,6 @@ class TSNScheduling():
     def __init__(self, problem_definition, ContextHandler=InstanceContext, **kwargs):
         # core helpers
         self.uc_gen = UsecaseGenerator()
-        self.instances_loader = InstancesLoader()
         self.config_file = problem_definition
 
         # instance & context
@@ -115,7 +112,6 @@ class TSNScheduling():
         n_var = self.n_ports * self.n_streams
         fr, ftp = self.get_task()
         check_routing = not (fr and ftp)
-        self.evaluator = TSNConstraintEvaluator(self, check_routing=check_routing, check_task_placement=not ftp)
     
     # -------------------------
     # context helper
@@ -695,36 +691,4 @@ class TSNScheduling():
     
         return ax
 
-    @staticmethod
-    def plot_all_stream_custom_graphs(customGraphs, ncols=3, figsize=(18, 12), **draw_kwds):
-        """
-        Plot all stream custom graphs side by side using the fat-tree layout.
-    
-        Parameters
-        ----------
-        usecase : object
-            Must have `.streams`, where each stream is a dict with "customGraph".
-        ncols : int
-            Number of subplot columns.
-        figsize : tuple
-            Overall figure size.
-        draw_kwds : dict
-            Extra args passed to drawFattree (e.g. node_color, edge_color).
-        """
-        n_graphs = len(customGraphs)
-        nrows = (n_graphs + ncols - 1) // ncols
-    
-        fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
-        axes = axes.flatten()
-    
-        for i, graph in enumerate(customGraphs):
-            ax = axes[i]
-            drawFattree(graph, ax=ax, **draw_kwds)
-            ax.axis("off")
-    
-        # Hide any extra subplots
-        for j in range(i + 1, len(axes)):
-            axes[j].axis("off")
-    
-        plt.tight_layout()
-        return fig
+
