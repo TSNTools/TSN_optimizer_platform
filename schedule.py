@@ -1,11 +1,19 @@
 from dataclasses import dataclass, field
-from typing import Optional, List
+from typing import Optional, List, Dict
+from collections import defaultdict
 from itertools import count
 import math
+    
+import numpy as np
 
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
+#import matplotlib.patches as mpatches
+from matplotlib.patches import Patch
 import matplotlib.cm as cm
+
+from dataclasses_json import DataClassJsonMixin
+
+MS_TO_NS = 1_000_000
 
 @dataclass
 class Slot:
@@ -22,11 +30,12 @@ class Slot:
     # shared class-level counter
     _counter = count()
     
-    start_ms: int
-    end_ms: int
-    period_ms: float
-    queue_id: Optional[int] = None
+    start_ns: int
+    end_ns: int
+    period_ns: float
     stream_id: Optional[int] = None
+    port_id: Optional[int] = None
+    queue_id: Optional[int] = None
     # unique slot definition id
     index: int = field(default_factory=lambda: next(Slot._counter))
 
@@ -34,61 +43,62 @@ class Slot:
     # Derived properties
     # -----------------------------
     @property
-    def duration_ms(self) -> int:
-        return self.end_ms - self.start_ms
+    def duration_ns(self) -> int:
+        return self.end_ns - self.start_ns
 
     # -----------------------------
     # Ordering logic
     # -----------------------------
     def __lt__(self, other: "Slot") -> bool:
-        return self.end_ms <= other.start_ms
+        return self.end_ns <= other.start_ns
 
     # -----------------------------
     # Conflict logic
     # -----------------------------
     def conflicts_with(self, other: "Slot", touching_allowed: bool = True) -> bool:
         if touching_allowed:
-            return self.start_ms < other.end_ms and self.end_ms > other.start_ms
+            return self.start_ns < other.end_ns and self.end_ns > other.start_ns
         else:
-            return self.start_ms <= other.end_ms and self.end_ms >= other.start_ms
+            return self.start_ns <= other.end_ns and self.end_ns >= other.start_ns
             
     # -----------------------------
     # Occurrence expansion
     # -----------------------------
-    def all_occurrences(self, schedule_cycle_ms: int) -> List["Slot"]:
+    def all_occurrences(self, span_ns: int) -> List["Slot"]:
         """
         Expand this periodic slot into all occurrences
-        within one schedule cycle.
+        within the span.
 
         All occurrences share the same index.
         """
 
-        if self.period_ms <= 0:
+        if self.period_ns <= 0:
             return []
 
         occurrences: List[Slot] = []
 
         k_max = math.floor(
-            (schedule_cycle_ms - self.start_ms) / self.period_ms
+            (span_ns - self.start_ns) // self.period_ns
         )
 
-        for k in range(max(0, k_max + 1)):
-            start = self.start_ms + k * self.period_ms
-            end = self.end_ms + k * self.period_ms
-
-            if end > schedule_cycle_ms:
-                continue
+        for k in range(max(0, k_max) + 1):
+            start = int(self.start_ns + k * self.period_ns)
+            end = int(self.end_ns + k * self.period_ns)
 
             occurrences.append(
                 Slot(
                     index=self.index,          # preserve same definition id
-                    start_ms=start,
-                    end_ms=end,
-                    period_ms=self.period_ms,
+                    start_ns=start,
+                    end_ns=end,
+                    period_ns=self.period_ns,
                     queue_id=self.queue_id,
                     stream_id=self.stream_id,
+                    port_id=self.port_id,
                 )
             )
+
+            if end > span_ns:
+                break
         return occurrences
 
         
@@ -103,51 +113,59 @@ class Schedule(list):
     # Internal TransmissionWindow
     # ----------------------------
     @dataclass
-    class TransmissionWindow:
-        """A concrete, non-periodic transmission window"""
-        start_ms: int
-        end_ms: int
-        queue_id: Optional[int] = None
+    class TransmissionWindow(DataClassJsonMixin):
+        """A concrete, non-periodic transmission window that spams all the queues"""
+        start: int
+        duration: int
+        state: str     
         stream_sequence: Optional[List[int]] = None  # tracks all contributing streams
 
         @property
-        def duration_ms(self):
-            return self.end_ms - self.start_ms
+        def end(self):
+            return self.start+self.duration
 
     # ----------------------------
     # Schedule constructor
     # ----------------------------
-    def __init__(self, cycle_ms: int, basetime: Optional[int] = None,
-                 capacity: Optional[int] = None, port_id: Optional[int] = None,
-                 iterable: Optional[List] = None):
+    def __init__(self, cycle_ns: int, basetime: Optional[int] = None,
+                 capacity: Optional[int] = None, iterable: Optional[List] = None):
         """
         Initialize the Schedule.
-        :param cycle_ms: schedule cycle in ms
+        :param cycle_ns: schedule cycle in ms
         :param basetime: optional reference start time
         :param capacity: optional max number of concurrent slots
         :param port_id: optional port identifier
         :param iterable: optional initial list of Slot objects
         """
         super().__init__(iterable or [])
-        self.cycle_ms = cycle_ms
+        self.cycle_ns = cycle_ns
         self.basetime = basetime
         self.capacity = capacity
-        self.port_id = port_id
+
 
     # ----------------------------
     # Utility properties
     # ----------------------------
     @property
-    def total_occupied_time(self) -> int:
-        """Return total time occupied by compiled transmission windows"""
-        return sum(w.duration_ms for w in self.compile())
+    def total_occupied_time(self) -> Dict[int, int]:
+        """Return total time occupied by compiled transmission windows for each port_id"""
+        return {
+            port_id: sum(w.duration_ns for w in windows)
+            for port_id, windows in self.compile().items()
+        }
 
     @property
-    def utilization(self) -> float:
-        """Return fraction of cycle occupied"""
-        if not self.cycle_ms:
-            return 0.0
-        return self.total_occupied_time / self.cycle_ms
+    def utilization(self) -> Dict[int, float]:
+        """Return fraction of cycle occupied per port_id"""
+        # Get the total occupied time for all port_ids
+        occupied_times = self.total_occupied_time()
+    
+        if not self.cycle_ns:
+            # Return 0.0 for each port if cycle_ns is 0 (avoiding division by zero)
+            return {port_id: 0.0 for port_id in occupied_times}
+    
+        # Calculate utilization for each port_id
+        return {port_id: occupied_time / self.cycle_ns for port_id, occupied_time in occupied_times.items()}
 
     # ----------------------------
     # Conflict checking
@@ -158,152 +176,334 @@ class Schedule(list):
         Returns a list of tuples of conflicting Slot objects.
         """
         conflicts = []
-        occurrences = []
+        occurrences = defaultdict(list)
 
+        # Collect occurrences by port_id
         for slot in self:
-            occurrences.extend(slot.all_occurrences(self.cycle_ms))
+            occurrences[slot.port_id].extend(slot.all_occurrences(self.cycle_ns))
 
-        # Sort by start time
-        occurrences.sort(key=lambda s: s.start_ms)
-
-        # Check pairwise for conflicts
-        for i in range(len(occurrences) - 1):
-            if occurrences[i].conflicts_with(occurrences[i+1], touching_allowed):
-                conflicts.append((occurrences[i], occurrences[i+1]))
+        for port_id, port_slots in occurrences.items():
+            # Sort by start time
+            port_slots.sort(key=lambda s: s.start_ns)
+            # Check pairwise for conflicts
+            for i in range(len(port_slots) - 1):
+                if port_slots[i].conflicts_with(port_slots[i+1], touching_allowed):
+                    conflicts.append((port_slots[i], port_slots[i+1]))
 
         return conflicts
 
     # ----------------------------
     # Compile schedule
-    # ----------------------------
-    def compile(self) -> List["Schedule.TransmissionWindow"]:
+    # ----------------------------    
+    def update_graph(self, graph, port_id_to_name):
         """
         Expand all periodic slots into their occurrences and merge overlapping/touching windows.
         Returns a list of TransmissionWindow objects (non-periodic).
         """
         occurrences = []
-
+    
         for slot in self:
-            occurrences.extend(slot.all_occurrences(self.cycle_ms))
-
-        occurrences.sort(key=lambda s: s.start_ms)
-
-        compiled: List[Schedule.TransmissionWindow] = []
-
+            occurrences.extend(slot.all_occurrences(self.cycle_ns))
+    
+        occurrences.sort(key=lambda s: s.start_ns)
+    
+        compiled: Dict[int, List[Schedule.TransmissionWindow]] = defaultdict(list)
+    
         for occ in occurrences:
-            if not compiled:
-                compiled.append(self.TransmissionWindow(
-                    start_ms=int(occ.start_ms),
-                    end_ms=int(occ.end_ms),
-                    queue_id=occ.queue_id,
-                    stream_sequence=[occ.stream_id] if occ.stream_id is not None else []
-                ))
+            node_name, port = port_id_to_name[occ.port_id].split('.')
+            port_data = graph.nodes[node_name]['ports'][port]
+            queueCount = port_data.get("queueCount", 8)
+            windows = compiled[occ.port_id]
+    
+            # Build state string for this window
+            state_list = list('C' * queueCount)
+            if occ.queue_id is not None:
+                state_list[occ.queue_id] = 'o'
+            state = ''.join(state_list)
+    
+            # Create new window
+            new_window = self.TransmissionWindow(
+                start=int(occ.start_ns),
+                duration=int(occ.end_ns - occ.start_ns),
+                state=state,
+                stream_sequence=[occ.stream_id] if occ.stream_id is not None else []
+            )
+    
+            # Merge if overlapping and same state
+            if windows and (occ.start_ns <= windows[-1].start + windows[-1].duration) and state == windows[-1].state:
+                last = windows[-1]
+                # Extend duration
+                end_time = max(last.start + last.duration, new_window.start + new_window.duration)
+                last.duration = end_time - last.start
+                # Merge stream_sequence
+                if new_window.stream_sequence:
+                    if last.stream_sequence is None:
+                        last.stream_sequence = new_window.stream_sequence
+                    else:
+                        for sid in new_window.stream_sequence:
+                            if sid not in last.stream_sequence:
+                                last.stream_sequence.append(sid)
             else:
-                last = compiled[-1]
-                if occ.start_ms <= last.end_ms:  # overlapping or touching
-                    last.end_ms = max(last.end_ms, occ.end_ms)
-                    if occ.stream_id is not None:
-                        if last.stream_sequence is None:
-                            last.stream_sequence = [occ.stream_id]
-                        elif occ.stream_id not in last.stream_sequence:
-                            last.stream_sequence.append(occ.stream_id)
-                else:
-                    compiled.append(self.TransmissionWindow(
-                        start_ms=int(occ.start_ms),
-                        end_ms=int(occ.end_ms),
-                        queue_id=occ.queue_id,
-                        stream_sequence=[occ.stream_id] if occ.stream_id is not None else []
-                    ))
-        return compiled
-
-    def plot(self, tick: float = 1.0, span: Optional[int] = None, label: bool = True):
+                # Append window
+                windows.append(new_window)
+    
+            # Always update the graph port
+            port_data['basetime'] = self.basetime
+            port_data['scheduleCycle'] = self.cycle_ns
+            port_data.setdefault('schedule', [])
+            # Only append **new windows** if not already in the list
+            if new_window.to_dict() not in port_data['schedule']:
+                port_data['schedule'].append(new_window.to_dict())
+    
+    def update_streams(self, streams, ports, port_id_to_name):
         """
-        Visualize the Schedule using individual slot occurrences (not compiled windows).
+        add schedule data to streams
+        """        
+        for s_idx, stream in enumerate(streams):
+            n_listeners = len(stream['lstnsrPssblPlcmnt'])
+            stream_slots = self.slots_by_stream(s_idx)
+            stream_slots.sort()
+            # talker data from first slot
+            talker_slot = stream_slots[0]
+            talker_port = port_id_to_name[talker_slot.port_id]
+            talker_node = talker_port.split('.')[0]
+            stream['offset'] = talker_slot.start_ns
+            stream['tlkrPssblPlcmnt'] = [talker_node]
+            stream['accLatency'] = [[] for l_idx in range(n_listeners)]
+            stream['pathLists'] = [[talker_port] for l_idx in range(n_listeners)]
+            
+            for slot in stream_slots[1:]:
+                port = port_id_to_name[slot.port_id]
+                node_name = port.split('.')[0]
+                pathLists = stream.get("pathLists")
+                for l_idx in range(n_listeners):
+                    pathList = pathLists[l_idx]
+                    last = pathList[-1] # assuming talker is already there
+                    if ports[last]['destNode']==node_name:
+                        pathList.append(port)
+                        stream['accLatency'][l_idx] = slot.end_ns - stream['offset']
+            # use the last slot (forwarding to listener)
+            for l_idx in range(n_listeners):
+                last = pathList[-1]
+                stream['lstnsrPssblPlcmnt'][l_idx] = [ports[port]['destNode']]
+    
+    @classmethod
+    def from_compact_encoding(
+        cls,
+        compact_encoding,
+        windLengths, stream_intervals,
+        cycle_ns: Optional[int] = None,
+        basetime:Optional[int] = 0,
+        tt_queue_id = 0
+    ):
+        """
+        Build a Schedule instance from a compact_encoding array.
     
         Parameters
         ----------
-        tick : float, optional
-            Time unit in same units as start_ms/end_ms (default: 1.0)
-        span : int, optional
-            Total number of ticks to display. If None, auto-computed from cycle_ms.
-        label : bool, optional
-            Annotate bars with stream indices.
+        compact_encoding : 2D numpy array (n_ports , n_streams)
+            Nonzero value = start_time + 1
+        windLengths : 2D numpy array (n_ports , n_streams)
+            streams[i] = (period_ns, duration_ns)
+        cycle_ns : int
+            Schedule cycle
         """
-        # Expand all slots to their occurrences
-        occurrences = []
+        n_ports, n_streams = compact_encoding.shape
+
+        schedule = cls(cycle_ns=cycle_ns, basetime=basetime)
+        
+        for port_idx in range(n_ports):
+            for stream_id in range(n_streams):
+                value = compact_encoding[port_idx, stream_id]
+                if value != 0:
+                    start_time = int(value) - 1
+                    period_ns = stream_intervals[stream_id]
+                    duration_ns = windLengths[port_idx, stream_id]
+    
+                    slot = Slot(
+                        start_ns=start_time,
+                        end_ns=int(start_time + duration_ns),
+                        period_ns=int(period_ns),
+                        stream_id=stream_id,
+                        port_id=port_idx+1,
+                        queue_id=tt_queue_id
+                    )
+                    schedule.append(slot)
+        return schedule
+
+    def to_compact_encoding(self, n_ports, n_streams):
+        """
+        Convert Schedule into compact_encoding array.
+    
+        Parameters
+        ----------
+        streams : list of tuples
+            streams[i] = (period_ns, duration_ns)
+    
+        Returns
+        -------
+        compact_encoding : np.ndarray (n_ports x n_streams)
+        """
+        if not self:
+            raise ValueError("Schedule is empty")
+    
+        compact = np.zeros((n_ports, n_streams), dtype=int)
+    
         for slot in self:
-            occurrences.extend(slot.all_occurrences(self.cycle_ms))
+            if slot.stream_id is None or slot.port_id is None: # unknown stream or port
+                continue
+
+            port_idx = slot.port_id -1
+            stream_id = slot.stream_id
     
-        if span is None:
-            span = int(self.cycle_ms / tick)
-    
-        # Gather all streams for coloring
-        all_stream_ids = sorted({s.stream_id for s in occurrences if s.stream_id is not None})
-        stream_to_color = {sid: i for i, sid in enumerate(all_stream_ids)}
-    
-        # Modern Matplotlib colormap
-        cmap = plt.get_cmap("plasma", len(all_stream_ids))
-    
-        # Gather all queues/ports
-        all_ports = sorted({s.queue_id for s in occurrences if s.queue_id is not None})
-        port_to_y = {port: i for i, port in enumerate(all_ports)}
-    
-        fig, ax = plt.subplots(figsize=(20, max(5, len(all_ports))))
-    
-        # Plot each slot occurrence
-        for s in occurrences:
-            y = port_to_y[s.queue_id] if s.queue_id is not None else 0
-            start_ticks = s.start_ms / tick
-            width_ticks = s.duration_ms / tick
-    
-            # Color per stream
-            if s.stream_id is not None:
-                color_idx = stream_to_color[s.stream_id]
-            else:
-                color_idx = 0
-            color = cmap(color_idx / max(1, len(all_stream_ids)-1))
-    
-            # Draw the horizontal bar
-            ax.barh(
-                y=y,
-                width=width_ticks,
-                left=start_ticks,
-                height=0.8,
-                color=color,
-                edgecolor="black",
-                linewidth=1,
-            )
-    
-            # Annotate with stream ID
-            if label and s.stream_id is not None:
-                ax.text(
-                    start_ticks + width_ticks / 2,
-                    y,
-                    str(s.stream_id),
-                    ha="center",
-                    va="center",
-                    color="white",
-                    fontsize=10,
+            if compact[port_idx, stream_id] != 0:
+                raise ValueError(
+                    f"Multiple slots found for port {port_idx}, stream {stream_id}. "
+                    "Compact encoding allows only one."
                 )
     
-        # Axes labels and limits
-        ax.set_xlabel(f"Time (ticks, tick={tick})")
-        ax.set_ylabel("Ports")
-        ax.set_yticks(range(len(all_ports)))
-        ax.set_yticklabels([f"Port {port}" for port in all_ports])
-        ax.set_xlim(0, span)
-        ax.set_title(f"Schedule visualization (cycle={self.cycle_ms} ms)")
+            compact[port_idx, stream_id] = int(slot.start_ns) + 1
     
-        # Legend: one color per stream
-        legend_patches = [
-            mpatches.Patch(
-                color=cmap(i / max(1, len(all_stream_ids)-1)),
-                label=f"Stream {sid}"
+        return compact
+
+    def slots_by_port(self, port_id: int) -> List[Slot]:
+        """
+        Return all Slot definitions belonging to a given port.
+        """
+        return [slot for slot in self if slot.port_id == port_id]
+
+    def slots_by_stream(self, stream_id: int) -> List[Slot]:
+        """
+        Return all Slot definitions belonging to a given stream.
+        """
+        return [slot for slot in self if slot.stream_id == stream_id]
+
+    def plot(self, tick: float = 1.0, span: Optional[int] = None, label: bool = False, 
+             port_ids: Optional[List[int]] = None,
+             stream_ids: Optional[List[int]] = None):
+        """
+        Visualize schedule occurrences with one axis per port.
+    
+        Parameters
+        ----------
+        tick : float
+            Time unit scaling.
+        span : int
+            Max time to display.
+        label : bool
+            Annotate bars with stream ids.
+        port_id : int or None
+            If provided, plot only this port.
+    
+        Returns
+        -------
+        fig
+        axs
+        """
+    
+        # Expand occurrences
+        occurrences = []
+        for slot in self:
+            occurrences.extend(slot.all_occurrences(self.cycle_ns))
+
+         # Filter port if requested
+        if port_ids is not None:
+            occurrences = [o for o in occurrences if o.port_id in port_ids]
+            
+        # Filter streams if requested
+        if stream_ids is not None:
+            stream_ids = set(stream_ids)
+            occurrences = [o for o in occurrences if o.stream_id in stream_ids]
+            
+        if not occurrences:
+            fig, ax = plt.subplots()
+            ax.set_title("Empty schedule")
+            return fig, [ax]
+    
+        if span is None:
+            span = int(self.cycle_ns / tick)
+    
+        # Group occurrences by port
+        ports = sorted({o.port_id for o in occurrences if o.port_id is not None})
+    
+        port_occ = {p: [] for p in ports}
+        for o in occurrences:
+            port_occ[o.port_id].append(o)
+    
+        n_ports = len(ports)
+    
+        fig, axs = plt.subplots(
+            n_ports,
+            1,
+            figsize=(20, max(3, n_ports * 2)),
+            sharex=True
+        )
+    
+        if n_ports == 1:
+            axs = [axs]
+    
+        # Stream coloring
+        all_stream_ids = sorted({o.stream_id for o in occurrences if o.stream_id is not None})
+        cmap = plt.get_cmap("plasma", len(all_stream_ids))
+        stream_to_color = {sid: i for i, sid in enumerate(all_stream_ids)}
+    
+        for ax, port in zip(axs, ports):
+    
+            for s in port_occ[port]:
+    
+                start_ticks = s.start_ns / tick
+                width_ticks = (s.end_ns - s.start_ns) / tick
+    
+                color_idx = stream_to_color.get(s.stream_id, 0)
+                color = cmap(color_idx / max(1, len(all_stream_ids)-1))
+    
+                ax.barh(
+                    y=0,
+                    width=width_ticks,
+                    left=start_ticks,
+                    height=0.8,
+                    color=color,
+                    edgecolor="black"
+                )
+    
+                if label and s.stream_id is not None:
+                    ax.text(
+                        start_ticks + width_ticks/2,
+                        0,
+                        str(s.stream_id),
+                        ha="center",
+                        va="center",
+                        color="white",
+                        fontsize=9
+                    )
+    
+            ax.set_ylabel(f"Port {port}")
+            ax.set_yticks([])
+
+        # legend
+        legend_handles = []
+        
+        for sid in all_stream_ids:
+            color_idx = stream_to_color[sid]
+            color = cmap(color_idx / max(1, len(all_stream_ids)-1))
+        
+            legend_handles.append(
+                Patch(facecolor=color, edgecolor="black", label=f"Stream {sid}")
             )
-            for i, sid in enumerate(all_stream_ids)
-        ]
-        ax.legend(handles=legend_patches, title="Streams", bbox_to_anchor=(1.05, 1), loc='upper left')
+        
+        fig.legend(
+            handles=legend_handles,
+            loc="upper right",
+            title="Streams"
+        )
+    
+        axs[-1].set_xlabel(f"Time (tick={tick})")
+        axs[-1].set_xlim(0, span)
+    
+        fig.suptitle(f"Schedule visualization (cycle={self.cycle_ns})")
     
         plt.tight_layout()
-        return fig
-            
+        #plt.close(fig)
+        plt.show()
+    
+        return fig, axs
