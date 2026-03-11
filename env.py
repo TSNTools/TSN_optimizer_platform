@@ -211,7 +211,7 @@ class TSNDefragEnv(gym.Env):
             pidx = pid - 1
             if pidx in self.port_schedules:
                 self.port_schedules[pidx] = Schedule(
-                    cycle_ms=self.cycle_ns,
+                    cycle_ns=self.cycle_ns,
                     iterable=[
                         s for s in self.port_schedules[pidx]
                         if s.stream_id != s_idx
@@ -233,15 +233,16 @@ class TSNDefragEnv(gym.Env):
         for pid, offset in offsets.items():
             pidx = pid - 1
             if pidx not in self.port_schedules:
-                self.port_schedules[pidx] = Schedule(cycle_ms=self.cycle_ns)
+                self.port_schedules[pidx] = Schedule(cycle_ns=self.cycle_ns)
 
             dur = sinfo["port_dur_ns"].get(pid, 0)
             slot = Slot(
-                start_ms=int(round(offset)),
-                end_ms=int(round(offset + dur)),
-                period_ms=sinfo["interval_ns"],
+                start_ns=int(round(offset)),
+                end_ns=int(round(offset + dur)),
+                period_ns=sinfo["interval_ns"],
                 queue_id=pidx,
                 stream_id=s_idx,
+                port_id=pid,
             )
             self.port_schedules[pidx].append(slot)
 
@@ -357,14 +358,14 @@ class TSNDefragEnv(gym.Env):
             occs.extend(slot.all_occurrences(self.cycle_ns))
         if not occs:
             return []
-        occs.sort(key=lambda s: s.start_ms)
+        occs.sort(key=lambda s: s.start_ns)
 
         gaps: List[float] = []
         end = 0
         for o in occs:
-            if o.start_ms > end:
-                gaps.append(o.start_ms - end)
-            end = max(end, o.end_ms)
+            if o.start_ns > end:
+                gaps.append(o.start_ns - end)
+            end = max(end, o.end_ns)
         if end < self.cycle_ns:
             gaps.append(self.cycle_ns - end)
         return gaps
@@ -540,7 +541,7 @@ class TSNDefragEnv(gym.Env):
 
     def render(self):
         """Combine all per-port schedules into one and plot."""
-        combined = Schedule(cycle_ms=self.cycle_ns)
+        combined = Schedule(cycle_ns=self.cycle_ns)
         for pidx in sorted(self.port_schedules):
             for slot in self.port_schedules[pidx]:
                 combined.append(slot)
@@ -551,7 +552,7 @@ class TSNDefragEnv(gym.Env):
     # ================================================================== #
     def get_combined_schedule(self) -> Schedule:
         """Return a single Schedule object containing all per-port slots."""
-        combined = Schedule(cycle_ms=self.cycle_ns)
+        combined = Schedule(cycle_ns=self.cycle_ns)
         for pidx in sorted(self.port_schedules):
             for slot in self.port_schedules[pidx]:
                 combined.append(slot)
