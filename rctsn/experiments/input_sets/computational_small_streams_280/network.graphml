@@ -1,0 +1,405 @@
+<?xml version='1.0' encoding='utf-8'?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd"><key id="d2" for="edge" attr.name="link_type" attr.type="string"/>
+<key id="d1" for="node" attr.name="type" attr.type="string"/>
+<key id="d0" for="node" attr.name="subnet" attr.type="string"/>
+<graph edgedefault="directed"><node id="0-SW1">
+  <data key="d0">0</data>
+  <data key="d1">SW</data>
+</node>
+<node id="0-SW2">
+  <data key="d0">0</data>
+  <data key="d1">SW</data>
+</node>
+<node id="0-SW3">
+  <data key="d0">0</data>
+  <data key="d1">SW</data>
+</node>
+<node id="0-SW4">
+  <data key="d0">0</data>
+  <data key="d1">SW</data>
+</node>
+<node id="0-SW5">
+  <data key="d0">0</data>
+  <data key="d1">SW</data>
+</node>
+<node id="0-WN1">
+  <data key="d0">0</data>
+  <data key="d1">WN</data>
+</node>
+<node id="0-WED1">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WED2">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WED3">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WED4">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WED5">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WN2">
+  <data key="d0">0</data>
+  <data key="d1">WN</data>
+</node>
+<node id="0-WED6">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WED7">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WED8">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WED9">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WED10">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WN3">
+  <data key="d0">0</data>
+  <data key="d1">WN</data>
+</node>
+<node id="0-WED11">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WED12">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WED13">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WED14">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WED15">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WN4">
+  <data key="d0">0</data>
+  <data key="d1">WN</data>
+</node>
+<node id="0-WED16">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WED17">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WED18">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WED19">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WED20">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WN5">
+  <data key="d0">0</data>
+  <data key="d1">WN</data>
+</node>
+<node id="0-WED21">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WED22">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WED23">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WED24">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-WED25">
+  <data key="d0">0</data>
+  <data key="d1">WED</data>
+</node>
+<node id="0-ED1">
+  <data key="d0">0</data>
+  <data key="d1">ED</data>
+</node>
+<node id="0-ED2">
+  <data key="d0">0</data>
+  <data key="d1">ED</data>
+</node>
+<node id="0-ED3">
+  <data key="d0">0</data>
+  <data key="d1">ED</data>
+</node>
+<node id="0-ED4">
+  <data key="d0">0</data>
+  <data key="d1">ED</data>
+</node>
+<node id="0-ED5">
+  <data key="d0">0</data>
+  <data key="d1">ED</data>
+</node>
+<edge source="0-SW1" target="0-SW2">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-SW1" target="0-SW5">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-SW1" target="0-WN5">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-SW1" target="0-ED1">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-SW2" target="0-SW1">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-SW2" target="0-SW3">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-SW2" target="0-WN1">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-SW2" target="0-ED2">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-SW3" target="0-SW2">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-SW3" target="0-SW4">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-SW3" target="0-WN2">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-SW3" target="0-ED3">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-SW4" target="0-SW3">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-SW4" target="0-SW5">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-SW4" target="0-WN3">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-SW4" target="0-ED4">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-SW5" target="0-SW4">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-SW5" target="0-SW1">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-SW5" target="0-WN4">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-SW5" target="0-ED5">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-WN1" target="0-SW2">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-WN1" target="0-WED1">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN1" target="0-WED2">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN1" target="0-WED3">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN1" target="0-WED4">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN1" target="0-WED5">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED1" target="0-WN1">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED2" target="0-WN1">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED3" target="0-WN1">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED4" target="0-WN1">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED5" target="0-WN1">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN2" target="0-SW3">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-WN2" target="0-WED6">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN2" target="0-WED7">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN2" target="0-WED8">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN2" target="0-WED9">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN2" target="0-WED10">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED6" target="0-WN2">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED7" target="0-WN2">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED8" target="0-WN2">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED9" target="0-WN2">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED10" target="0-WN2">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN3" target="0-SW4">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-WN3" target="0-WED11">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN3" target="0-WED12">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN3" target="0-WED13">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN3" target="0-WED14">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN3" target="0-WED15">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED11" target="0-WN3">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED12" target="0-WN3">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED13" target="0-WN3">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED14" target="0-WN3">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED15" target="0-WN3">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN4" target="0-SW5">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-WN4" target="0-WED16">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN4" target="0-WED17">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN4" target="0-WED18">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN4" target="0-WED19">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN4" target="0-WED20">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED16" target="0-WN4">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED17" target="0-WN4">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED18" target="0-WN4">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED19" target="0-WN4">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED20" target="0-WN4">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN5" target="0-SW1">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-WN5" target="0-WED21">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN5" target="0-WED22">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN5" target="0-WED23">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN5" target="0-WED24">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WN5" target="0-WED25">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED21" target="0-WN5">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED22" target="0-WN5">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED23" target="0-WN5">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED24" target="0-WN5">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-WED25" target="0-WN5">
+  <data key="d2">1</data>
+</edge>
+<edge source="0-ED1" target="0-SW1">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-ED2" target="0-SW2">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-ED3" target="0-SW3">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-ED4" target="0-SW4">
+  <data key="d2">0</data>
+</edge>
+<edge source="0-ED5" target="0-SW5">
+  <data key="d2">0</data>
+</edge>
+</graph></graphml>

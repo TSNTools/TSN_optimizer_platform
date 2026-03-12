@@ -1,0 +1,2393 @@
+{
+  "nodes": [
+    {
+      "type": "switch",
+      "name": "0-SW1",
+      "ports": {
+        "P1": {
+          "name": "P1",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": []
+        },
+        "P2": {
+          "name": "P2",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": [
+            {
+              "start": 58000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 180000,
+              "duration": 20480,
+              "state": "CoCC"
+            },
+            {
+              "start": 221000,
+              "duration": 20480,
+              "state": "CoCC"
+            },
+            {
+              "start": 302000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 404000,
+              "duration": 40960,
+              "state": "CoCC"
+            },
+            {
+              "start": 704000,
+              "duration": 10240,
+              "state": "CoCC"
+            },
+            {
+              "start": 843000,
+              "duration": 20480,
+              "state": "CoCC"
+            },
+            {
+              "start": 1092000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 2136000,
+              "duration": 40960,
+              "state": "CoCC"
+            }
+          ]
+        },
+        "P3": {
+          "name": "P3",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": []
+        },
+        "P4": {
+          "name": "P4",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": [
+            {
+              "start": 78000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 197000,
+              "duration": 10240,
+              "state": "CoCC"
+            },
+            {
+              "start": 228000,
+              "duration": 40960,
+              "state": "CoCC"
+            },
+            {
+              "start": 324000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 405000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 599000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 732000,
+              "duration": 81920,
+              "state": "CoCC"
+            },
+            {
+              "start": 878000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 1000000,
+              "duration": 2560,
+              "state": "CoCC"
+            }
+          ]
+        },
+        "P5": {
+          "name": "P5",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": []
+        },
+        "P6": {
+          "name": "P6",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": [
+            {
+              "start": 31000,
+              "duration": 10240,
+              "state": "CoCC"
+            },
+            {
+              "start": 81000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 940000,
+              "duration": 40960,
+              "state": "CoCC"
+            },
+            {
+              "start": 1171000,
+              "duration": 81920,
+              "state": "CoCC"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "switch",
+      "name": "0-SW2",
+      "ports": {
+        "P1": {
+          "name": "P1",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": []
+        },
+        "P2": {
+          "name": "P2",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": [
+            {
+              "start": 98000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 186000,
+              "duration": 20480,
+              "state": "CoCC"
+            },
+            {
+              "start": 228000,
+              "duration": 10240,
+              "state": "CoCC"
+            },
+            {
+              "start": 289000,
+              "duration": 40960,
+              "state": "CoCC"
+            },
+            {
+              "start": 350000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 376000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 405000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 431000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 626000,
+              "duration": 81920,
+              "state": "CoCC"
+            },
+            {
+              "start": 834000,
+              "duration": 81920,
+              "state": "CoCC"
+            },
+            {
+              "start": 936000,
+              "duration": 113600,
+              "state": "CoCC"
+            },
+            {
+              "start": 1184000,
+              "duration": 40960,
+              "state": "CoCC"
+            },
+            {
+              "start": 2200000,
+              "duration": 81920,
+              "state": "CoCC"
+            }
+          ]
+        },
+        "P3": {
+          "name": "P3",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": []
+        },
+        "P4": {
+          "name": "P4",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": [
+            {
+              "start": 55000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 139000,
+              "duration": 20480,
+              "state": "CoCC"
+            },
+            {
+              "start": 180000,
+              "duration": 20480,
+              "state": "CoCC"
+            },
+            {
+              "start": 276000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 343000,
+              "duration": 40960,
+              "state": "CoCC"
+            },
+            {
+              "start": 673000,
+              "duration": 10240,
+              "state": "CoCC"
+            },
+            {
+              "start": 2075000,
+              "duration": 40960,
+              "state": "CoCC"
+            }
+          ]
+        },
+        "P5": {
+          "name": "P5",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": []
+        },
+        "P6": {
+          "name": "P6",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": [
+            {
+              "start": 78000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 104000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 282000,
+              "duration": 81920,
+              "state": "CoCC"
+            },
+            {
+              "start": 622000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 901000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 1000000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 1023000,
+              "duration": 2560,
+              "state": "CoCC"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "switch",
+      "name": "0-SW3",
+      "ports": {
+        "P1": {
+          "name": "P1",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": []
+        },
+        "P2": {
+          "name": "P2",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": [
+            {
+              "start": 101000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 130000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 224000,
+              "duration": 20480,
+              "state": "CoCC"
+            },
+            {
+              "start": 353000,
+              "duration": 10240,
+              "state": "CoCC"
+            },
+            {
+              "start": 384000,
+              "duration": 81920,
+              "state": "CoCC"
+            },
+            {
+              "start": 486000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 924000,
+              "duration": 40960,
+              "state": "CoCC"
+            },
+            {
+              "start": 1062000,
+              "duration": 40960,
+              "state": "CoCC"
+            }
+          ]
+        },
+        "P3": {
+          "name": "P3",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": []
+        },
+        "P4": {
+          "name": "P4",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": [
+            {
+              "start": 75000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 98000,
+              "duration": 20480,
+              "state": "CoCC"
+            },
+            {
+              "start": 145000,
+              "duration": 20480,
+              "state": "CoCC"
+            },
+            {
+              "start": 250000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 353000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 379000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 524000,
+              "duration": 81920,
+              "state": "CoCC"
+            },
+            {
+              "start": 642000,
+              "duration": 10240,
+              "state": "CoCC"
+            },
+            {
+              "start": 802000,
+              "duration": 113600,
+              "state": "CoCC"
+            },
+            {
+              "start": 1123000,
+              "duration": 40960,
+              "state": "CoCC"
+            },
+            {
+              "start": 2014000,
+              "duration": 40960,
+              "state": "CoCC"
+            },
+            {
+              "start": 2098000,
+              "duration": 81920,
+              "state": "CoCC"
+            }
+          ]
+        },
+        "P5": {
+          "name": "P5",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": []
+        },
+        "P6": {
+          "name": "P6",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": [
+            {
+              "start": 51000,
+              "duration": 20480,
+              "state": "CoCC"
+            },
+            {
+              "start": 246000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 422000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 645000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 668000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 863000,
+              "duration": 40960,
+              "state": "CoCC"
+            },
+            {
+              "start": 924000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 947000,
+              "duration": 40960,
+              "state": "CoCC"
+            },
+            {
+              "start": 1023000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 1046000,
+              "duration": 2560,
+              "state": "CoCC"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "switch",
+      "name": "0-SW4",
+      "ports": {
+        "P1": {
+          "name": "P1",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": []
+        },
+        "P2": {
+          "name": "P2",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": [
+            {
+              "start": 93000,
+              "duration": 10240,
+              "state": "CoCC"
+            },
+            {
+              "start": 124000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 947000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 1008000,
+              "duration": 40960,
+              "state": "CoCC"
+            },
+            {
+              "start": 1069000,
+              "duration": 2560,
+              "state": "CoCC"
+            }
+          ]
+        },
+        "P3": {
+          "name": "P3",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": []
+        },
+        "P4": {
+          "name": "P4",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": [
+            {
+              "start": 52000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 104000,
+              "duration": 20480,
+              "state": "CoCC"
+            },
+            {
+              "start": 183000,
+              "duration": 20480,
+              "state": "CoCC"
+            },
+            {
+              "start": 224000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 322000,
+              "duration": 10240,
+              "state": "CoCC"
+            },
+            {
+              "start": 463000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 863000,
+              "duration": 40960,
+              "state": "CoCC"
+            },
+            {
+              "start": 1001000,
+              "duration": 40960,
+              "state": "CoCC"
+            },
+            {
+              "start": 1062000,
+              "duration": 40960,
+              "state": "CoCC"
+            },
+            {
+              "start": 1953000,
+              "duration": 40960,
+              "state": "CoCC"
+            }
+          ]
+        },
+        "P5": {
+          "name": "P5",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": []
+        },
+        "P6": {
+          "name": "P6",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": [
+            {
+              "start": 92000,
+              "duration": 20480,
+              "state": "CoCC"
+            },
+            {
+              "start": 135000,
+              "duration": 10240,
+              "state": "CoCC"
+            },
+            {
+              "start": 272000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 448000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 474000,
+              "duration": 81920,
+              "state": "CoCC"
+            },
+            {
+              "start": 668000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 694000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 761000,
+              "duration": 20480,
+              "state": "CoCC"
+            },
+            {
+              "start": 802000,
+              "duration": 20480,
+              "state": "CoCC"
+            },
+            {
+              "start": 924000,
+              "duration": 40960,
+              "state": "CoCC"
+            },
+            {
+              "start": 1046000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 1069000,
+              "duration": 81920,
+              "state": "CoCC"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "switch",
+      "name": "0-SW5",
+      "ports": {
+        "P1": {
+          "name": "P1",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": []
+        },
+        "P2": {
+          "name": "P2",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": [
+            {
+              "start": 107000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 133000,
+              "duration": 20480,
+              "state": "CoCC"
+            },
+            {
+              "start": 474000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 576000,
+              "duration": 81920,
+              "state": "CoCC"
+            },
+            {
+              "start": 691000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 720000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 843000,
+              "duration": 20480,
+              "state": "CoCC"
+            },
+            {
+              "start": 985000,
+              "duration": 40960,
+              "state": "CoCC"
+            },
+            {
+              "start": 1171000,
+              "duration": 81920,
+              "state": "CoCC"
+            },
+            {
+              "start": 1273000,
+              "duration": 81920,
+              "state": "CoCC"
+            }
+          ]
+        },
+        "P3": {
+          "name": "P3",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": []
+        },
+        "P4": {
+          "name": "P4",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": [
+            {
+              "start": 35000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 166000,
+              "duration": 10240,
+              "state": "CoCC"
+            },
+            {
+              "start": 298000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 379000,
+              "duration": 5120,
+              "state": "CoCC"
+            },
+            {
+              "start": 802000,
+              "duration": 20480,
+              "state": "CoCC"
+            },
+            {
+              "start": 1069000,
+              "duration": 2560,
+              "state": "CoCC"
+            }
+          ]
+        },
+        "P5": {
+          "name": "P5",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": []
+        },
+        "P6": {
+          "name": "P6",
+          "speed": 100,
+          "queueCount": 4,
+          "schedule": [
+            {
+              "start": 62000,
+              "duration": 10240,
+              "state": "CoCC"
+            },
+            {
+              "start": 101000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 142000,
+              "duration": 20480,
+              "state": "CoCC"
+            },
+            {
+              "start": 291000,
+              "duration": 10240,
+              "state": "CoCC"
+            },
+            {
+              "start": 440000,
+              "duration": 2560,
+              "state": "CoCC"
+            },
+            {
+              "start": 940000,
+              "duration": 40960,
+              "state": "CoCC"
+            },
+            {
+              "start": 1001000,
+              "duration": 40960,
+              "state": "CoCC"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "host",
+      "name": "0-ED1",
+      "ports": {
+        "Port1": {
+          "name": "Port1",
+          "speed": 100,
+          "queueCount": 4
+        }
+      }
+    },
+    {
+      "type": "host",
+      "name": "0-ED2",
+      "ports": {
+        "Port1": {
+          "name": "Port1",
+          "speed": 100,
+          "queueCount": 4
+        }
+      }
+    },
+    {
+      "type": "host",
+      "name": "0-ED3",
+      "ports": {
+        "Port1": {
+          "name": "Port1",
+          "speed": 100,
+          "queueCount": 4
+        }
+      }
+    },
+    {
+      "type": "host",
+      "name": "0-ED4",
+      "ports": {
+        "Port1": {
+          "name": "Port1",
+          "speed": 100,
+          "queueCount": 4
+        }
+      }
+    },
+    {
+      "type": "host",
+      "name": "0-ED5",
+      "ports": {
+        "Port1": {
+          "name": "Port1",
+          "speed": 100,
+          "queueCount": 4
+        }
+      }
+    }
+  ],
+  "links": [
+    {
+      "sourceNode": "0-SW1",
+      "sourcePort": "P4",
+      "destNode": "0-SW2",
+      "destPort": "P4",
+      "propDelay": 10,
+      "linkBw": 100
+    },
+    {
+      "sourceNode": "0-SW1",
+      "sourcePort": "P6",
+      "destNode": "0-SW5",
+      "destPort": "P4",
+      "propDelay": 10,
+      "linkBw": 100
+    },
+    {
+      "sourceNode": "0-SW1",
+      "sourcePort": "P2",
+      "destNode": "0-ED1",
+      "destPort": "Port1",
+      "propDelay": 10,
+      "linkBw": 100
+    },
+    {
+      "sourceNode": "0-SW2",
+      "sourcePort": "P4",
+      "destNode": "0-SW1",
+      "destPort": "P4",
+      "propDelay": 10,
+      "linkBw": 100
+    },
+    {
+      "sourceNode": "0-SW2",
+      "sourcePort": "P6",
+      "destNode": "0-SW3",
+      "destPort": "P4",
+      "propDelay": 10,
+      "linkBw": 100
+    },
+    {
+      "sourceNode": "0-SW2",
+      "sourcePort": "P2",
+      "destNode": "0-ED2",
+      "destPort": "Port1",
+      "propDelay": 10,
+      "linkBw": 100
+    },
+    {
+      "sourceNode": "0-SW3",
+      "sourcePort": "P4",
+      "destNode": "0-SW2",
+      "destPort": "P6",
+      "propDelay": 10,
+      "linkBw": 100
+    },
+    {
+      "sourceNode": "0-SW3",
+      "sourcePort": "P6",
+      "destNode": "0-SW4",
+      "destPort": "P4",
+      "propDelay": 10,
+      "linkBw": 100
+    },
+    {
+      "sourceNode": "0-SW3",
+      "sourcePort": "P2",
+      "destNode": "0-ED3",
+      "destPort": "Port1",
+      "propDelay": 10,
+      "linkBw": 100
+    },
+    {
+      "sourceNode": "0-SW4",
+      "sourcePort": "P4",
+      "destNode": "0-SW3",
+      "destPort": "P6",
+      "propDelay": 10,
+      "linkBw": 100
+    },
+    {
+      "sourceNode": "0-SW4",
+      "sourcePort": "P6",
+      "destNode": "0-SW5",
+      "destPort": "P6",
+      "propDelay": 10,
+      "linkBw": 100
+    },
+    {
+      "sourceNode": "0-SW4",
+      "sourcePort": "P2",
+      "destNode": "0-ED4",
+      "destPort": "Port1",
+      "propDelay": 10,
+      "linkBw": 100
+    },
+    {
+      "sourceNode": "0-SW5",
+      "sourcePort": "P6",
+      "destNode": "0-SW4",
+      "destPort": "P6",
+      "propDelay": 10,
+      "linkBw": 100
+    },
+    {
+      "sourceNode": "0-SW5",
+      "sourcePort": "P4",
+      "destNode": "0-SW1",
+      "destPort": "P6",
+      "propDelay": 10,
+      "linkBw": 100
+    },
+    {
+      "sourceNode": "0-SW5",
+      "sourcePort": "P2",
+      "destNode": "0-ED5",
+      "destPort": "Port1",
+      "propDelay": 10,
+      "linkBw": 100
+    },
+    {
+      "sourceNode": "0-ED1",
+      "sourcePort": "Port1",
+      "destNode": "0-SW1",
+      "destPort": "P2",
+      "propDelay": 10,
+      "linkBw": 100
+    },
+    {
+      "sourceNode": "0-ED2",
+      "sourcePort": "Port1",
+      "destNode": "0-SW2",
+      "destPort": "P2",
+      "propDelay": 10,
+      "linkBw": 100
+    },
+    {
+      "sourceNode": "0-ED3",
+      "sourcePort": "Port1",
+      "destNode": "0-SW3",
+      "destPort": "P2",
+      "propDelay": 10,
+      "linkBw": 100
+    },
+    {
+      "sourceNode": "0-ED4",
+      "sourcePort": "Port1",
+      "destNode": "0-SW4",
+      "destPort": "P2",
+      "propDelay": 10,
+      "linkBw": 100
+    },
+    {
+      "sourceNode": "0-ED5",
+      "sourcePort": "Port1",
+      "destNode": "0-SW5",
+      "destPort": "P2",
+      "propDelay": 10,
+      "linkBw": 100
+    }
+  ],
+  "streams": [
+    {
+      "name": "Stream-0",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 64,
+      "maxLatency": 7200,
+      "tlkrPssblPlcmnt": [
+        "0-ED3"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 2880,
+      "jitter": 0,
+      "offset": 220000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED3.Port1",
+          "0-SW3.P6",
+          "0-SW4.P6",
+          "0-SW5.P4",
+          "0-SW1.P4",
+          "0-ED2.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-1",
+      "type": "isochronous",
+      "interval": 1000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 64,
+      "maxLatency": 500,
+      "tlkrPssblPlcmnt": [
+        "0-ED3"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED5"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -4120,
+      "jitter": 0,
+      "offset": 396000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED3.Port1",
+          "0-SW3.P6",
+          "0-SW4.P6",
+          "0-ED5.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-2",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 512,
+      "maxLatency": 7200,
+      "tlkrPssblPlcmnt": [
+        "0-ED3"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED4"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -32960,
+      "jitter": 0,
+      "offset": 886000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED3.Port1",
+          "0-SW3.P6",
+          "0-ED4.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-3",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 512,
+      "maxLatency": 6400,
+      "tlkrPssblPlcmnt": [
+        "0-ED4"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED3"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -32960,
+      "jitter": 0,
+      "offset": 802000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED4.Port1",
+          "0-SW4.P4",
+          "0-ED3.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-4",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 512,
+      "maxLatency": 7200,
+      "tlkrPssblPlcmnt": [
+        "0-ED3"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED5"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -32960,
+      "jitter": 0,
+      "offset": 802000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED3.Port1",
+          "0-SW3.P6",
+          "0-SW4.P6",
+          "0-ED5.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-5",
+      "type": "isochronous",
+      "interval": 4000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 32,
+      "maxLatency": 2400,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED3"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 1440,
+      "jitter": 0,
+      "offset": 55000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P6",
+          "0-ED3.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-6",
+      "type": "isochronous",
+      "interval": 2000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 64,
+      "maxLatency": 1200,
+      "tlkrPssblPlcmnt": [
+        "0-ED4"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -3120,
+      "jitter": 0,
+      "offset": 198000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED4.Port1",
+          "0-SW4.P4",
+          "0-SW3.P4",
+          "0-SW2.P4",
+          "0-ED1.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-7",
+      "type": "isochronous",
+      "interval": 4000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 128,
+      "maxLatency": 2000,
+      "tlkrPssblPlcmnt": [
+        "0-ED4"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -6240,
+      "jitter": 0,
+      "offset": 104000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED4.Port1",
+          "0-SW4.P6",
+          "0-SW5.P4",
+          "0-SW1.P4",
+          "0-ED2.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-8",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 128,
+      "maxLatency": 6400,
+      "tlkrPssblPlcmnt": [
+        "0-ED3"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -2240,
+      "jitter": 0,
+      "offset": 611000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED3.Port1",
+          "0-SW3.P4",
+          "0-SW2.P4",
+          "0-ED1.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-9",
+      "type": "isochronous",
+      "interval": 4000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 32,
+      "maxLatency": 3600,
+      "tlkrPssblPlcmnt": [
+        "0-ED5"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED4"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 1440,
+      "jitter": 0,
+      "offset": 78000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED5.Port1",
+          "0-SW5.P6",
+          "0-ED4.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-10",
+      "type": "isochronous",
+      "interval": 4000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 32,
+      "maxLatency": 3200,
+      "tlkrPssblPlcmnt": [
+        "0-ED5"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 1440,
+      "jitter": 0,
+      "offset": 12000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED5.Port1",
+          "0-SW5.P4",
+          "0-ED1.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-11",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1420,
+      "maxLatency": 5600,
+      "tlkrPssblPlcmnt": [
+        "0-ED3"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -105600,
+      "jitter": 0,
+      "offset": 668000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED3.Port1",
+          "0-SW3.P4",
+          "0-ED2.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-12",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 32,
+      "maxLatency": 6400,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 5440,
+      "jitter": 0,
+      "offset": 977000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P6",
+          "0-SW3.P6",
+          "0-SW4.P6",
+          "0-SW5.P4",
+          "0-ED1.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-13",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 64,
+      "maxLatency": 5600,
+      "tlkrPssblPlcmnt": [
+        "0-ED3"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 2880,
+      "jitter": 0,
+      "offset": 353000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED3.Port1",
+          "0-SW3.P4",
+          "0-ED2.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-14",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 32,
+      "maxLatency": 6400,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED4"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 5440,
+      "jitter": 0,
+      "offset": 855000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P4",
+          "0-SW2.P6",
+          "0-SW3.P6",
+          "0-ED4.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-15",
+      "type": "isochronous",
+      "interval": 4000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 32,
+      "maxLatency": 3600,
+      "tlkrPssblPlcmnt": [
+        "0-ED3"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 1440,
+      "jitter": 0,
+      "offset": 330000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED3.Port1",
+          "0-SW3.P4",
+          "0-ED2.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-16",
+      "type": "isochronous",
+      "interval": 4000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 512,
+      "maxLatency": 3600,
+      "tlkrPssblPlcmnt": [
+        "0-ED5"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED3"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -36960,
+      "jitter": 0,
+      "offset": 879000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED5.Port1",
+          "0-SW5.P6",
+          "0-SW4.P4",
+          "0-ED3.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-17",
+      "type": "isochronous",
+      "interval": 4000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 512,
+      "maxLatency": 4000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -36960,
+      "jitter": 0,
+      "offset": 879000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P6",
+          "0-SW5.P6",
+          "0-SW4.P4",
+          "0-SW3.P4",
+          "0-ED2.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-18",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 5600,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED5"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -73920,
+      "jitter": 0,
+      "offset": 1069000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P6",
+          "0-ED5.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-19",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 512,
+      "maxLatency": 8000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -32960,
+      "jitter": 0,
+      "offset": 167000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P4",
+          "0-ED2.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-20",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 64,
+      "maxLatency": 8000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED5"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 2880,
+      "jitter": 0,
+      "offset": 29000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P4",
+          "0-SW1.P6",
+          "0-ED5.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-21",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 8000,
+      "tlkrPssblPlcmnt": [
+        "0-ED4"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED5"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -73920,
+      "jitter": 0,
+      "offset": 372000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED4.Port1",
+          "0-SW4.P6",
+          "0-ED5.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-22",
+      "type": "isochronous",
+      "interval": 2000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 32,
+      "maxLatency": 1800,
+      "tlkrPssblPlcmnt": [
+        "0-ED4"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -560,
+      "jitter": 0,
+      "offset": 29000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED4.Port1",
+          "0-SW4.P4",
+          "0-SW3.P4",
+          "0-ED2.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-23",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 6400,
+      "tlkrPssblPlcmnt": [
+        "0-ED3"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -73920,
+      "jitter": 0,
+      "offset": 422000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED3.Port1",
+          "0-SW3.P4",
+          "0-ED2.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-24",
+      "type": "isochronous",
+      "interval": 2000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 256,
+      "maxLatency": 1400,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -18480,
+      "jitter": 0,
+      "offset": 139000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P4",
+          "0-ED1.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-25",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 256,
+      "maxLatency": 4800,
+      "tlkrPssblPlcmnt": [
+        "0-ED3"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED5"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -12480,
+      "jitter": 0,
+      "offset": 10000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED3.Port1",
+          "0-SW3.P6",
+          "0-SW4.P6",
+          "0-ED5.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-26",
+      "type": "isochronous",
+      "interval": 1000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 32,
+      "maxLatency": 1000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED5"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -1560,
+      "jitter": 0,
+      "offset": 576000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P4",
+          "0-SW2.P6",
+          "0-SW3.P6",
+          "0-SW4.P6",
+          "0-ED5.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-27",
+      "type": "isochronous",
+      "interval": 4000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 512,
+      "maxLatency": 4000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -36960,
+      "jitter": 0,
+      "offset": 282000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P4",
+          "0-ED1.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-28",
+      "type": "isochronous",
+      "interval": 4000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 64,
+      "maxLatency": 2000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED3"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -1120,
+      "jitter": 0,
+      "offset": 52000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P4",
+          "0-SW2.P6",
+          "0-ED3.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-29",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 64,
+      "maxLatency": 7200,
+      "tlkrPssblPlcmnt": [
+        "0-ED5"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 2880,
+      "jitter": 0,
+      "offset": 353000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED5.Port1",
+          "0-SW5.P4",
+          "0-SW1.P4",
+          "0-ED2.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-30",
+      "type": "isochronous",
+      "interval": 4000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 256,
+      "maxLatency": 3600,
+      "tlkrPssblPlcmnt": [
+        "0-ED5"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED3"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -16480,
+      "jitter": 0,
+      "offset": 101000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED5.Port1",
+          "0-SW5.P6",
+          "0-SW4.P4",
+          "0-ED3.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-31",
+      "type": "isochronous",
+      "interval": 1000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 128,
+      "maxLatency": 1000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED4"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -9240,
+      "jitter": 0,
+      "offset": 0,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P6",
+          "0-SW5.P6",
+          "0-ED4.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-32",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 512,
+      "maxLatency": 4800,
+      "tlkrPssblPlcmnt": [
+        "0-ED4"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -32960,
+      "jitter": 0,
+      "offset": 1892000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED4.Port1",
+          "0-SW4.P4",
+          "0-SW3.P4",
+          "0-SW2.P4",
+          "0-ED1.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-33",
+      "type": "isochronous",
+      "interval": 2000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 64,
+      "maxLatency": 1200,
+      "tlkrPssblPlcmnt": [
+        "0-ED3"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED5"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -3120,
+      "jitter": 0,
+      "offset": 642000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED3.Port1",
+          "0-SW3.P6",
+          "0-SW4.P6",
+          "0-ED5.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-34",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 256,
+      "maxLatency": 8000,
+      "tlkrPssblPlcmnt": [
+        "0-ED4"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -12480,
+      "jitter": 0,
+      "offset": 63000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED4.Port1",
+          "0-SW4.P4",
+          "0-SW3.P4",
+          "0-ED2.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-35",
+      "type": "isochronous",
+      "interval": 2000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 1800,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED3"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -79920,
+      "jitter": 0,
+      "offset": 180000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P6",
+          "0-ED3.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-36",
+      "type": "isochronous",
+      "interval": 4000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 32,
+      "maxLatency": 2800,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED4"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 1440,
+      "jitter": 0,
+      "offset": 977000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P4",
+          "0-SW2.P6",
+          "0-SW3.P6",
+          "0-ED4.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-37",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 4000,
+      "tlkrPssblPlcmnt": [
+        "0-ED4"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED5"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -73920,
+      "jitter": 0,
+      "offset": 967000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED4.Port1",
+          "0-SW4.P6",
+          "0-ED5.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-38",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 7200,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -73920,
+      "jitter": 0,
+      "offset": 630000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P4",
+          "0-ED2.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-39",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 256,
+      "maxLatency": 8000,
+      "tlkrPssblPlcmnt": [
+        "0-ED3"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -12480,
+      "jitter": 0,
+      "offset": 57000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED3.Port1",
+          "0-SW3.P4",
+          "0-SW2.P4",
+          "0-ED1.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-40",
+      "type": "isochronous",
+      "interval": 4000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 128,
+      "maxLatency": 4000,
+      "tlkrPssblPlcmnt": [
+        "0-ED5"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED3"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -6240,
+      "jitter": 0,
+      "offset": 260000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED5.Port1",
+          "0-SW5.P6",
+          "0-SW4.P4",
+          "0-ED3.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-41",
+      "type": "isochronous",
+      "interval": 2000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 256,
+      "maxLatency": 1800,
+      "tlkrPssblPlcmnt": [
+        "0-ED4"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -18480,
+      "jitter": 0,
+      "offset": 720000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED4.Port1",
+          "0-SW4.P6",
+          "0-SW5.P4",
+          "0-ED1.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-42",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 8000,
+      "tlkrPssblPlcmnt": [
+        "0-ED3"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -73920,
+      "jitter": 0,
+      "offset": 1996000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED3.Port1",
+          "0-SW3.P4",
+          "0-ED2.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-43",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 32,
+      "maxLatency": 7200,
+      "tlkrPssblPlcmnt": [
+        "0-ED5"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED3"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 5440,
+      "jitter": 0,
+      "offset": 417000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED5.Port1",
+          "0-SW5.P6",
+          "0-SW4.P4",
+          "0-ED3.Port1"
+        ]
+      ]
+    },
+    {
+      "name": "Stream-44",
+      "type": "isochronous",
+      "interval": 8000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 256,
+      "maxLatency": 6400,
+      "tlkrPssblPlcmnt": [
+        "0-ED4"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED5"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": -12480,
+      "jitter": 0,
+      "offset": 761000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED4.Port1",
+          "0-SW4.P6",
+          "0-ED5.Port1"
+        ]
+      ]
+    }
+  ],
+  "index": null
+}

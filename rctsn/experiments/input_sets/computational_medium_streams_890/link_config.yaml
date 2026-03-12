@@ -1,0 +1,48 @@
+link_types:
+  '0':
+    best_case_speed: 100  # in bits per microsecond : 100Mbps = 100 bits per microseconds
+    worst_case_speed: 100 # Example: 1000 Byte transmission is: (1000*8)/100 = 80 microseconds + processing + propagation
+    processing_time: 10  # in microseconds
+    propagation_time: 10  # in microseconds
+    parallel_paths: 1  # Standard link - no duplicates needed
+  '1':
+    # Packet size specific times derived from histogram bin boundaries
+    packet_sizes:
+      '32': # Min/Max from histogram_config bin_boundaries [525, ..., 975]
+        best_case_time: 525  # in microseconds
+        worst_case_time: 975  # in microseconds
+      '64': # Min/Max from histogram_config bin_boundaries [532, ..., 983]
+        best_case_time: 532  # in microseconds
+        worst_case_time: 983  # in microseconds
+      '128': # Min/Max from histogram_config bin_boundaries [547, ..., 998]
+        best_case_time: 547  # in microseconds
+        worst_case_time: 998  # in microseconds
+      '256': # Min/Max from histogram_config bin_boundaries [577, ..., 1028]
+        best_case_time: 577  # in microseconds
+        worst_case_time: 1028 # in microseconds
+      '512': # Min/Max from histogram_config bin_boundaries [637, ..., 1088]
+        best_case_time: 637  # in microseconds
+        worst_case_time: 1088 # in microseconds
+      '1024': # Min/Max from histogram_config bin_boundaries [757, ..., 1208]
+        best_case_time: 757  # in microseconds
+        worst_case_time: 1208 # in microseconds
+      '1420': # Min/Max from histogram_config bin_boundaries [850, ..., 1300]
+        best_case_time: 850  # in microseconds
+        worst_case_time: 1300 # in microseconds
+    parallel_paths: 1  # Standard link - no duplicates needed (as previously defined)
+  '2':
+    # Keeping existing structure for link type 2, update if needed
+    packet_sizes:
+      48:
+        best_case_time: 500  # in microseconds
+        worst_case_time: 900  # in microseconds
+      100:
+        best_case_time: 600  # in microseconds
+        worst_case_time: 1000 # in microseconds
+      500:
+        best_case_time: 700  # in microseconds
+        worst_case_time: 1100 # in microseconds
+      1000:
+        best_case_time: 800  # in microseconds
+        worst_case_time: 1200 # in microseconds
+    parallel_paths: 5  # Wireless link - 5 parallel paths

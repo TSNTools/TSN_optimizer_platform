@@ -1,0 +1,45 @@
+link_types:
+  '1': # Wireless Type 1
+    description: "Wireless link type 1, distribution varies by packet size."
+    packet_sizes:
+      '32': # Histogram for 32 Bytes on Link Type 1 (Source Data)
+        histogram_data: [20, 155, 150, 170, 205, 165, 55, 50, 35, 30] # Frequencies
+        bin_boundaries: [525, 575, 625, 675, 725, 775, 825, 875, 925, 975] # Representative values
+        description: "32 Bytes on Wireless Link 1"
+
+      '64': # Weighted Average for 64 Bytes (Closer to 32B)
+        # weight_large = (64-32)/(1420-32) = 0.023; weight_small = 0.977
+        histogram_data: [23, 156, 151, 171, 204, 162, 54, 49, 34, 29] # Weighted Frequencies
+        bin_boundaries: [532, 582, 632, 683, 733, 783, 832, 883, 933, 983] # Weighted values
+        description: "64 Bytes on Wireless Link 1 (Weighted Avg)"
+
+      '128': # Weighted Average for 128 Bytes
+        # weight_large = (128-32)/(1420-32) = 0.069; weight_small = 0.931
+        histogram_data: [30, 158, 153, 173, 201, 155, 53, 48, 33, 28] # Weighted Frequencies
+        bin_boundaries: [547, 597, 647, 698, 748, 798, 847, 898, 948, 998] # Weighted values
+        description: "128 Bytes on Wireless Link 1 (Weighted Avg)"
+
+      '256': # Weighted Average for 256 Bytes
+        # weight_large = (256-32)/(1420-32) = 0.161; weight_small = 0.839
+        histogram_data: [43, 163, 157, 176, 196, 143, 49, 45, 31, 26] # Weighted Frequencies
+        bin_boundaries: [577, 627, 677, 728, 778, 828, 877, 928, 978, 1028] # Weighted values
+        description: "256 Bytes on Wireless Link 1 (Weighted Avg)"
+
+      '512': # Weighted Average for 512 Bytes
+        # weight_large = (512-32)/(1420-32) = 0.346; weight_small = 0.654
+        histogram_data: [70, 172, 166, 184, 184, 117, 45, 40, 26, 21] # Weighted Frequencies
+        bin_boundaries: [637, 687, 737, 788, 838, 888, 937, 988, 1038, 1088] # Weighted values
+        description: "512 Bytes on Wireless Link 1 (Weighted Avg)"
+
+      '1024': # Weighted Average for 1024 Bytes (Closer to 1420B)
+        # weight_large = (1024-32)/(1420-32) = 0.715; weight_small = 0.285
+        histogram_data: [124, 191, 183, 199, 166, 67, 33, 29, 17, 12] # Weighted Frequencies
+        bin_boundaries: [757, 807, 857, 908, 958, 1008, 1057, 1108, 1158, 1208] # Weighted values
+        description: "1024 Bytes on Wireless Link 1 (Weighted Avg)"
+
+      '1420': # Histogram for 1420 Bytes on Link Type 1 (Source Data)
+        histogram_data: [165, 205, 195, 210, 145, 25, 25, 20, 10, 5] # Frequencies
+        bin_boundaries: [850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300] # Representative values
+        description: "1420 Bytes on Wireless Link 1"
+# Add Link Type '2' data here if needed, following the same weighted average logic
+# based on its own 32B and 1420B data (if available).

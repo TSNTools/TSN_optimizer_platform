@@ -1,0 +1,9 @@
+# This directory is for your input files
+# Copy experiment data here or place your own input files:
+# - streams.csv
+# - network.graphml  
+# - link_config.yaml
+# - histogram_config.yaml (optional)
+
+# To reproduce paper experiments, copy from experiments/input_sets/:
+# cp -r experiments/input_sets/computational_small_streams_280/* data/input/

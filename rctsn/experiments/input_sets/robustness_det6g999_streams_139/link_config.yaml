@@ -1,0 +1,18 @@
+link_types:
+  '0':
+    best_case_speed: 100  # in bits per microsecond : 100Mbps = 100 bits per microseconds
+    worst_case_speed: 100 # Example: 1000 Byte transmission is: (1000*8)/100 = 80 microseconds + processing + propagation
+    processing_time: 10  # in microseconds
+    propagation_time: 10  # in microseconds
+    parallel_paths: 1  # Standard link - no duplicates needed
+  '1':
+    # Packet size specific times derived from histogram bin boundaries
+    packet_sizes:
+      '100': # Values from generated_histogram_config_p0_0_to_p100_0.yaml processing_summary
+        uplink:
+          best_case_time: 4183 # in microseconds
+          worst_case_time: 7204 # in microseconds
+        downlink:
+          best_case_time: 3971 # in microseconds
+          worst_case_time: 13343 # in microseconds
+    parallel_paths: 1  # Standard link - no duplicates needed (as previously defined) 

@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Data directories (keep structure, ignore contents)
+data/input/*
+data/output/*
+!data/input/.gitkeep
+!data/output/.gitkeep
+
+# Solver logs and temporary files
+*.log
+*.tmp
+*.temp
+solver_log.log
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints
+
+# Local configuration files
+local_config.yaml
+.env.local
