@@ -22,16 +22,21 @@ if __name__ == "__main__":
     factory = NetworkGenerator(subnet_id="0")
 
     # Create a ring with 5 switches
-    ring_switches = factory.create_ring(5)
+    ring_switches = factory.create_star(4)
     
     # Add wireless and wired devices to the network
     # - More wireless nodes with end devices
-    factory.add_wireless_devices(wn_count=5, wed_per_wn=5)
+    factory.add_wireless_devices(wn_count=0, wed_per_wn=0)
     # - More wired devices to the switches
-    factory.add_wired_devices(devices_per_switch=1)
+    factory.add_wired_devices(devices_per_switch=3)
 
     # Define stream settings using dictionaries for better clarity
     # We explicitly specify the latency factors, gamma values, and jitter factors
+    # NOTE: This small scenario is wired-only (no WN/WED devices).
+    wed_to_wed_count = 0
+    ed_to_ed_count = 500
+    wed_to_ed_count = 0
+
     wed_wed_settings = {
         "packet_sizes": [32, 64, 128, 256, 512, 1024, 1420],
         "periods": [8000],
@@ -45,9 +50,9 @@ if __name__ == "__main__":
         "packet_sizes": [32, 64, 128, 256, 512, 1024, 1420],
         "periods": [500, 1000, 2000, 4000, 8000],
         "latency_factors": [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-        "priorities": [1, 2, 3],
+        "priorities": [1],
         "gammas": [1.0],
-        "jitter_factors": [0.1, 0.2, 0.3, 0.4, 0.5]  # New parameter for jitter as a ratio of period
+        "jitter_factors": [0]  # New parameter for jitter as a ratio of period
     }
     
     wed_ed_settings = {
@@ -62,9 +67,9 @@ if __name__ == "__main__":
     # Generate streams across the entire network
     try:
         factory.generate_streams_with_dict_settings(
-            wed_to_wed=500,
-            ed_to_ed=500,
-            wed_to_ed=500,
+            wed_to_wed=wed_to_wed_count,
+            ed_to_ed=ed_to_ed_count,
+            wed_to_ed=wed_to_ed_count,
             mode="any",
             wed_wed_settings=wed_wed_settings,
             ed_ed_settings=ed_ed_settings,
@@ -89,6 +94,9 @@ if __name__ == "__main__":
     # Save network statistics to a text file
     stats_file = os.path.join(output_dir, folder_name, "network_stats.txt")
     extra_info = {
+        "WED-WED stream count": wed_to_wed_count,
+        "ED-ED stream count": ed_to_ed_count,
+        "WED-ED stream count": wed_to_ed_count,
         "WED-WED jitter factors": wed_wed_settings['jitter_factors'],
         "ED-ED jitter factors": ed_ed_settings['jitter_factors'],
         "WED-ED jitter factors": wed_ed_settings['jitter_factors']
