@@ -262,6 +262,9 @@ class Schedule(list):
         for s_idx, stream in enumerate(streams):
             n_listeners = len(stream['lstnsrPssblPlcmnt'])
             stream_slots = self.slots_by_stream(s_idx)
+            # Some streams can be intentionally unscheduled (e.g., ILP rejects them).
+            if not stream_slots:
+                continue
             stream_slots.sort()
             # talker data from first slot
             talker_slot = stream_slots[0]
@@ -284,8 +287,8 @@ class Schedule(list):
                         stream['accLatency'][l_idx] = slot.end_ns - stream['offset']
             # use the last slot (forwarding to listener)
             for l_idx in range(n_listeners):
-                last = pathList[-1]
-                stream['lstnsrPssblPlcmnt'][l_idx] = [ports[port]['destNode']]
+                last = stream['pathLists'][l_idx][-1]
+                stream['lstnsrPssblPlcmnt'][l_idx] = [ports[last]['destNode']]
     
     @classmethod
     def from_compact_encoding(
