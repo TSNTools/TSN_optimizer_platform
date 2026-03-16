@@ -18,6 +18,10 @@ Reward:
     R = delta_fragmentation  –  move_penalty * (n_moved > 0)
     delta_frag = (gaps_old - gaps_new) / max(1, gaps_old)
 
+    Additional mode: 'paper_simple'
+    r_t = w1*DeltaAdmissionFit + w2*DeltaFragScore
+          - w3*ShiftCost - w4*MovedStreams - w5*1[invalid]
+
 All internal times are in **nanoseconds** (matching TSNScheduling).
 """
 
@@ -49,6 +53,10 @@ class TSNDefragEnv(gym.Env):
         max_edges: int = 200,
         fragmentation_metric: str = "hybrid",
         single_move_per_step: bool = False,
+        reward_mode: str = "simple",
+        init_from_usecase_schedule: bool = True,
+        reward_weights: Optional[Dict[str, float]] = None,
+        admission_template_count: int = 8,
     ):
         super().__init__()
 
@@ -58,6 +66,21 @@ class TSNDefragEnv(gym.Env):
         self.max_edges = max_edges
         self.fragmentation_metric = fragmentation_metric
         self.single_move_per_step = single_move_per_step
+        self.reward_mode = reward_mode
+        self.init_from_usecase_schedule = init_from_usecase_schedule
+        self.admission_template_count = max(1, int(admission_template_count))
+
+        # Weights for reward_mode='paper_simple'
+        default_weights = {
+            "w1_admission": 2.0,
+            "w2_frag": 1.0,
+            "w3_shift": 0.05,
+            "w4_moved": 0.2,
+            "w5_invalid": 100.0,
+        }
+        self.reward_weights = dict(default_weights)
+        if reward_weights:
+            self.reward_weights.update(reward_weights)
 
         # ── precompute everything inside the instance context ──────────
         with self.problem.use_instance(self.usecase):
@@ -139,6 +162,11 @@ class TSNDefragEnv(gym.Env):
 
             # line-graph adjacency
             self._adjacency = self._build_adjacency()
+
+            # Candidate templates used by lightweight admission-fit estimate.
+            self.admission_templates = self._build_admission_templates(
+                self.admission_template_count
+            )
 
         # ── Gym spaces ─────────────────────────────────────────────────
         self.action_space = spaces.Box(
@@ -316,6 +344,40 @@ class TSNDefragEnv(gym.Env):
         for s_idx in range(self.n_streams):
             self._place_stream(s_idx, first_offset_ns=0.0)
 
+    def _create_initial_schedule_from_usecase(self) -> bool:
+        """
+        Try to initialize internal state from schedule data already present in usecase.
+
+        Returns True when a schedule was loaded, False when unavailable.
+        """
+        try:
+            port_name_to_id, _ = self.usecase.port_name_id_mapping
+            imported_schedule = Schedule.from_usecase(self.usecase, port_name_to_id)
+        except Exception:
+            return False
+
+        self.port_schedules = {}
+        self.stream_offsets = {}
+
+        for slot in imported_schedule:
+            if slot.port_id is None:
+                continue
+            pidx = slot.port_id - 1
+            if pidx not in self.port_schedules:
+                self.port_schedules[pidx] = Schedule(cycle_ns=self.cycle_ns)
+            self.port_schedules[pidx].append(slot)
+
+            if slot.stream_id is not None:
+                s_idx = int(slot.stream_id)
+                if s_idx not in self.stream_offsets:
+                    self.stream_offsets[s_idx] = {}
+                # Keep earliest offset per stream/port as canonical placement.
+                prev = self.stream_offsets[s_idx].get(slot.port_id)
+                if prev is None or slot.start_ns < prev:
+                    self.stream_offsets[s_idx][slot.port_id] = float(slot.start_ns)
+
+        return True
+
     # ================================================================== #
     # Observation builders
     # ================================================================== #
@@ -437,6 +499,145 @@ class TSNDefragEnv(gym.Env):
             "{'gap_count', 'useless_gap_count', 'hybrid'}"
         )
 
+    def _simple_fragmentation_value(self) -> float:
+        """Simple objective used as default: total gap count only."""
+        return float(self._count_gaps())
+
+    def _frag_score(self) -> float:
+        """
+        FragScore(s) = mean_j[(1-useless_gap_ratio_j) + avg_useful_gap_j].
+        """
+        met = self._get_port_metrics()
+        if met.shape[0] == 0:
+            return 0.0
+        return float(np.mean((1.0 - met[:, 1]) + met[:, 2]))
+
+    def _build_admission_templates(self, max_templates: int) -> List[Dict]:
+        """
+        Build a small template set C from existing streams (lightweight proxy).
+        """
+        candidates = []
+        for sinfo in self.stream_info:
+            path = list(sinfo.get("path", []))
+            if not path:
+                continue
+            interval_ns = max(1, int(sinfo.get("interval_ns", self.cycle_ns)))
+            weight = float(self.cycle_ns) / float(interval_ns)
+            candidates.append(
+                {
+                    "path": path,
+                    "port_dur_ns": dict(sinfo.get("port_dur_ns", {})),
+                    "weight": weight,
+                }
+            )
+
+        # Keep the highest-priority templates (shorter intervals -> higher weight).
+        candidates.sort(key=lambda x: x["weight"], reverse=True)
+        return candidates[:max_templates]
+
+    def _template_fits(self, template: Dict) -> bool:
+        """
+        Lightweight fit(c, s): template fits if each path port has a gap large
+        enough for one transmission window.
+        """
+        for pid in template.get("path", []):
+            pidx = pid - 1
+            needed = float(template.get("port_dur_ns", {}).get(pid, 0.0))
+            gaps = self._port_gaps(pidx)
+            if not any(g >= needed for g in gaps):
+                return False
+        return True
+
+    def _template_fit_ratio(self, template: Dict) -> float:
+        """
+        Continuous fit proxy in [0,1]:
+        for each path port, compute max_gap/needed (clipped), then take min over
+        ports so a single bottleneck port limits admission quality.
+        """
+        ratios = []
+        for pid in template.get("path", []):
+            pidx = pid - 1
+            needed = max(1e-9, float(template.get("port_dur_ns", {}).get(pid, 0.0)))
+            gaps = self._port_gaps(pidx)
+            max_gap = max(gaps) if gaps else 0.0
+            ratios.append(min(1.0, max_gap / needed))
+
+        if not ratios:
+            return 0.0
+        return float(min(ratios))
+
+    def _admission_fit_score(self) -> float:
+        """
+        AdmissionFit(s) = sum_{c in C} w_c * fit(c, s)
+        """
+        if not getattr(self, "admission_templates", None):
+            return 0.0
+        total = 0.0
+        for tmpl in self.admission_templates:
+            total += float(tmpl.get("weight", 1.0)) * self._template_fit_ratio(tmpl)
+        return total
+
+    def _has_any_port_overlap(self) -> bool:
+        """Return True if any port has overlapping occurrences in [0, cycle)."""
+        for pidx, sched in self.port_schedules.items():
+            if not sched:
+                continue
+            occs = []
+            for slot in sched:
+                occs.extend(slot.all_occurrences(self.cycle_ns))
+            if not occs:
+                continue
+            occs.sort(key=lambda s: s.start_ns)
+            prev_end = occs[0].end_ns
+            for occ in occs[1:]:
+                if occ.start_ns < prev_end:
+                    return True
+                prev_end = max(prev_end, occ.end_ns)
+        return False
+
+    def _violates_latency_constraints(self) -> bool:
+        """
+        Lightweight latency validation on first occurrences:
+        (last_port_start + last_port_duration) - first_port_start <= max_latency.
+        """
+        for s_idx, sinfo in enumerate(self.stream_info):
+            path = sinfo.get("path", [])
+            if not path:
+                continue
+            first_pid = path[0]
+            last_pid = path[-1]
+            offsets = self.stream_offsets.get(s_idx, {})
+            if first_pid not in offsets or last_pid not in offsets:
+                continue
+
+            first_start = float(offsets[first_pid])
+            last_start = float(offsets[last_pid])
+            last_dur = float(sinfo.get("port_dur_ns", {}).get(last_pid, 0.0))
+            e2e_latency = (last_start + last_dur) - first_start
+            if e2e_latency > float(sinfo.get("max_latency_ns", math.inf)):
+                return True
+        return False
+
+    def _invalid_schedule_flag(self) -> int:
+        """
+        1 if schedule violates core constraints, else 0.
+        """
+        if self._has_any_port_overlap():
+            return 1
+        if self._violates_latency_constraints():
+            return 1
+        return 0
+
+    @staticmethod
+    def _decode_placement_matrix(placement: np.ndarray) -> np.ndarray:
+        """
+        Convert encoded placement matrix to normalized offsets in [0,1].
+        Encoded value 0 means no placement on that port.
+        """
+        placement = np.asarray(placement, dtype=np.float32)
+        decoded = np.where(placement > 0.0, placement - 1.0, 0.0)
+        return decoded
+
     def _get_obs(self) -> Dict[str, np.ndarray]:
         return {
             "stream_placement": self._get_stream_placement(),
@@ -464,11 +665,20 @@ class TSNDefragEnv(gym.Env):
             self.n_streams, self.n_ports
         )
 
-        old_frag = self._fragmentation_value()
+        old_placement = self._get_stream_placement()
+        old_admission_fit = self._admission_fit_score()
+        old_frag_score = self._frag_score()
+        old_invalid = int(self._invalid_schedule_flag())
+
+        if self.reward_mode == "simple":
+            old_frag = self._simple_fragmentation_value()
+        else:
+            old_frag = self._fragmentation_value()
         n_moved = 0
 
         moved_stream = None
         moved_port = None
+        moved_actions = []
 
         if self.single_move_per_step:
             best = None  # (act_val, s_idx, pidx)
@@ -494,6 +704,15 @@ class TSNDefragEnv(gym.Env):
                         n_moved = 1
                         moved_stream = s_idx
                         moved_port = pidx
+                        moved_actions.append(
+                            {
+                                "stream_id": int(s_idx),
+                                "port_id": int(pidx + 1),
+                                "old_start_ns": int(round(old_offset)),
+                                "new_start_ns": int(round(decoded_offset)),
+                                "delta_start_ns": int(round(decoded_offset - old_offset)),
+                            }
+                        )
                         self._place_stream(s_idx, decoded_offset)
         else:
             for s_idx, sinfo in enumerate(self.stream_info):
@@ -511,12 +730,53 @@ class TSNDefragEnv(gym.Env):
                 old_offset = self.stream_offsets.get(s_idx, {}).get(first_pid, 0)
                 if abs(decoded_offset - old_offset) > 1:            # 1 ns tolerance
                     n_moved += 1
+                    moved_actions.append(
+                        {
+                            "stream_id": int(s_idx),
+                            "port_id": int(first_pid),
+                            "old_start_ns": int(round(old_offset)),
+                            "new_start_ns": int(round(decoded_offset)),
+                            "delta_start_ns": int(round(decoded_offset - old_offset)),
+                        }
+                    )
                     self._place_stream(s_idx, decoded_offset)
 
-        new_frag = self._fragmentation_value()
+            if moved_actions:
+                moved_stream = moved_actions[0]["stream_id"]
+                moved_port = moved_actions[0]["port_id"] - 1
+
+        if self.reward_mode == "simple":
+            new_frag = self._simple_fragmentation_value()
+        else:
+            new_frag = self._fragmentation_value()
+
+        new_placement = self._get_stream_placement()
+        new_admission_fit = self._admission_fit_score()
+        new_frag_score = self._frag_score()
+
+        x_old = self._decode_placement_matrix(old_placement)
+        x_new = self._decode_placement_matrix(new_placement)
+        shift_cost = float(np.sum(np.abs(x_new - x_old)))
+        moved_streams_matrix = int(np.sum(np.any(np.abs(x_new - x_old) > 1e-9, axis=1)))
+        invalid = int(self._invalid_schedule_flag())
+        invalid_new = 1 if (invalid == 1 and old_invalid == 0) else 0
 
         delta = (old_frag - new_frag) / max(1.0, old_frag)
-        reward = delta - self.move_penalty * (n_moved > 0)
+        if self.reward_mode == "paper_simple":
+            delta_admission = float(new_admission_fit - old_admission_fit)
+            delta_frag_score = float(new_frag_score - old_frag_score)
+            w = self.reward_weights
+            reward = (
+                w["w1_admission"] * delta_admission
+                + w["w2_frag"] * delta_frag_score
+                - w["w3_shift"] * shift_cost
+                - w["w4_moved"] * moved_streams_matrix
+                - w["w5_invalid"] * invalid_new
+            )
+        else:
+            delta_admission = float(new_admission_fit - old_admission_fit)
+            delta_frag_score = float(new_frag_score - old_frag_score)
+            reward = delta - self.move_penalty * n_moved
 
         info = {
             "old_fragmentation": old_frag,
@@ -527,16 +787,38 @@ class TSNDefragEnv(gym.Env):
             "useless_gaps": self._count_useless_gaps(),
             "useless_gap_time_ratio": self._useless_gap_time_ratio(),
             "fragmentation_metric": self.fragmentation_metric,
+            "reward_mode": self.reward_mode,
             "single_move_per_step": self.single_move_per_step,
             "moved_stream": moved_stream,
             "moved_port": moved_port,
+            "moved_actions": moved_actions,
+            "old_admission_fit": float(old_admission_fit),
+            "new_admission_fit": float(new_admission_fit),
+            "delta_admission_fit": float(delta_admission),
+            "old_frag_score": float(old_frag_score),
+            "new_frag_score": float(new_frag_score),
+            "delta_frag_score": float(delta_frag_score),
+            "shift_cost": float(shift_cost),
+            "moved_streams_matrix": int(moved_streams_matrix),
+            "invalid": int(invalid),
+            "invalid_old": int(old_invalid),
+            "invalid_new": int(invalid_new),
+            "reward_weights": dict(self.reward_weights),
         }
         return self._get_obs(), reward, False, False, info
 
     def reset(self, seed=None, options=None):
         """Reset the schedule to a simple initial placement."""
         super().reset(seed=seed)
-        self._create_initial_schedule()
+        use_uc_schedule = self.init_from_usecase_schedule
+        if options and "init_from_usecase_schedule" in options:
+            use_uc_schedule = bool(options["init_from_usecase_schedule"])
+
+        loaded = False
+        if use_uc_schedule:
+            loaded = self._create_initial_schedule_from_usecase()
+        if not loaded:
+            self._create_initial_schedule()
         return self._get_obs(), {}
 
     def render(self):

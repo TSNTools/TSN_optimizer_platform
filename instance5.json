@@ -1,0 +1,4159 @@
+{
+    "nodes": [
+        {
+            "type": "host",
+            "name": "host-1-p0",
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 76019,
+                            "duration": 3801,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                20
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "host",
+            "name": "host-2-p0",
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 30401,
+                            "duration": 1689,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                9
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "host",
+            "name": "host-3-p0",
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6
+                }
+            }
+        },
+        {
+            "type": "host",
+            "name": "host-4-p0",
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 25513,
+                            "duration": 1399,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                10
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "host",
+            "name": "host-5-p1",
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 80567,
+                            "duration": 4065,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                23
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "host",
+            "name": "host-6-p1",
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6
+                }
+            }
+        },
+        {
+            "type": "host",
+            "name": "host-7-p1",
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 10875,
+                            "duration": 1056,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                28
+                            ]
+                        },
+                        {
+                            "start": 27708,
+                            "duration": 1540,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                4
+                            ]
+                        },
+                        {
+                            "start": 30975,
+                            "duration": 1548,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                22
+                            ]
+                        },
+                        {
+                            "start": 34834,
+                            "duration": 1645,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                27
+                            ]
+                        },
+                        {
+                            "start": 82359,
+                            "duration": 4118,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                29
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "host",
+            "name": "host-8-p1",
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 12789,
+                            "duration": 1003,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                15
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "host",
+            "name": "host-9-p2",
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 11259,
+                            "duration": 563,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                13
+                            ]
+                        },
+                        {
+                            "start": 39759,
+                            "duration": 1988,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                0
+                            ]
+                        },
+                        {
+                            "start": 47519,
+                            "duration": 2376,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                26
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "host",
+            "name": "host-10-p2",
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 36529,
+                            "duration": 1883,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                1
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "host",
+            "name": "host-11-p2",
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 34479,
+                            "duration": 1724,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                11
+                            ]
+                        },
+                        {
+                            "start": 44339,
+                            "duration": 2217,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                17
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "host",
+            "name": "host-12-p2",
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 65119,
+                            "duration": 3256,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                21
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "host",
+            "name": "host-13-p3",
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 30079,
+                            "duration": 1504,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                5
+                            ]
+                        },
+                        {
+                            "start": 36419,
+                            "duration": 1821,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                18
+                            ]
+                        },
+                        {
+                            "start": 52079,
+                            "duration": 2604,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                8
+                            ]
+                        },
+                        {
+                            "start": 62405,
+                            "duration": 3467,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                6
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "host",
+            "name": "host-14-p3",
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 22449,
+                            "duration": 1232,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                24
+                            ]
+                        },
+                        {
+                            "start": 26861,
+                            "duration": 1390,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                7
+                            ]
+                        },
+                        {
+                            "start": 39059,
+                            "duration": 1953,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                19
+                            ]
+                        },
+                        {
+                            "start": 43247,
+                            "duration": 2235,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                16
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "host",
+            "name": "host-15-p3",
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 31139,
+                            "duration": 1557,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                25
+                            ]
+                        },
+                        {
+                            "start": 37208,
+                            "duration": 1918,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                12
+                            ]
+                        },
+                        {
+                            "start": 68009,
+                            "duration": 3432,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                2
+                            ]
+                        },
+                        {
+                            "start": 77439,
+                            "duration": 3872,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                3
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "host",
+            "name": "host-16-p3",
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 84119,
+                            "duration": 4206,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                14
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "switch",
+            "name": "switch-c1",
+            "procDelay": 40000,
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 145323,
+                            "duration": 1056,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                28
+                            ]
+                        },
+                        {
+                            "start": 198993,
+                            "duration": 3432,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                2
+                            ]
+                        }
+                    ]
+                },
+                "Port2": {
+                    "name": "Port2",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 159853,
+                            "duration": 1724,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                11
+                            ]
+                        }
+                    ]
+                },
+                "Port3": {
+                    "name": "Port3",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 168583,
+                            "duration": 1953,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                19
+                            ]
+                        }
+                    ]
+                },
+                "Port4": {
+                    "name": "Port4",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 207452,
+                            "duration": 3801,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                20
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "switch",
+            "name": "switch-c2",
+            "procDelay": 40000,
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 133255,
+                            "duration": 563,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                13
+                            ]
+                        },
+                        {
+                            "start": 159034,
+                            "duration": 1557,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                25
+                            ]
+                        },
+                        {
+                            "start": 171749,
+                            "duration": 2235,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                16
+                            ]
+                        }
+                    ]
+                },
+                "Port2": {
+                    "name": "Port2",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 217839,
+                            "duration": 4206,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                14
+                            ]
+                        }
+                    ]
+                },
+                "Port3": {
+                    "name": "Port3",
+                    "speed": 1000,
+                    "queueCount": 6
+                },
+                "Port4": {
+                    "name": "Port4",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 194917,
+                            "duration": 3256,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                21
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "switch",
+            "name": "switch-c3",
+            "procDelay": 40000,
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 148365,
+                            "duration": 1232,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                24
+                            ]
+                        },
+                        {
+                            "start": 152017,
+                            "duration": 1390,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                7
+                            ]
+                        },
+                        {
+                            "start": 155738,
+                            "duration": 1540,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                4
+                            ]
+                        }
+                    ]
+                },
+                "Port2": {
+                    "name": "Port2",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 155121,
+                            "duration": 1504,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                5
+                            ]
+                        },
+                        {
+                            "start": 161951,
+                            "duration": 1821,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                18
+                            ]
+                        }
+                    ]
+                },
+                "Port3": {
+                    "name": "Port3",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 143294,
+                            "duration": 1003,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                15
+                            ]
+                        },
+                        {
+                            "start": 205893,
+                            "duration": 3467,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                6
+                            ]
+                        }
+                    ]
+                },
+                "Port4": {
+                    "name": "Port4",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 167508,
+                            "duration": 1988,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                0
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "switch",
+            "name": "switch-c4",
+            "procDelay": 40000,
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6
+                },
+                "Port2": {
+                    "name": "Port2",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 179921,
+                            "duration": 2604,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                8
+                            ]
+                        }
+                    ]
+                },
+                "Port3": {
+                    "name": "Port3",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 158876,
+                            "duration": 1689,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                9
+                            ]
+                        },
+                        {
+                            "start": 213524,
+                            "duration": 4065,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                23
+                            ]
+                        }
+                    ]
+                },
+                "Port4": {
+                    "name": "Port4",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 152206,
+                            "duration": 1399,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                10
+                            ]
+                        },
+                        {
+                            "start": 174677,
+                            "duration": 2376,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                26
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "switch",
+            "name": "switch-p0-a1",
+            "procDelay": 40000,
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 173828,
+                            "duration": 563,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                13
+                            ]
+                        },
+                        {
+                            "start": 186401,
+                            "duration": 1056,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                28
+                            ]
+                        },
+                        {
+                            "start": 200601,
+                            "duration": 1557,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                25
+                            ]
+                        },
+                        {
+                            "start": 214184,
+                            "duration": 2235,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                16
+                            ]
+                        }
+                    ]
+                },
+                "Port2": {
+                    "name": "Port2",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 242438,
+                            "duration": 3432,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                2
+                            ]
+                        }
+                    ]
+                },
+                "Port3": {
+                    "name": "Port3",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 163641,
+                            "duration": 3801,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                20
+                            ]
+                        }
+                    ]
+                },
+                "Port4": {
+                    "name": "Port4",
+                    "speed": 1000,
+                    "queueCount": 6
+                }
+            }
+        },
+        {
+            "type": "switch",
+            "name": "switch-p0-a2",
+            "procDelay": 40000,
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 189607,
+                            "duration": 1232,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                24
+                            ]
+                        },
+                        {
+                            "start": 197333,
+                            "duration": 1540,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                4
+                            ]
+                        }
+                    ]
+                },
+                "Port2": {
+                    "name": "Port2",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 193417,
+                            "duration": 1390,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                7
+                            ]
+                        }
+                    ]
+                },
+                "Port3": {
+                    "name": "Port3",
+                    "speed": 1000,
+                    "queueCount": 6
+                },
+                "Port4": {
+                    "name": "Port4",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 110797,
+                            "duration": 1399,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                10
+                            ]
+                        },
+                        {
+                            "start": 117177,
+                            "duration": 1689,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                9
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "switch",
+            "name": "switch-p0-e1",
+            "procDelay": 40000,
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 119830,
+                            "duration": 3801,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                20
+                            ]
+                        }
+                    ]
+                },
+                "Port2": {
+                    "name": "Port2",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 75478,
+                            "duration": 1689,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                9
+                            ]
+                        }
+                    ]
+                },
+                "Port3": {
+                    "name": "Port3",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 227473,
+                            "duration": 1056,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                28
+                            ]
+                        },
+                        {
+                            "start": 238883,
+                            "duration": 1540,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                4
+                            ]
+                        },
+                        {
+                            "start": 256795,
+                            "duration": 2235,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                16
+                            ]
+                        }
+                    ]
+                },
+                "Port4": {
+                    "name": "Port4",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 214401,
+                            "duration": 563,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                13
+                            ]
+                        },
+                        {
+                            "start": 230961,
+                            "duration": 1232,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                24
+                            ]
+                        },
+                        {
+                            "start": 242168,
+                            "duration": 1557,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                25
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "switch",
+            "name": "switch-p0-e2",
+            "procDelay": 40000,
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6
+                },
+                "Port2": {
+                    "name": "Port2",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 69388,
+                            "duration": 1399,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                10
+                            ]
+                        }
+                    ]
+                },
+                "Port3": {
+                    "name": "Port3",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 234819,
+                            "duration": 1390,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                7
+                            ]
+                        }
+                    ]
+                },
+                "Port4": {
+                    "name": "Port4",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 285880,
+                            "duration": 3432,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                2
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "switch",
+            "name": "switch-p1-a1",
+            "procDelay": 40000,
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 117753,
+                            "duration": 1548,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                22
+                            ]
+                        },
+                        {
+                            "start": 170693,
+                            "duration": 4118,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                29
+                            ]
+                        },
+                        {
+                            "start": 205045,
+                            "duration": 1724,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                11
+                            ]
+                        },
+                        {
+                            "start": 262055,
+                            "duration": 4206,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                14
+                            ]
+                        }
+                    ]
+                },
+                "Port2": {
+                    "name": "Port2",
+                    "speed": 1000,
+                    "queueCount": 6
+                },
+                "Port3": {
+                    "name": "Port3",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 103282,
+                            "duration": 1056,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                28
+                            ]
+                        }
+                    ]
+                },
+                "Port4": {
+                    "name": "Port4",
+                    "speed": 1000,
+                    "queueCount": 6
+                }
+            }
+        },
+        {
+            "type": "switch",
+            "name": "switch-p1-a2",
+            "procDelay": 40000,
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 118263,
+                            "duration": 1645,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                27
+                            ]
+                        },
+                        {
+                            "start": 196635,
+                            "duration": 1504,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                5
+                            ]
+                        }
+                    ]
+                },
+                "Port2": {
+                    "name": "Port2",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 205056,
+                            "duration": 1821,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                18
+                            ]
+                        },
+                        {
+                            "start": 222540,
+                            "duration": 2604,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                8
+                            ]
+                        }
+                    ]
+                },
+                "Port3": {
+                    "name": "Port3",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 99045,
+                            "duration": 1003,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                15
+                            ]
+                        },
+                        {
+                            "start": 114145,
+                            "duration": 1540,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                4
+                            ]
+                        }
+                    ]
+                },
+                "Port4": {
+                    "name": "Port4",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 169449,
+                            "duration": 4065,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                23
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "switch",
+            "name": "switch-p1-e1",
+            "procDelay": 40000,
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6
+                },
+                "Port2": {
+                    "name": "Port2",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 124642,
+                            "duration": 4065,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                23
+                            ]
+                        }
+                    ]
+                },
+                "Port3": {
+                    "name": "Port3",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 214869,
+                            "duration": 4118,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                29
+                            ]
+                        },
+                        {
+                            "start": 248319,
+                            "duration": 1724,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                11
+                            ]
+                        },
+                        {
+                            "start": 306272,
+                            "duration": 4206,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                14
+                            ]
+                        }
+                    ]
+                },
+                "Port4": {
+                    "name": "Port4",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 159311,
+                            "duration": 1548,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                22
+                            ]
+                        },
+                        {
+                            "start": 162787,
+                            "duration": 1645,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                27
+                            ]
+                        },
+                        {
+                            "start": 238152,
+                            "duration": 1504,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                5
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "switch",
+            "name": "switch-p1-e2",
+            "procDelay": 40000,
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 56064,
+                            "duration": 1056,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                28
+                            ]
+                        },
+                        {
+                            "start": 75609,
+                            "duration": 1548,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                22
+                            ]
+                        },
+                        {
+                            "start": 126487,
+                            "duration": 4118,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                29
+                            ]
+                        }
+                    ]
+                },
+                "Port2": {
+                    "name": "Port2",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 53802,
+                            "duration": 1003,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                15
+                            ]
+                        },
+                        {
+                            "start": 69340,
+                            "duration": 1540,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                4
+                            ]
+                        },
+                        {
+                            "start": 76608,
+                            "duration": 1645,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                27
+                            ]
+                        }
+                    ]
+                },
+                "Port3": {
+                    "name": "Port3",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 249135,
+                            "duration": 1821,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                18
+                            ]
+                        },
+                        {
+                            "start": 266337,
+                            "duration": 2604,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                8
+                            ]
+                        }
+                    ]
+                },
+                "Port4": {
+                    "name": "Port4",
+                    "speed": 1000,
+                    "queueCount": 6
+                }
+            }
+        },
+        {
+            "type": "switch",
+            "name": "switch-p2-a1",
+            "procDelay": 40000,
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 210546,
+                            "duration": 1953,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                19
+                            ]
+                        }
+                    ]
+                },
+                "Port2": {
+                    "name": "Port2",
+                    "speed": 1000,
+                    "queueCount": 6
+                },
+                "Port3": {
+                    "name": "Port3",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 117947,
+                            "duration": 1724,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                11
+                            ]
+                        }
+                    ]
+                },
+                "Port4": {
+                    "name": "Port4",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 92405,
+                            "duration": 563,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                13
+                            ]
+                        },
+                        {
+                            "start": 151651,
+                            "duration": 3256,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                21
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "switch",
+            "name": "switch-p2-a2",
+            "procDelay": 40000,
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 128793,
+                            "duration": 2217,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                17
+                            ]
+                        },
+                        {
+                            "start": 257711,
+                            "duration": 4065,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                23
+                            ]
+                        }
+                    ]
+                },
+                "Port2": {
+                    "name": "Port2",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 121445,
+                            "duration": 1883,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                1
+                            ]
+                        },
+                        {
+                            "start": 184307,
+                            "duration": 1003,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                15
+                            ]
+                        },
+                        {
+                            "start": 200750,
+                            "duration": 1689,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                9
+                            ]
+                        },
+                        {
+                            "start": 249376,
+                            "duration": 3467,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                6
+                            ]
+                        }
+                    ]
+                },
+                "Port3": {
+                    "name": "Port3",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 125510,
+                            "duration": 1988,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                0
+                            ]
+                        }
+                    ]
+                },
+                "Port4": {
+                    "name": "Port4",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 132291,
+                            "duration": 2376,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                26
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "switch",
+            "name": "switch-p2-e1",
+            "procDelay": 40000,
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 51832,
+                            "duration": 563,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                13
+                            ]
+                        }
+                    ]
+                },
+                "Port2": {
+                    "name": "Port2",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 79552,
+                            "duration": 1883,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                1
+                            ]
+                        },
+                        {
+                            "start": 83512,
+                            "duration": 1988,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                0
+                            ]
+                        },
+                        {
+                            "start": 89905,
+                            "duration": 2376,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                26
+                            ]
+                        }
+                    ]
+                },
+                "Port3": {
+                    "name": "Port3",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 301786,
+                            "duration": 4065,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                23
+                            ]
+                        }
+                    ]
+                },
+                "Port4": {
+                    "name": "Port4",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 171020,
+                            "duration": 2217,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                17
+                            ]
+                        },
+                        {
+                            "start": 253517,
+                            "duration": 1953,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                19
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "switch",
+            "name": "switch-p2-e2",
+            "procDelay": 40000,
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 76213,
+                            "duration": 1724,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                11
+                            ]
+                        },
+                        {
+                            "start": 108385,
+                            "duration": 3256,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                21
+                            ]
+                        }
+                    ]
+                },
+                "Port2": {
+                    "name": "Port2",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 86566,
+                            "duration": 2217,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                17
+                            ]
+                        }
+                    ]
+                },
+                "Port3": {
+                    "name": "Port3",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 163338,
+                            "duration": 1883,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                1
+                            ]
+                        },
+                        {
+                            "start": 242487,
+                            "duration": 1689,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                9
+                            ]
+                        }
+                    ]
+                },
+                "Port4": {
+                    "name": "Port4",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 225320,
+                            "duration": 1003,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                15
+                            ]
+                        },
+                        {
+                            "start": 292853,
+                            "duration": 3467,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                6
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "switch",
+            "name": "switch-p3-a1",
+            "procDelay": 40000,
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6
+                },
+                "Port2": {
+                    "name": "Port2",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 238183,
+                            "duration": 3256,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                21
+                            ]
+                        },
+                        {
+                            "start": 251263,
+                            "duration": 3801,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                20
+                            ]
+                        }
+                    ]
+                },
+                "Port3": {
+                    "name": "Port3",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 126620,
+                            "duration": 1953,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                19
+                            ]
+                        },
+                        {
+                            "start": 155551,
+                            "duration": 3432,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                2
+                            ]
+                        }
+                    ]
+                },
+                "Port4": {
+                    "name": "Port4",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 116110,
+                            "duration": 1557,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                25
+                            ]
+                        },
+                        {
+                            "start": 129189,
+                            "duration": 2235,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                16
+                            ]
+                        },
+                        {
+                            "start": 173623,
+                            "duration": 4206,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                14
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "switch",
+            "name": "switch-p3-a2",
+            "procDelay": 40000,
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 122215,
+                            "duration": 1918,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                12
+                            ]
+                        },
+                        {
+                            "start": 167436,
+                            "duration": 3872,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                3
+                            ]
+                        },
+                        {
+                            "start": 210285,
+                            "duration": 1988,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                0
+                            ]
+                        },
+                        {
+                            "start": 217063,
+                            "duration": 2376,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                26
+                            ]
+                        }
+                    ]
+                },
+                "Port2": {
+                    "name": "Port2",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 193615,
+                            "duration": 1399,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                10
+                            ]
+                        }
+                    ]
+                },
+                "Port3": {
+                    "name": "Port3",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 107123,
+                            "duration": 1232,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                24
+                            ]
+                        },
+                        {
+                            "start": 110599,
+                            "duration": 1390,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                7
+                            ]
+                        },
+                        {
+                            "start": 113607,
+                            "duration": 1504,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                5
+                            ]
+                        },
+                        {
+                            "start": 120081,
+                            "duration": 1821,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                18
+                            ]
+                        },
+                        {
+                            "start": 162416,
+                            "duration": 3467,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                6
+                            ]
+                        }
+                    ]
+                },
+                "Port4": {
+                    "name": "Port4",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 137307,
+                            "duration": 2604,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                8
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "switch",
+            "name": "switch-p3-e1",
+            "procDelay": 40000,
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 82048,
+                            "duration": 1953,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                19
+                            ]
+                        },
+                        {
+                            "start": 86944,
+                            "duration": 2235,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                16
+                            ]
+                        }
+                    ]
+                },
+                "Port2": {
+                    "name": "Port2",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 63691,
+                            "duration": 1232,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                24
+                            ]
+                        },
+                        {
+                            "start": 69199,
+                            "duration": 1390,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                7
+                            ]
+                        },
+                        {
+                            "start": 72093,
+                            "duration": 1504,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                5
+                            ]
+                        },
+                        {
+                            "start": 78250,
+                            "duration": 1821,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                18
+                            ]
+                        },
+                        {
+                            "start": 94693,
+                            "duration": 2604,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                8
+                            ]
+                        },
+                        {
+                            "start": 112816,
+                            "duration": 3467,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                6
+                            ]
+                        }
+                    ]
+                },
+                "Port3": {
+                    "name": "Port3",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 252283,
+                            "duration": 1988,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                0
+                            ]
+                        },
+                        {
+                            "start": 259449,
+                            "duration": 2376,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                26
+                            ]
+                        }
+                    ]
+                },
+                "Port4": {
+                    "name": "Port4",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 164143,
+                            "duration": 1918,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                12
+                            ]
+                        },
+                        {
+                            "start": 211318,
+                            "duration": 3872,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                3
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "switch",
+            "name": "switch-p3-e2",
+            "procDelay": 40000,
+            "ports": {
+                "Port1": {
+                    "name": "Port1",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 72706,
+                            "duration": 1557,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                25
+                            ]
+                        },
+                        {
+                            "start": 111451,
+                            "duration": 3432,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                2
+                            ]
+                        },
+                        {
+                            "start": 129407,
+                            "duration": 4206,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                14
+                            ]
+                        }
+                    ]
+                },
+                "Port2": {
+                    "name": "Port2",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 79147,
+                            "duration": 1918,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                12
+                            ]
+                        },
+                        {
+                            "start": 123549,
+                            "duration": 3872,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                3
+                            ]
+                        }
+                    ]
+                },
+                "Port3": {
+                    "name": "Port3",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 235024,
+                            "duration": 1399,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                10
+                            ]
+                        }
+                    ]
+                },
+                "Port4": {
+                    "name": "Port4",
+                    "speed": 1000,
+                    "queueCount": 6,
+                    "basetime": 0,
+                    "scheduleCycle": 100000,
+                    "schedule": [
+                        {
+                            "start": 281449,
+                            "duration": 3256,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                21
+                            ]
+                        },
+                        {
+                            "start": 295074,
+                            "duration": 3801,
+                            "state": "CCCCCo",
+                            "stream_sequence": [
+                                20
+                            ]
+                        }
+                    ]
+                }
+            }
+        }
+    ],
+    "links": [
+        {
+            "sourcePort": "switch-c1.Port1",
+            "sourceNode": "switch-c1",
+            "destNode": "switch-p0-a1",
+            "destPort": "switch-p0-a1.Port3",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-c1.Port2",
+            "sourceNode": "switch-c1",
+            "destNode": "switch-p1-a1",
+            "destPort": "switch-p1-a1.Port3",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-c1.Port3",
+            "sourceNode": "switch-c1",
+            "destNode": "switch-p2-a1",
+            "destPort": "switch-p2-a1.Port3",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-c1.Port4",
+            "sourceNode": "switch-c1",
+            "destNode": "switch-p3-a1",
+            "destPort": "switch-p3-a1.Port3",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-c2.Port1",
+            "sourceNode": "switch-c2",
+            "destNode": "switch-p0-a1",
+            "destPort": "switch-p0-a1.Port4",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-c2.Port2",
+            "sourceNode": "switch-c2",
+            "destNode": "switch-p1-a1",
+            "destPort": "switch-p1-a1.Port4",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-c2.Port3",
+            "sourceNode": "switch-c2",
+            "destNode": "switch-p2-a1",
+            "destPort": "switch-p2-a1.Port4",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-c2.Port4",
+            "sourceNode": "switch-c2",
+            "destNode": "switch-p3-a1",
+            "destPort": "switch-p3-a1.Port4",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-c3.Port1",
+            "sourceNode": "switch-c3",
+            "destNode": "switch-p0-a2",
+            "destPort": "switch-p0-a2.Port3",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-c3.Port2",
+            "sourceNode": "switch-c3",
+            "destNode": "switch-p1-a2",
+            "destPort": "switch-p1-a2.Port3",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-c3.Port3",
+            "sourceNode": "switch-c3",
+            "destNode": "switch-p2-a2",
+            "destPort": "switch-p2-a2.Port3",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-c3.Port4",
+            "sourceNode": "switch-c3",
+            "destNode": "switch-p3-a2",
+            "destPort": "switch-p3-a2.Port3",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-c4.Port1",
+            "sourceNode": "switch-c4",
+            "destNode": "switch-p0-a2",
+            "destPort": "switch-p0-a2.Port4",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-c4.Port2",
+            "sourceNode": "switch-c4",
+            "destNode": "switch-p1-a2",
+            "destPort": "switch-p1-a2.Port4",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-c4.Port3",
+            "sourceNode": "switch-c4",
+            "destNode": "switch-p2-a2",
+            "destPort": "switch-p2-a2.Port4",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-c4.Port4",
+            "sourceNode": "switch-c4",
+            "destNode": "switch-p3-a2",
+            "destPort": "switch-p3-a2.Port4",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-p0-a1.Port1",
+            "sourceNode": "switch-p0-a1",
+            "destNode": "switch-p0-e1",
+            "destPort": "switch-p0-e1.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-p0-a1.Port2",
+            "sourceNode": "switch-p0-a1",
+            "destNode": "switch-p0-e2",
+            "destPort": "switch-p0-e2.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourceNode": "switch-p0-a1",
+            "destNode": "switch-c1",
+            "destPort": "switch-c1.Port1",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p0-a1.Port3"
+        },
+        {
+            "sourceNode": "switch-p0-a1",
+            "destNode": "switch-c2",
+            "destPort": "switch-c2.Port1",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p0-a1.Port4"
+        },
+        {
+            "sourcePort": "switch-p0-a2.Port1",
+            "sourceNode": "switch-p0-a2",
+            "destNode": "switch-p0-e1",
+            "destPort": "switch-p0-e1.Port2",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-p0-a2.Port2",
+            "sourceNode": "switch-p0-a2",
+            "destNode": "switch-p0-e2",
+            "destPort": "switch-p0-e2.Port2",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourceNode": "switch-p0-a2",
+            "destNode": "switch-c3",
+            "destPort": "switch-c3.Port1",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p0-a2.Port3"
+        },
+        {
+            "sourceNode": "switch-p0-a2",
+            "destNode": "switch-c4",
+            "destPort": "switch-c4.Port1",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p0-a2.Port4"
+        },
+        {
+            "sourceNode": "switch-p0-e1",
+            "destNode": "switch-p0-a1",
+            "destPort": "switch-p0-a1.Port1",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p0-e1.Port1"
+        },
+        {
+            "sourceNode": "switch-p0-e1",
+            "destNode": "switch-p0-a2",
+            "destPort": "switch-p0-a2.Port1",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p0-e1.Port2"
+        },
+        {
+            "sourcePort": "switch-p0-e1.Port3",
+            "sourceNode": "switch-p0-e1",
+            "destNode": "host-1-p0",
+            "destPort": "host-1-p0.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-p0-e1.Port4",
+            "sourceNode": "switch-p0-e1",
+            "destNode": "host-2-p0",
+            "destPort": "host-2-p0.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourceNode": "switch-p0-e2",
+            "destNode": "switch-p0-a1",
+            "destPort": "switch-p0-a1.Port2",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p0-e2.Port1"
+        },
+        {
+            "sourceNode": "switch-p0-e2",
+            "destNode": "switch-p0-a2",
+            "destPort": "switch-p0-a2.Port2",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p0-e2.Port2"
+        },
+        {
+            "sourcePort": "switch-p0-e2.Port3",
+            "sourceNode": "switch-p0-e2",
+            "destNode": "host-3-p0",
+            "destPort": "host-3-p0.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-p0-e2.Port4",
+            "sourceNode": "switch-p0-e2",
+            "destNode": "host-4-p0",
+            "destPort": "host-4-p0.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourceNode": "host-1-p0",
+            "destNode": "switch-p0-e1",
+            "destPort": "switch-p0-e1.Port3",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "host-1-p0.Port1"
+        },
+        {
+            "sourceNode": "host-2-p0",
+            "destNode": "switch-p0-e1",
+            "destPort": "switch-p0-e1.Port4",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "host-2-p0.Port1"
+        },
+        {
+            "sourceNode": "host-3-p0",
+            "destNode": "switch-p0-e2",
+            "destPort": "switch-p0-e2.Port3",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "host-3-p0.Port1"
+        },
+        {
+            "sourceNode": "host-4-p0",
+            "destNode": "switch-p0-e2",
+            "destPort": "switch-p0-e2.Port4",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "host-4-p0.Port1"
+        },
+        {
+            "sourcePort": "switch-p1-a1.Port1",
+            "sourceNode": "switch-p1-a1",
+            "destNode": "switch-p1-e1",
+            "destPort": "switch-p1-e1.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-p1-a1.Port2",
+            "sourceNode": "switch-p1-a1",
+            "destNode": "switch-p1-e2",
+            "destPort": "switch-p1-e2.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourceNode": "switch-p1-a1",
+            "destNode": "switch-c1",
+            "destPort": "switch-c1.Port2",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p1-a1.Port3"
+        },
+        {
+            "sourceNode": "switch-p1-a1",
+            "destNode": "switch-c2",
+            "destPort": "switch-c2.Port2",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p1-a1.Port4"
+        },
+        {
+            "sourcePort": "switch-p1-a2.Port1",
+            "sourceNode": "switch-p1-a2",
+            "destNode": "switch-p1-e1",
+            "destPort": "switch-p1-e1.Port2",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-p1-a2.Port2",
+            "sourceNode": "switch-p1-a2",
+            "destNode": "switch-p1-e2",
+            "destPort": "switch-p1-e2.Port2",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourceNode": "switch-p1-a2",
+            "destNode": "switch-c3",
+            "destPort": "switch-c3.Port2",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p1-a2.Port3"
+        },
+        {
+            "sourceNode": "switch-p1-a2",
+            "destNode": "switch-c4",
+            "destPort": "switch-c4.Port2",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p1-a2.Port4"
+        },
+        {
+            "sourceNode": "switch-p1-e1",
+            "destNode": "switch-p1-a1",
+            "destPort": "switch-p1-a1.Port1",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p1-e1.Port1"
+        },
+        {
+            "sourceNode": "switch-p1-e1",
+            "destNode": "switch-p1-a2",
+            "destPort": "switch-p1-a2.Port1",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p1-e1.Port2"
+        },
+        {
+            "sourcePort": "switch-p1-e1.Port3",
+            "sourceNode": "switch-p1-e1",
+            "destNode": "host-5-p1",
+            "destPort": "host-5-p1.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-p1-e1.Port4",
+            "sourceNode": "switch-p1-e1",
+            "destNode": "host-6-p1",
+            "destPort": "host-6-p1.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourceNode": "switch-p1-e2",
+            "destNode": "switch-p1-a1",
+            "destPort": "switch-p1-a1.Port2",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p1-e2.Port1"
+        },
+        {
+            "sourceNode": "switch-p1-e2",
+            "destNode": "switch-p1-a2",
+            "destPort": "switch-p1-a2.Port2",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p1-e2.Port2"
+        },
+        {
+            "sourcePort": "switch-p1-e2.Port3",
+            "sourceNode": "switch-p1-e2",
+            "destNode": "host-7-p1",
+            "destPort": "host-7-p1.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-p1-e2.Port4",
+            "sourceNode": "switch-p1-e2",
+            "destNode": "host-8-p1",
+            "destPort": "host-8-p1.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourceNode": "host-5-p1",
+            "destNode": "switch-p1-e1",
+            "destPort": "switch-p1-e1.Port3",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "host-5-p1.Port1"
+        },
+        {
+            "sourceNode": "host-6-p1",
+            "destNode": "switch-p1-e1",
+            "destPort": "switch-p1-e1.Port4",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "host-6-p1.Port1"
+        },
+        {
+            "sourceNode": "host-7-p1",
+            "destNode": "switch-p1-e2",
+            "destPort": "switch-p1-e2.Port3",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "host-7-p1.Port1"
+        },
+        {
+            "sourceNode": "host-8-p1",
+            "destNode": "switch-p1-e2",
+            "destPort": "switch-p1-e2.Port4",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "host-8-p1.Port1"
+        },
+        {
+            "sourcePort": "switch-p2-a1.Port1",
+            "sourceNode": "switch-p2-a1",
+            "destNode": "switch-p2-e1",
+            "destPort": "switch-p2-e1.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-p2-a1.Port2",
+            "sourceNode": "switch-p2-a1",
+            "destNode": "switch-p2-e2",
+            "destPort": "switch-p2-e2.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourceNode": "switch-p2-a1",
+            "destNode": "switch-c1",
+            "destPort": "switch-c1.Port3",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p2-a1.Port3"
+        },
+        {
+            "sourceNode": "switch-p2-a1",
+            "destNode": "switch-c2",
+            "destPort": "switch-c2.Port3",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p2-a1.Port4"
+        },
+        {
+            "sourcePort": "switch-p2-a2.Port1",
+            "sourceNode": "switch-p2-a2",
+            "destNode": "switch-p2-e1",
+            "destPort": "switch-p2-e1.Port2",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-p2-a2.Port2",
+            "sourceNode": "switch-p2-a2",
+            "destNode": "switch-p2-e2",
+            "destPort": "switch-p2-e2.Port2",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourceNode": "switch-p2-a2",
+            "destNode": "switch-c3",
+            "destPort": "switch-c3.Port3",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p2-a2.Port3"
+        },
+        {
+            "sourceNode": "switch-p2-a2",
+            "destNode": "switch-c4",
+            "destPort": "switch-c4.Port3",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p2-a2.Port4"
+        },
+        {
+            "sourceNode": "switch-p2-e1",
+            "destNode": "switch-p2-a1",
+            "destPort": "switch-p2-a1.Port1",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p2-e1.Port1"
+        },
+        {
+            "sourceNode": "switch-p2-e1",
+            "destNode": "switch-p2-a2",
+            "destPort": "switch-p2-a2.Port1",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p2-e1.Port2"
+        },
+        {
+            "sourcePort": "switch-p2-e1.Port3",
+            "sourceNode": "switch-p2-e1",
+            "destNode": "host-9-p2",
+            "destPort": "host-9-p2.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-p2-e1.Port4",
+            "sourceNode": "switch-p2-e1",
+            "destNode": "host-10-p2",
+            "destPort": "host-10-p2.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourceNode": "switch-p2-e2",
+            "destNode": "switch-p2-a1",
+            "destPort": "switch-p2-a1.Port2",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p2-e2.Port1"
+        },
+        {
+            "sourceNode": "switch-p2-e2",
+            "destNode": "switch-p2-a2",
+            "destPort": "switch-p2-a2.Port2",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p2-e2.Port2"
+        },
+        {
+            "sourcePort": "switch-p2-e2.Port3",
+            "sourceNode": "switch-p2-e2",
+            "destNode": "host-11-p2",
+            "destPort": "host-11-p2.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-p2-e2.Port4",
+            "sourceNode": "switch-p2-e2",
+            "destNode": "host-12-p2",
+            "destPort": "host-12-p2.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourceNode": "host-9-p2",
+            "destNode": "switch-p2-e1",
+            "destPort": "switch-p2-e1.Port3",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "host-9-p2.Port1"
+        },
+        {
+            "sourceNode": "host-10-p2",
+            "destNode": "switch-p2-e1",
+            "destPort": "switch-p2-e1.Port4",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "host-10-p2.Port1"
+        },
+        {
+            "sourceNode": "host-11-p2",
+            "destNode": "switch-p2-e2",
+            "destPort": "switch-p2-e2.Port3",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "host-11-p2.Port1"
+        },
+        {
+            "sourceNode": "host-12-p2",
+            "destNode": "switch-p2-e2",
+            "destPort": "switch-p2-e2.Port4",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "host-12-p2.Port1"
+        },
+        {
+            "sourcePort": "switch-p3-a1.Port1",
+            "sourceNode": "switch-p3-a1",
+            "destNode": "switch-p3-e1",
+            "destPort": "switch-p3-e1.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-p3-a1.Port2",
+            "sourceNode": "switch-p3-a1",
+            "destNode": "switch-p3-e2",
+            "destPort": "switch-p3-e2.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourceNode": "switch-p3-a1",
+            "destNode": "switch-c1",
+            "destPort": "switch-c1.Port4",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p3-a1.Port3"
+        },
+        {
+            "sourceNode": "switch-p3-a1",
+            "destNode": "switch-c2",
+            "destPort": "switch-c2.Port4",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p3-a1.Port4"
+        },
+        {
+            "sourcePort": "switch-p3-a2.Port1",
+            "sourceNode": "switch-p3-a2",
+            "destNode": "switch-p3-e1",
+            "destPort": "switch-p3-e1.Port2",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-p3-a2.Port2",
+            "sourceNode": "switch-p3-a2",
+            "destNode": "switch-p3-e2",
+            "destPort": "switch-p3-e2.Port2",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourceNode": "switch-p3-a2",
+            "destNode": "switch-c3",
+            "destPort": "switch-c3.Port4",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p3-a2.Port3"
+        },
+        {
+            "sourceNode": "switch-p3-a2",
+            "destNode": "switch-c4",
+            "destPort": "switch-c4.Port4",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p3-a2.Port4"
+        },
+        {
+            "sourceNode": "switch-p3-e1",
+            "destNode": "switch-p3-a1",
+            "destPort": "switch-p3-a1.Port1",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p3-e1.Port1"
+        },
+        {
+            "sourceNode": "switch-p3-e1",
+            "destNode": "switch-p3-a2",
+            "destPort": "switch-p3-a2.Port1",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p3-e1.Port2"
+        },
+        {
+            "sourcePort": "switch-p3-e1.Port3",
+            "sourceNode": "switch-p3-e1",
+            "destNode": "host-13-p3",
+            "destPort": "host-13-p3.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-p3-e1.Port4",
+            "sourceNode": "switch-p3-e1",
+            "destNode": "host-14-p3",
+            "destPort": "host-14-p3.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourceNode": "switch-p3-e2",
+            "destNode": "switch-p3-a1",
+            "destPort": "switch-p3-a1.Port2",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p3-e2.Port1"
+        },
+        {
+            "sourceNode": "switch-p3-e2",
+            "destNode": "switch-p3-a2",
+            "destPort": "switch-p3-a2.Port2",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "switch-p3-e2.Port2"
+        },
+        {
+            "sourcePort": "switch-p3-e2.Port3",
+            "sourceNode": "switch-p3-e2",
+            "destNode": "host-15-p3",
+            "destPort": "host-15-p3.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourcePort": "switch-p3-e2.Port4",
+            "sourceNode": "switch-p3-e2",
+            "destNode": "host-16-p3",
+            "destPort": "host-16-p3.Port1",
+            "propDelay": 10,
+            "linkBw": 1000
+        },
+        {
+            "sourceNode": "host-13-p3",
+            "destNode": "switch-p3-e1",
+            "destPort": "switch-p3-e1.Port3",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "host-13-p3.Port1"
+        },
+        {
+            "sourceNode": "host-14-p3",
+            "destNode": "switch-p3-e1",
+            "destPort": "switch-p3-e1.Port4",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "host-14-p3.Port1"
+        },
+        {
+            "sourceNode": "host-15-p3",
+            "destNode": "switch-p3-e2",
+            "destPort": "switch-p3-e2.Port3",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "host-15-p3.Port1"
+        },
+        {
+            "sourceNode": "host-16-p3",
+            "destNode": "switch-p3-e2",
+            "destPort": "switch-p3-e2.Port4",
+            "propDelay": 10,
+            "linkBw": 1000,
+            "sourcePort": "host-16-p3.Port1"
+        }
+    ],
+    "streams": [
+        {
+            "name": "stream-0",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 2,
+            "maxFrameSize": 113,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-9-p2"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-13-p3"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 11950000,
+            "offset": 39759,
+            "accLatency": [
+                214512
+            ],
+            "pathLists": [
+                [
+                    "host-9-p2.Port1",
+                    "switch-p2-e1.Port2",
+                    "switch-p2-a2.Port3",
+                    "switch-c3.Port4",
+                    "switch-p3-a2.Port1",
+                    "switch-p3-e1.Port3"
+                ]
+            ]
+        },
+        {
+            "name": "stream-1",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 2,
+            "maxFrameSize": 107,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-10-p2"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-11-p2"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 6530000,
+            "offset": 36529,
+            "accLatency": [
+                128692
+            ],
+            "pathLists": [
+                [
+                    "host-10-p2.Port1",
+                    "switch-p2-e1.Port2",
+                    "switch-p2-a2.Port2",
+                    "switch-p2-e2.Port3"
+                ]
+            ]
+        },
+        {
+            "name": "stream-2",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 2,
+            "maxFrameSize": 195,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-15-p3"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-4-p0"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 5480000,
+            "offset": 68009,
+            "accLatency": [
+                221303
+            ],
+            "pathLists": [
+                [
+                    "host-15-p3.Port1",
+                    "switch-p3-e2.Port1",
+                    "switch-p3-a1.Port3",
+                    "switch-c1.Port1",
+                    "switch-p0-a1.Port2",
+                    "switch-p0-e2.Port4"
+                ]
+            ]
+        },
+        {
+            "name": "stream-3",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 2,
+            "maxFrameSize": 220,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-15-p3"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-14-p3"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 10440000,
+            "offset": 77439,
+            "accLatency": [
+                137751
+            ],
+            "pathLists": [
+                [
+                    "host-15-p3.Port1",
+                    "switch-p3-e2.Port2",
+                    "switch-p3-a2.Port1",
+                    "switch-p3-e1.Port4"
+                ]
+            ]
+        },
+        {
+            "name": "stream-4",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 1,
+            "maxFrameSize": 175,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-7-p1"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-1-p0"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 8740000,
+            "offset": 27708,
+            "accLatency": [
+                212715
+            ],
+            "pathLists": [
+                [
+                    "host-7-p1.Port1",
+                    "switch-p1-e2.Port2",
+                    "switch-p1-a2.Port3",
+                    "switch-c3.Port1",
+                    "switch-p0-a2.Port1",
+                    "switch-p0-e1.Port3"
+                ]
+            ]
+        },
+        {
+            "name": "stream-5",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 1,
+            "maxFrameSize": 171,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-13-p3"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-6-p1"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 3250000,
+            "offset": 30079,
+            "accLatency": [
+                209577
+            ],
+            "pathLists": [
+                [
+                    "host-13-p3.Port1",
+                    "switch-p3-e1.Port2",
+                    "switch-p3-a2.Port3",
+                    "switch-c3.Port2",
+                    "switch-p1-a2.Port1",
+                    "switch-p1-e1.Port4"
+                ]
+            ]
+        },
+        {
+            "name": "stream-6",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 2,
+            "maxFrameSize": 197,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-13-p3"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-12-p2"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 4290000,
+            "offset": 62405,
+            "accLatency": [
+                233915
+            ],
+            "pathLists": [
+                [
+                    "host-13-p3.Port1",
+                    "switch-p3-e1.Port2",
+                    "switch-p3-a2.Port3",
+                    "switch-c3.Port3",
+                    "switch-p2-a2.Port2",
+                    "switch-p2-e2.Port4"
+                ]
+            ]
+        },
+        {
+            "name": "stream-7",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 1,
+            "maxFrameSize": 158,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-14-p3"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-3-p0"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 11910000,
+            "offset": 26861,
+            "accLatency": [
+                209348
+            ],
+            "pathLists": [
+                [
+                    "host-14-p3.Port1",
+                    "switch-p3-e1.Port2",
+                    "switch-p3-a2.Port3",
+                    "switch-c3.Port1",
+                    "switch-p0-a2.Port2",
+                    "switch-p0-e2.Port3"
+                ]
+            ]
+        },
+        {
+            "name": "stream-8",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 2,
+            "maxFrameSize": 148,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-13-p3"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-7-p1"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 3640000,
+            "offset": 52079,
+            "accLatency": [
+                216862
+            ],
+            "pathLists": [
+                [
+                    "host-13-p3.Port1",
+                    "switch-p3-e1.Port2",
+                    "switch-p3-a2.Port4",
+                    "switch-c4.Port2",
+                    "switch-p1-a2.Port2",
+                    "switch-p1-e2.Port3"
+                ]
+            ]
+        },
+        {
+            "name": "stream-9",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 2,
+            "maxFrameSize": 96,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-2-p0"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-11-p2"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 10000000,
+            "offset": 30401,
+            "accLatency": [
+                213775
+            ],
+            "pathLists": [
+                [
+                    "host-2-p0.Port1",
+                    "switch-p0-e1.Port2",
+                    "switch-p0-a2.Port4",
+                    "switch-c4.Port3",
+                    "switch-p2-a2.Port2",
+                    "switch-p2-e2.Port3"
+                ]
+            ]
+        },
+        {
+            "name": "stream-10",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 1,
+            "maxFrameSize": 159,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-4-p0"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-15-p3"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 4120000,
+            "offset": 25513,
+            "accLatency": [
+                210910
+            ],
+            "pathLists": [
+                [
+                    "host-4-p0.Port1",
+                    "switch-p0-e2.Port2",
+                    "switch-p0-a2.Port4",
+                    "switch-c4.Port4",
+                    "switch-p3-a2.Port2",
+                    "switch-p3-e2.Port3"
+                ]
+            ]
+        },
+        {
+            "name": "stream-11",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 2,
+            "maxFrameSize": 98,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-11-p2"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-5-p1"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 11500000,
+            "offset": 34479,
+            "accLatency": [
+                215564
+            ],
+            "pathLists": [
+                [
+                    "host-11-p2.Port1",
+                    "switch-p2-e2.Port1",
+                    "switch-p2-a1.Port3",
+                    "switch-c1.Port2",
+                    "switch-p1-a1.Port1",
+                    "switch-p1-e1.Port3"
+                ]
+            ]
+        },
+        {
+            "name": "stream-12",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 2,
+            "maxFrameSize": 109,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-15-p3"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-14-p3"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 4000000,
+            "offset": 37208,
+            "accLatency": [
+                128853
+            ],
+            "pathLists": [
+                [
+                    "host-15-p3.Port1",
+                    "switch-p3-e2.Port2",
+                    "switch-p3-a2.Port1",
+                    "switch-p3-e1.Port4"
+                ]
+            ]
+        },
+        {
+            "name": "stream-13",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 1,
+            "maxFrameSize": 64,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-9-p2"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-2-p0"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 5950000,
+            "offset": 11259,
+            "accLatency": [
+                203705
+            ],
+            "pathLists": [
+                [
+                    "host-9-p2.Port1",
+                    "switch-p2-e1.Port1",
+                    "switch-p2-a1.Port4",
+                    "switch-c2.Port1",
+                    "switch-p0-a1.Port1",
+                    "switch-p0-e1.Port4"
+                ]
+            ]
+        },
+        {
+            "name": "stream-14",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 2,
+            "maxFrameSize": 239,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-16-p3"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-5-p1"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 6530000,
+            "offset": 84119,
+            "accLatency": [
+                226359
+            ],
+            "pathLists": [
+                [
+                    "host-16-p3.Port1",
+                    "switch-p3-e2.Port1",
+                    "switch-p3-a1.Port4",
+                    "switch-c2.Port2",
+                    "switch-p1-a1.Port1",
+                    "switch-p1-e1.Port3"
+                ]
+            ]
+        },
+        {
+            "name": "stream-15",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 1,
+            "maxFrameSize": 114,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-8-p1"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-12-p2"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 11260000,
+            "offset": 12789,
+            "accLatency": [
+                213534
+            ],
+            "pathLists": [
+                [
+                    "host-8-p1.Port1",
+                    "switch-p1-e2.Port2",
+                    "switch-p1-a2.Port3",
+                    "switch-c3.Port3",
+                    "switch-p2-a2.Port2",
+                    "switch-p2-e2.Port4"
+                ]
+            ]
+        },
+        {
+            "name": "stream-16",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 1,
+            "maxFrameSize": 254,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-14-p3"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-1-p0"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 11530000,
+            "offset": 43247,
+            "accLatency": [
+                215783
+            ],
+            "pathLists": [
+                [
+                    "host-14-p3.Port1",
+                    "switch-p3-e1.Port1",
+                    "switch-p3-a1.Port4",
+                    "switch-c2.Port1",
+                    "switch-p0-a1.Port1",
+                    "switch-p0-e1.Port3"
+                ]
+            ]
+        },
+        {
+            "name": "stream-17",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 2,
+            "maxFrameSize": 126,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-11-p2"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-10-p2"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 9840000,
+            "offset": 44339,
+            "accLatency": [
+                128898
+            ],
+            "pathLists": [
+                [
+                    "host-11-p2.Port1",
+                    "switch-p2-e2.Port2",
+                    "switch-p2-a2.Port1",
+                    "switch-p2-e1.Port4"
+                ]
+            ]
+        },
+        {
+            "name": "stream-18",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 1,
+            "maxFrameSize": 207,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-13-p3"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-7-p1"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 11430000,
+            "offset": 36419,
+            "accLatency": [
+                214537
+            ],
+            "pathLists": [
+                [
+                    "host-13-p3.Port1",
+                    "switch-p3-e1.Port2",
+                    "switch-p3-a2.Port3",
+                    "switch-c3.Port2",
+                    "switch-p1-a2.Port2",
+                    "switch-p1-e2.Port3"
+                ]
+            ]
+        },
+        {
+            "name": "stream-19",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 2,
+            "maxFrameSize": 111,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-14-p3"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-10-p2"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 6680000,
+            "offset": 39059,
+            "accLatency": [
+                216411
+            ],
+            "pathLists": [
+                [
+                    "host-14-p3.Port1",
+                    "switch-p3-e1.Port1",
+                    "switch-p3-a1.Port3",
+                    "switch-c1.Port3",
+                    "switch-p2-a1.Port1",
+                    "switch-p2-e1.Port4"
+                ]
+            ]
+        },
+        {
+            "name": "stream-20",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 2,
+            "maxFrameSize": 216,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-1-p0"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-16-p3"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 11320000,
+            "offset": 76019,
+            "accLatency": [
+                222856
+            ],
+            "pathLists": [
+                [
+                    "host-1-p0.Port1",
+                    "switch-p0-e1.Port1",
+                    "switch-p0-a1.Port3",
+                    "switch-c1.Port4",
+                    "switch-p3-a1.Port2",
+                    "switch-p3-e2.Port4"
+                ]
+            ]
+        },
+        {
+            "name": "stream-21",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 2,
+            "maxFrameSize": 185,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-12-p2"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-16-p3"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 7680000,
+            "offset": 65119,
+            "accLatency": [
+                219586
+            ],
+            "pathLists": [
+                [
+                    "host-12-p2.Port1",
+                    "switch-p2-e2.Port1",
+                    "switch-p2-a1.Port4",
+                    "switch-c2.Port4",
+                    "switch-p3-a1.Port2",
+                    "switch-p3-e2.Port4"
+                ]
+            ]
+        },
+        {
+            "name": "stream-22",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 1,
+            "maxFrameSize": 176,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-7-p1"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-6-p1"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 4550000,
+            "offset": 30975,
+            "accLatency": [
+                129884
+            ],
+            "pathLists": [
+                [
+                    "host-7-p1.Port1",
+                    "switch-p1-e2.Port1",
+                    "switch-p1-a1.Port1",
+                    "switch-p1-e1.Port4"
+                ]
+            ]
+        },
+        {
+            "name": "stream-23",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 2,
+            "maxFrameSize": 231,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-5-p1"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-9-p2"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 3480000,
+            "offset": 80567,
+            "accLatency": [
+                225284
+            ],
+            "pathLists": [
+                [
+                    "host-5-p1.Port1",
+                    "switch-p1-e1.Port2",
+                    "switch-p1-a2.Port4",
+                    "switch-c4.Port3",
+                    "switch-p2-a2.Port1",
+                    "switch-p2-e1.Port3"
+                ]
+            ]
+        },
+        {
+            "name": "stream-24",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 1,
+            "maxFrameSize": 140,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-14-p3"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-2-p0"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 3730000,
+            "offset": 22449,
+            "accLatency": [
+                209744
+            ],
+            "pathLists": [
+                [
+                    "host-14-p3.Port1",
+                    "switch-p3-e1.Port2",
+                    "switch-p3-a2.Port3",
+                    "switch-c3.Port1",
+                    "switch-p0-a2.Port1",
+                    "switch-p0-e1.Port4"
+                ]
+            ]
+        },
+        {
+            "name": "stream-25",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 1,
+            "maxFrameSize": 177,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-15-p3"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-2-p0"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 4060000,
+            "offset": 31139,
+            "accLatency": [
+                212586
+            ],
+            "pathLists": [
+                [
+                    "host-15-p3.Port1",
+                    "switch-p3-e2.Port1",
+                    "switch-p3-a1.Port4",
+                    "switch-c2.Port1",
+                    "switch-p0-a1.Port1",
+                    "switch-p0-e1.Port4"
+                ]
+            ]
+        },
+        {
+            "name": "stream-26",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 2,
+            "maxFrameSize": 135,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-9-p2"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-13-p3"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 7170000,
+            "offset": 47519,
+            "accLatency": [
+                214306
+            ],
+            "pathLists": [
+                [
+                    "host-9-p2.Port1",
+                    "switch-p2-e1.Port2",
+                    "switch-p2-a2.Port4",
+                    "switch-c4.Port4",
+                    "switch-p3-a2.Port1",
+                    "switch-p3-e1.Port3"
+                ]
+            ]
+        },
+        {
+            "name": "stream-27",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 1,
+            "maxFrameSize": 187,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-7-p1"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-6-p1"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 9660000,
+            "offset": 34834,
+            "accLatency": [
+                129598
+            ],
+            "pathLists": [
+                [
+                    "host-7-p1.Port1",
+                    "switch-p1-e2.Port2",
+                    "switch-p1-a2.Port1",
+                    "switch-p1-e1.Port4"
+                ]
+            ]
+        },
+        {
+            "name": "stream-28",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 1,
+            "maxFrameSize": 120,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-7-p1"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-1-p0"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 5370000,
+            "offset": 10875,
+            "accLatency": [
+                217654
+            ],
+            "pathLists": [
+                [
+                    "host-7-p1.Port1",
+                    "switch-p1-e2.Port1",
+                    "switch-p1-a1.Port3",
+                    "switch-c1.Port1",
+                    "switch-p0-a1.Port1",
+                    "switch-p0-e1.Port3"
+                ]
+            ]
+        },
+        {
+            "name": "stream-29",
+            "type": "isochronous",
+            "interval": 100000,
+            "maxFramesPerInterval": 2,
+            "maxFrameSize": 234,
+            "maxLatency": 10000000,
+            "tlkrPssblPlcmnt": [
+                "host-7-p1"
+            ],
+            "lstnsrPssblPlcmnt": [
+                [
+                    "host-5-p1"
+                ]
+            ],
+            "earliest-transmit-offset": 0,
+            "latest-transmit-offset": 50000,
+            "jitter": 0,
+            "lifespanCycles": 4740000,
+            "offset": 82359,
+            "accLatency": [
+                136628
+            ],
+            "pathLists": [
+                [
+                    "host-7-p1.Port1",
+                    "switch-p1-e2.Port1",
+                    "switch-p1-a1.Port1",
+                    "switch-p1-e1.Port3"
+                ]
+            ]
+        }
+    ],
+    "index": 37
+}
