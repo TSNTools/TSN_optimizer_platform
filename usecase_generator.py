@@ -6,6 +6,7 @@
 
 import networkx as nx
 from networkx.readwrite import json_graph
+from schedule import Schedule
 import random
 import os
 import json
@@ -867,7 +868,7 @@ class  Usecase():
     
         ucc = Usecase(configFile=None, index=impUC['index'], topology=G, streams=impUC['streams'])
         ucc.config = Usecase.guess_config(impUC)
-        # Compile the schedule object from stream graph metadata.
+        # ompile the schedule object
         port_name_to_id, _ = ucc.port_name_id_mapping
         ucc.schedule = Schedule.from_usecase(ucc, port_name_to_id)
         return ucc
