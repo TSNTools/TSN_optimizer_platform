@@ -611,6 +611,11 @@ class  UsecaseGenerator():
 ##########################################################################################
 ##########################################################################################
 
+# constants
+MBPS_2_BPNS = 0.001
+BYTE_2_BIT = 8
+TOL = 1.1  # tolerance is 0.1 of the frame length
+
 class  Usecase():
     def __init__(self, configFile, index= None, topology=None, streams=None, schedule=None):
         '''
@@ -639,6 +644,23 @@ class  Usecase():
     def hosts(self):
         return [node for node in self.graph.nodes if 'host' in node]
 
+    
+    def _frame_size(self, stream_idx):
+        """
+        Compute the frame size in bits *with tolerance*.
+        """
+        stream = self.streams[stream_idx]
+        return int(
+            stream["maxFramesPerInterval"]
+            * stream["maxFrameSize"]
+            * BYTE_2_BIT
+            * TOL # as a rate of the frame size
+        )
+
+    def window_length(self, stream_idx, port_name, eps = 1e-9):
+        frame_size = self._frame_size(stream_idx)
+        return frame_size / max(self.ports[port_name]['speed'] * MBPS_2_BPNS, eps)
+        
     @property
     def distance_to_hosts(self):
         """
@@ -671,9 +693,19 @@ class  Usecase():
             for pname, pdata in data['ports'].items():   
                 ports[node+'.'+pname].update(name=node+'.'+pname, speed=pdata['speed'], queueCount=pdata['queueCount'],nodeName=node)
         return ports
+
+    @property
+    def port_name_id_mapping(self):
+        """name -> 1-based port id mapping. includes '' -> 0."""
+        port_name_to_id = {key: index for index, key in enumerate(self.ports.keys(), start=1)}
+        port_name_to_id[''] = 0
+        port_id_to_name = dict(enumerate(self.ports.keys(), start=1))
+        port_id_to_name[0] = ''
+        return port_name_to_id, port_id_to_name
         
 #####################################################################################
-    def addSchedule(self, schedule, port_id_to_name):
+    def addSchedule(self, schedule):
+        _, port_id_to_name = self.port_name_id_mapping
         self.schedule = schedule
         schedule.update_graph(self.graph, port_id_to_name)
         schedule.update_streams(self.streams, self.ports, port_id_to_name)
@@ -787,7 +819,7 @@ class  Usecase():
         usecase = self.topology2json()
         usecase['streams'] = []
         for stream in self.streams:
-            usecase['streams'].append({key: value for key, value in stream.items()})
+            usecase['streams'].append({key: value for key, value in stream.items() if key!="customGraph"})
         usecase['index'] = self.index
         return usecase
     
@@ -835,7 +867,9 @@ class  Usecase():
     
         ucc = Usecase(configFile=None, index=impUC['index'], topology=G, streams=impUC['streams'])
         ucc.config = Usecase.guess_config(impUC)
-    
+        # ompile the schedule object
+        port_name_to_id, _ = self.port_name_id_mapping
+        ucc.schedule = Schedule.from_usecase(ucc, port_name_to_id)
         return ucc
         
     @classmethod

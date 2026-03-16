@@ -194,7 +194,57 @@ class Schedule(list):
 
     # ----------------------------
     # Compile schedule
-    # ----------------------------    
+    # ----------------------------  
+    @classmethod
+    def from_usecase(cls, usecase, port_name_to_id):
+    
+        def transmission_window_to_slots(tw, port_name):
+            slots = []
+            start = int(tw["start"])
+            open_queues = [i for i, ch in enumerate(tw["state"]) if ch == "o"]
+            stream_idxs = [int(s) for s in tw["stream_sequence"]]
+            for s_idx in stream_idxs:
+                period_ns = usecase.streams[s_idx]['interval'] #* MS_TO_NS
+                duration_ns = usecase.window_length(s_idx, port_name)
+                for qid in open_queues:
+                    slots.append(
+                        Slot(
+                            start_ns=start,
+                            end_ns=start + duration_ns,
+                            period_ns=period_ns,
+                            stream_id=s_idx,
+                            port_id=port_id,
+                            queue_id=qid,
+                        )
+                    )
+            return slots
+    
+        all_slots = defaultdict(list)
+        cycle_ns = None
+        for node, nodeData in usecase.graph.nodes(data=True):
+            for port, portData in nodeData["ports"].items():
+                port_name = f"{node}.{port}"
+                port_id = port_name_to_id[port_name]
+                cycle_ns = portData.get("scheduleCycle", cycle_ns)
+                schedule = portData.get("schedule", [])
+                for tw in schedule:
+                    slots = transmission_window_to_slots(
+                        tw,
+                        port_name
+                    )
+                    for s in slots:
+                        s.port_id = port_id
+                        offset = s.start_ns % s.period_ns if s.period_ns else s.start_ns
+                        key = (port_id, s.stream_id, s.queue_id, offset)
+                        all_slots[key].append(s)
+
+        schedule = cls(cycle_ns)
+        for slots in all_slots.values():
+            base = min(slots, key=lambda s: s.start_ns)
+            schedule.append(base)
+    
+        return schedule
+        
     def update_graph(self, graph, port_id_to_name):
         """
         Expand all periodic slots into their occurrences and merge overlapping/touching windows.
