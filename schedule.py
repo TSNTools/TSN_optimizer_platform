@@ -84,7 +84,8 @@ class Slot:
         for k in range(max(0, k_max) + 1):
             start = int(self.start_ns + k * self.period_ns)
             end = int(self.end_ns + k * self.period_ns)
-
+            if start >= span_ns: 
+                break  
             occurrences.append(
                 Slot(
                     index=self.index,          # preserve same definition id
@@ -148,11 +149,18 @@ class Schedule(list):
     # ----------------------------
     @property
     def total_occupied_time(self) -> Dict[int, int]:
-        """Return total time occupied by compiled transmission windows for each port_id"""
-        return {
-            port_id: sum(w.duration_ns for w in windows)
-            for port_id, windows in self.compile().items()
-        }
+        """Return total time occupied by slots for each port_id (without merging)"""
+        result = defaultdict(int)
+        
+        for slot in self:
+            # Get all occurrences of this periodic slot
+            occurrences = slot.all_occurrences(self.cycle_ns)
+            
+            for occ in occurrences:
+                # Add duration of each occurrence
+                result[occ.port_id] += (occ.end_ns - occ.start_ns)
+        
+        return dict(result)
 
     @property
     def utilization(self) -> Dict[int, float]:
@@ -195,6 +203,7 @@ class Schedule(list):
     # ----------------------------
     # Compile schedule
     # ----------------------------  
+
     @classmethod
     def from_usecase(cls, usecase, port_name_to_id):
     
@@ -218,7 +227,7 @@ class Schedule(list):
                         )
                     )
             return slots
-    
+        
         all_slots = defaultdict(list)
         cycle_ns = None
         for node, nodeData in usecase.graph.nodes(data=True):
@@ -450,7 +459,8 @@ class Schedule(list):
         fig
         axs
         """
-    
+        if self.validate_conflicts():
+            print("Warning!!! schedule has conflicts, plot may be inaccurate.")
         # Expand occurrences
         occurrences = []
         for slot in self:
