@@ -9,9 +9,10 @@ class ScheduleEncodingType(Enum):
 MBPS_2_BPNS = 0.001
 
 from scipy.sparse import csr_matrix
+
 class TSNConstraintEvaluator:
     def __init__(self, problem, weights=None, check_routing=True, check_task_placement=True, 
-                 scheduling_type: ScheduleEncodingType = ScheduleEncodingType.PRIORITY):
+                 scheduling_type: ScheduleEncodingType = ScheduleEncodingType.START_TIME):
         # Default penalty weights
         default_weights = {
             # task placement

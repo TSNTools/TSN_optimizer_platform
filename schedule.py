@@ -166,7 +166,7 @@ class Schedule(list):
     def utilization(self) -> Dict[int, float]:
         """Return fraction of cycle occupied per port_id"""
         # Get the total occupied time for all port_ids
-        occupied_times = self.total_occupied_time()
+        occupied_times = self.total_occupied_time
     
         if not self.cycle_ns:
             # Return 0.0 for each port if cycle_ns is 0 (avoiding division by zero)
@@ -174,6 +174,15 @@ class Schedule(list):
     
         # Calculate utilization for each port_id
         return {port_id: occupied_time / self.cycle_ns for port_id, occupied_time in occupied_times.items()}
+
+    # ----------------------------
+    # getters
+    # ----------------------------
+    @property
+    def get_n_streams(self) -> int:
+        """Number of unique streams in the schedule"""
+        return len({slot.stream_id for slot in self if slot.stream_id is not None})
+
 
     # ----------------------------
     # Conflict checking

@@ -868,7 +868,7 @@ class  Usecase():
     
         ucc = Usecase(configFile=None, index=impUC['index'], topology=G, streams=impUC['streams'])
         ucc.config = Usecase.guess_config(impUC)
-        # ompile the schedule object
+        # compile the schedule object
         port_name_to_id, _ = ucc.port_name_id_mapping
         ucc.schedule = Schedule.from_usecase(ucc, port_name_to_id)
         return ucc
