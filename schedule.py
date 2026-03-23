@@ -176,14 +176,20 @@ class Schedule(list):
         return {port_id: occupied_time / self.cycle_ns for port_id, occupied_time in occupied_times.items()}
 
     # ----------------------------
-    # getters
+    # helper properties
     # ----------------------------
     @property
     def get_n_streams(self) -> int:
         """Number of unique streams in the schedule"""
         return len({slot.stream_id for slot in self if slot.stream_id is not None})
 
-
+    def remove_stream(self, stream_ids):
+        """Remove all slots associated with the given stream IDs."""
+        for slot in self[:]:  # iterate over a copy since we may modify the list
+            if slot.stream_id in stream_ids:
+                self.remove(slot)
+        print(f"Removed stream(s) {stream_ids} from schedule successfully.")    
+        
     # ----------------------------
     # Conflict checking
     # ----------------------------
