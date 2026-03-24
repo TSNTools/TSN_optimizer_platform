@@ -329,6 +329,12 @@ class Schedule(list):
             if new_window.to_dict() not in port_data['schedule']:
                 port_data['schedule'].append(new_window.to_dict())
     
+    def print_banana(self):
+        for slot in self:
+            if slot.port_id == 10:
+                print("banana")
+
+
     def update_streams(self, streams, ports, port_id_to_name):
         """
         add schedule data to streams

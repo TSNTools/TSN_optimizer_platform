@@ -1,628 +1,184 @@
 {
-    "nodes": [
-        {
-            "type": "host",
-            "name": "host-1-p0",
-            "ports": {
-                "Port1": {
-                    "name": "Port1",
-                    "speed": 1000,
-                    "queueCount": 8
-                }
+  "nodes": [
+    {
+      "type": "host",
+      "name": "host-a",
+      "ports": {
+        "Port1": {
+          "name": "Port1",
+          "speed": 1000,
+          "queueCount": 6,
+          "basetime": 0,
+          "scheduleCycle": 100000,
+          "schedule": [
+            {
+              "start": 60000,
+              "duration": 1200,
+              "state": "CCCCCo",
+              "stream_sequence": [0]
             }
-        },
-        {
-            "type": "host",
-            "name": "host-2-p0",
-            "ports": {
-                "Port1": {
-                    "name": "Port1",
-                    "speed": 1000,
-                    "queueCount": 8
-                }
-            }
-        },
-        {
-            "type": "host",
-            "name": "host-3-p1",
-            "ports": {
-                "Port1": {
-                    "name": "Port1",
-                    "speed": 1000,
-                    "queueCount": 8
-                }
-            }
-        },
-        {
-            "type": "host",
-            "name": "host-4-p1",
-            "ports": {
-                "Port1": {
-                    "name": "Port1",
-                    "speed": 1000,
-                    "queueCount": 8
-                }
-            }
-        },
-        {
-            "type": "host",
-            "name": "host-5-p2",
-            "ports": {
-                "Port1": {
-                    "name": "Port1",
-                    "speed": 1000,
-                    "queueCount": 8
-                }
-            }
-        },
-        {
-            "type": "host",
-            "name": "host-6-p2",
-            "ports": {
-                "Port1": {
-                    "name": "Port1",
-                    "speed": 1000,
-                    "queueCount": 8
-                }
-            }
-        },
-        {
-            "type": "switch",
-            "name": "switch-c1",
-            "procDelay": 40000,
-            "ports": {
-                "Port1": {
-                    "name": "Port1",
-                    "speed": 1000,
-                    "queueCount": 8
-                },
-                "Port2": {
-                    "name": "Port2",
-                    "speed": 1000,
-                    "queueCount": 8
-                },
-                "Port3": {
-                    "name": "Port3",
-                    "speed": 1000,
-                    "queueCount": 8
-                }
-            }
-        },
-        {
-            "type": "switch",
-            "name": "switch-c2",
-            "procDelay": 40000,
-            "ports": {
-                "Port1": {
-                    "name": "Port1",
-                    "speed": 1000,
-                    "queueCount": 8
-                },
-                "Port2": {
-                    "name": "Port2",
-                    "speed": 1000,
-                    "queueCount": 8
-                },
-                "Port3": {
-                    "name": "Port3",
-                    "speed": 1000,
-                    "queueCount": 8
-                }
-            }
-        },
-        {
-            "type": "switch",
-            "name": "switch-p0-a1",
-            "procDelay": 40000,
-            "ports": {
-                "Port1": {
-                    "name": "Port1",
-                    "speed": 1000,
-                    "queueCount": 8
-                },
-                "Port2": {
-                    "name": "Port2",
-                    "speed": 1000,
-                    "queueCount": 8
-                },
-                "Port3": {
-                    "name": "Port3",
-                    "speed": 1000,
-                    "queueCount": 8
-                },
-                "Port4": {
-                    "name": "Port4",
-                    "speed": 1000,
-                    "queueCount": 8
-                }
-            }
-        },
-        {
-            "type": "switch",
-            "name": "switch-p0-e1",
-            "procDelay": 40000,
-            "ports": {
-                "Port1": {
-                    "name": "Port1",
-                    "speed": 1000,
-                    "queueCount": 8
-                },
-                "Port2": {
-                    "name": "Port2",
-                    "speed": 1000,
-                    "queueCount": 8
-                }
-            }
-        },
-        {
-            "type": "switch",
-            "name": "switch-p0-e2",
-            "procDelay": 40000,
-            "ports": {
-                "Port1": {
-                    "name": "Port1",
-                    "speed": 1000,
-                    "queueCount": 8
-                },
-                "Port2": {
-                    "name": "Port2",
-                    "speed": 1000,
-                    "queueCount": 8
-                }
-            }
-        },
-        {
-            "type": "switch",
-            "name": "switch-p1-a1",
-            "procDelay": 40000,
-            "ports": {
-                "Port1": {
-                    "name": "Port1",
-                    "speed": 1000,
-                    "queueCount": 8
-                },
-                "Port2": {
-                    "name": "Port2",
-                    "speed": 1000,
-                    "queueCount": 8
-                },
-                "Port3": {
-                    "name": "Port3",
-                    "speed": 1000,
-                    "queueCount": 8
-                },
-                "Port4": {
-                    "name": "Port4",
-                    "speed": 1000,
-                    "queueCount": 8
-                }
-            }
-        },
-        {
-            "type": "switch",
-            "name": "switch-p1-e1",
-            "procDelay": 40000,
-            "ports": {
-                "Port1": {
-                    "name": "Port1",
-                    "speed": 1000,
-                    "queueCount": 8
-                },
-                "Port2": {
-                    "name": "Port2",
-                    "speed": 1000,
-                    "queueCount": 8
-                }
-            }
-        },
-        {
-            "type": "switch",
-            "name": "switch-p1-e2",
-            "procDelay": 40000,
-            "ports": {
-                "Port1": {
-                    "name": "Port1",
-                    "speed": 1000,
-                    "queueCount": 8
-                },
-                "Port2": {
-                    "name": "Port2",
-                    "speed": 1000,
-                    "queueCount": 8
-                }
-            }
-        },
-        {
-            "type": "switch",
-            "name": "switch-p2-a1",
-            "procDelay": 40000,
-            "ports": {
-                "Port1": {
-                    "name": "Port1",
-                    "speed": 1000,
-                    "queueCount": 8
-                },
-                "Port2": {
-                    "name": "Port2",
-                    "speed": 1000,
-                    "queueCount": 8
-                },
-                "Port3": {
-                    "name": "Port3",
-                    "speed": 1000,
-                    "queueCount": 8
-                },
-                "Port4": {
-                    "name": "Port4",
-                    "speed": 1000,
-                    "queueCount": 8
-                }
-            }
-        },
-        {
-            "type": "switch",
-            "name": "switch-p2-e1",
-            "procDelay": 40000,
-            "ports": {
-                "Port1": {
-                    "name": "Port1",
-                    "speed": 1000,
-                    "queueCount": 8
-                },
-                "Port2": {
-                    "name": "Port2",
-                    "speed": 1000,
-                    "queueCount": 8
-                }
-            }
-        },
-        {
-            "type": "switch",
-            "name": "switch-p2-e2",
-            "procDelay": 40000,
-            "ports": {
-                "Port1": {
-                    "name": "Port1",
-                    "speed": 1000,
-                    "queueCount": 8
-                },
-                "Port2": {
-                    "name": "Port2",
-                    "speed": 1000,
-                    "queueCount": 8
-                }
-            }
+          ]
         }
-    ],
-    "links": [
-        {
-            "sourcePort": "switch-c1.Port1",
-            "sourceNode": "switch-c1",
-            "destNode": "switch-p0-a1",
-            "destPort": "switch-p0-a1.Port3",
-            "propDelay": 10,
-            "linkBw": 1000
-        },
-        {
-            "sourcePort": "switch-c1.Port2",
-            "sourceNode": "switch-c1",
-            "destNode": "switch-p1-a1",
-            "destPort": "switch-p1-a1.Port3",
-            "propDelay": 10,
-            "linkBw": 1000
-        },
-        {
-            "sourcePort": "switch-c1.Port3",
-            "sourceNode": "switch-c1",
-            "destNode": "switch-p2-a1",
-            "destPort": "switch-p2-a1.Port3",
-            "propDelay": 10,
-            "linkBw": 1000
-        },
-        {
-            "sourcePort": "switch-c2.Port1",
-            "sourceNode": "switch-c2",
-            "destNode": "switch-p0-a1",
-            "destPort": "switch-p0-a1.Port4",
-            "propDelay": 10,
-            "linkBw": 1000
-        },
-        {
-            "sourcePort": "switch-c2.Port2",
-            "sourceNode": "switch-c2",
-            "destNode": "switch-p1-a1",
-            "destPort": "switch-p1-a1.Port4",
-            "propDelay": 10,
-            "linkBw": 1000
-        },
-        {
-            "sourcePort": "switch-c2.Port3",
-            "sourceNode": "switch-c2",
-            "destNode": "switch-p2-a1",
-            "destPort": "switch-p2-a1.Port4",
-            "propDelay": 10,
-            "linkBw": 1000
-        },
-        {
-            "sourcePort": "switch-p0-a1.Port1",
-            "sourceNode": "switch-p0-a1",
-            "destNode": "switch-p0-e1",
-            "destPort": "switch-p0-e1.Port1",
-            "propDelay": 10,
-            "linkBw": 1000
-        },
-        {
-            "sourcePort": "switch-p0-a1.Port2",
-            "sourceNode": "switch-p0-a1",
-            "destNode": "switch-p0-e2",
-            "destPort": "switch-p0-e2.Port1",
-            "propDelay": 10,
-            "linkBw": 1000
-        },
-        {
-            "sourceNode": "switch-p0-a1",
-            "destNode": "switch-c1",
-            "destPort": "switch-c1.Port1",
-            "propDelay": 10,
-            "linkBw": 1000,
-            "sourcePort": "switch-p0-a1.Port3"
-        },
-        {
-            "sourceNode": "switch-p0-a1",
-            "destNode": "switch-c2",
-            "destPort": "switch-c2.Port1",
-            "propDelay": 10,
-            "linkBw": 1000,
-            "sourcePort": "switch-p0-a1.Port4"
-        },
-        {
-            "sourceNode": "switch-p0-e1",
-            "destNode": "switch-p0-a1",
-            "destPort": "switch-p0-a1.Port1",
-            "propDelay": 10,
-            "linkBw": 1000,
-            "sourcePort": "switch-p0-e1.Port1"
-        },
-        {
-            "sourcePort": "switch-p0-e1.Port2",
-            "sourceNode": "switch-p0-e1",
-            "destNode": "host-1-p0",
-            "destPort": "host-1-p0.Port1",
-            "propDelay": 10,
-            "linkBw": 1000
-        },
-        {
-            "sourceNode": "switch-p0-e2",
-            "destNode": "switch-p0-a1",
-            "destPort": "switch-p0-a1.Port2",
-            "propDelay": 10,
-            "linkBw": 1000,
-            "sourcePort": "switch-p0-e2.Port1"
-        },
-        {
-            "sourcePort": "switch-p0-e2.Port2",
-            "sourceNode": "switch-p0-e2",
-            "destNode": "host-2-p0",
-            "destPort": "host-2-p0.Port1",
-            "propDelay": 10,
-            "linkBw": 1000
-        },
-        {
-            "sourceNode": "host-1-p0",
-            "destNode": "switch-p0-e1",
-            "destPort": "switch-p0-e1.Port2",
-            "propDelay": 10,
-            "linkBw": 1000,
-            "sourcePort": "host-1-p0.Port1"
-        },
-        {
-            "sourceNode": "host-2-p0",
-            "destNode": "switch-p0-e2",
-            "destPort": "switch-p0-e2.Port2",
-            "propDelay": 10,
-            "linkBw": 1000,
-            "sourcePort": "host-2-p0.Port1"
-        },
-        {
-            "sourcePort": "switch-p1-a1.Port1",
-            "sourceNode": "switch-p1-a1",
-            "destNode": "switch-p1-e1",
-            "destPort": "switch-p1-e1.Port1",
-            "propDelay": 10,
-            "linkBw": 1000
-        },
-        {
-            "sourcePort": "switch-p1-a1.Port2",
-            "sourceNode": "switch-p1-a1",
-            "destNode": "switch-p1-e2",
-            "destPort": "switch-p1-e2.Port1",
-            "propDelay": 10,
-            "linkBw": 1000
-        },
-        {
-            "sourceNode": "switch-p1-a1",
-            "destNode": "switch-c1",
-            "destPort": "switch-c1.Port2",
-            "propDelay": 10,
-            "linkBw": 1000,
-            "sourcePort": "switch-p1-a1.Port3"
-        },
-        {
-            "sourceNode": "switch-p1-a1",
-            "destNode": "switch-c2",
-            "destPort": "switch-c2.Port2",
-            "propDelay": 10,
-            "linkBw": 1000,
-            "sourcePort": "switch-p1-a1.Port4"
-        },
-        {
-            "sourceNode": "switch-p1-e1",
-            "destNode": "switch-p1-a1",
-            "destPort": "switch-p1-a1.Port1",
-            "propDelay": 10,
-            "linkBw": 1000,
-            "sourcePort": "switch-p1-e1.Port1"
-        },
-        {
-            "sourcePort": "switch-p1-e1.Port2",
-            "sourceNode": "switch-p1-e1",
-            "destNode": "host-3-p1",
-            "destPort": "host-3-p1.Port1",
-            "propDelay": 10,
-            "linkBw": 1000
-        },
-        {
-            "sourceNode": "switch-p1-e2",
-            "destNode": "switch-p1-a1",
-            "destPort": "switch-p1-a1.Port2",
-            "propDelay": 10,
-            "linkBw": 1000,
-            "sourcePort": "switch-p1-e2.Port1"
-        },
-        {
-            "sourcePort": "switch-p1-e2.Port2",
-            "sourceNode": "switch-p1-e2",
-            "destNode": "host-4-p1",
-            "destPort": "host-4-p1.Port1",
-            "propDelay": 10,
-            "linkBw": 1000
-        },
-        {
-            "sourceNode": "host-3-p1",
-            "destNode": "switch-p1-e1",
-            "destPort": "switch-p1-e1.Port2",
-            "propDelay": 10,
-            "linkBw": 1000,
-            "sourcePort": "host-3-p1.Port1"
-        },
-        {
-            "sourceNode": "host-4-p1",
-            "destNode": "switch-p1-e2",
-            "destPort": "switch-p1-e2.Port2",
-            "propDelay": 10,
-            "linkBw": 1000,
-            "sourcePort": "host-4-p1.Port1"
-        },
-        {
-            "sourcePort": "switch-p2-a1.Port1",
-            "sourceNode": "switch-p2-a1",
-            "destNode": "switch-p2-e1",
-            "destPort": "switch-p2-e1.Port1",
-            "propDelay": 10,
-            "linkBw": 1000
-        },
-        {
-            "sourcePort": "switch-p2-a1.Port2",
-            "sourceNode": "switch-p2-a1",
-            "destNode": "switch-p2-e2",
-            "destPort": "switch-p2-e2.Port1",
-            "propDelay": 10,
-            "linkBw": 1000
-        },
-        {
-            "sourceNode": "switch-p2-a1",
-            "destNode": "switch-c1",
-            "destPort": "switch-c1.Port3",
-            "propDelay": 10,
-            "linkBw": 1000,
-            "sourcePort": "switch-p2-a1.Port3"
-        },
-        {
-            "sourceNode": "switch-p2-a1",
-            "destNode": "switch-c2",
-            "destPort": "switch-c2.Port3",
-            "propDelay": 10,
-            "linkBw": 1000,
-            "sourcePort": "switch-p2-a1.Port4"
-        },
-        {
-            "sourceNode": "switch-p2-e1",
-            "destNode": "switch-p2-a1",
-            "destPort": "switch-p2-a1.Port1",
-            "propDelay": 10,
-            "linkBw": 1000,
-            "sourcePort": "switch-p2-e1.Port1"
-        },
-        {
-            "sourcePort": "switch-p2-e1.Port2",
-            "sourceNode": "switch-p2-e1",
-            "destNode": "host-5-p2",
-            "destPort": "host-5-p2.Port1",
-            "propDelay": 10,
-            "linkBw": 1000
-        },
-        {
-            "sourceNode": "switch-p2-e2",
-            "destNode": "switch-p2-a1",
-            "destPort": "switch-p2-a1.Port2",
-            "propDelay": 10,
-            "linkBw": 1000,
-            "sourcePort": "switch-p2-e2.Port1"
-        },
-        {
-            "sourcePort": "switch-p2-e2.Port2",
-            "sourceNode": "switch-p2-e2",
-            "destNode": "host-6-p2",
-            "destPort": "host-6-p2.Port1",
-            "propDelay": 10,
-            "linkBw": 1000
-        },
-        {
-            "sourceNode": "host-5-p2",
-            "destNode": "switch-p2-e1",
-            "destPort": "switch-p2-e1.Port2",
-            "propDelay": 10,
-            "linkBw": 1000,
-            "sourcePort": "host-5-p2.Port1"
-        },
-        {
-            "sourceNode": "host-6-p2",
-            "destNode": "switch-p2-e2",
-            "destPort": "switch-p2-e2.Port2",
-            "propDelay": 10,
-            "linkBw": 1000,
-            "sourcePort": "host-6-p2.Port1"
+      }
+    },
+    {
+      "type": "host",
+      "name": "host-b",
+      "ports": {
+        "Port1": {
+          "name": "Port1",
+          "speed": 1000,
+          "queueCount": 6,
+          "basetime": 0,
+          "scheduleCycle": 100000,
+          "schedule": [
+            {
+              "start": 50000,
+              "duration": 1000,
+              "state": "CCCCCo",
+              "stream_sequence": [1]
+            }
+          ]
         }
-    ],
-    "streams": [
-        {
-            "name": "stream-0",
-            "type": "isochronous",
-            "interval": 200000,
-            "maxFramesPerInterval": 1,
-            "maxFrameSize": 256,
-            "maxLatency": 5000000,
-            "tlkrPssblPlcmnt": [
-                "host-5-p2"
-            ],
-            "lstnsrPssblPlcmnt": [
-                [
-                    "host-4-p1"
-                ]
-            ],
-            "earliest-transmit-offset": 0,
-            "latest-transmit-offset": 100000,
-            "jitter": 0
-        },
-        {
-            "name": "stream-1",
-            "type": "isochronous",
-            "interval": 200000,
-            "maxFramesPerInterval": 2,
-            "maxFrameSize": 256,
-            "maxLatency": 10000000,
-            "tlkrPssblPlcmnt": [
-                "host-3-p1"
-            ],
-            "lstnsrPssblPlcmnt": [
-                [
-                    "host-2-p0"
-                ]
-            ],
-            "earliest-transmit-offset": 0,
-            "latest-transmit-offset": 100000,
-            "jitter": 0
+      }
+    },
+    {
+      "type": "host",
+      "name": "host-c",
+      "ports": {
+        "Port1": {
+          "name": "Port1",
+          "speed": 1000,
+          "queueCount": 6,
+          "basetime": 0,
+          "scheduleCycle": 100000,
+          "schedule": [
+            {
+              "start": 40000,
+              "duration": 900,
+              "state": "CCCCCo",
+              "stream_sequence": [2]
+            }
+          ]
         }
-    ],
-    "index": 0
+      }
+    },
+    {
+      "type": "switch",
+      "name": "switch-s",
+      "procDelay": 40000,
+      "ports": {
+        "Port1": {
+          "name": "Port1",
+          "speed": 1000,
+          "queueCount": 6
+        },
+        "Port2": {
+          "name": "Port2",
+          "speed": 1000,
+          "queueCount": 6
+        },
+        "Port3": {
+          "name": "Port3",
+          "speed": 1000,
+          "queueCount": 6
+        }
+      }
+    }
+  ],
+  "links": [
+    {
+      "sourcePort": "host-a.Port1",
+      "sourceNode": "host-a",
+      "destNode": "switch-s",
+      "destPort": "switch-s.Port1",
+      "propDelay": 10,
+      "linkBw": 1000
+    },
+    {
+      "sourcePort": "switch-s.Port1",
+      "sourceNode": "switch-s",
+      "destNode": "host-a",
+      "destPort": "host-a.Port1",
+      "propDelay": 10,
+      "linkBw": 1000
+    },
+    {
+      "sourcePort": "host-b.Port1",
+      "sourceNode": "host-b",
+      "destNode": "switch-s",
+      "destPort": "switch-s.Port2",
+      "propDelay": 10,
+      "linkBw": 1000
+    },
+    {
+      "sourcePort": "switch-s.Port2",
+      "sourceNode": "switch-s",
+      "destNode": "host-b",
+      "destPort": "host-b.Port1",
+      "propDelay": 10,
+      "linkBw": 1000
+    },
+    {
+      "sourcePort": "host-c.Port1",
+      "sourceNode": "host-c",
+      "destNode": "switch-s",
+      "destPort": "switch-s.Port3",
+      "propDelay": 10,
+      "linkBw": 1000
+    },
+    {
+      "sourcePort": "switch-s.Port3",
+      "sourceNode": "switch-s",
+      "destNode": "host-c",
+      "destPort": "host-c.Port1",
+      "propDelay": 10,
+      "linkBw": 1000
+    }
+  ],
+  "streams": [
+    {
+      "name": "stream-0",
+      "type": "isochronous",
+      "interval": 100000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 150,
+      "maxLatency": 10000000,
+      "tlkrPssblPlcmnt": ["host-a"],
+      "lstnsrPssblPlcmnt": [["host-a"]],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 50000,
+      "jitter": 0,
+      "pathLists": [["host-a.Port1"]]
+    },
+    {
+      "name": "stream-1",
+      "type": "isochronous",
+      "interval": 100000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 130,
+      "maxLatency": 10000000,
+      "tlkrPssblPlcmnt": ["host-b"],
+      "lstnsrPssblPlcmnt": [["host-b"]],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 50000,
+      "jitter": 0,
+      "pathLists": [["host-b.Port1"]]
+    },
+    {
+      "name": "stream-2",
+      "type": "isochronous",
+      "interval": 100000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 120,
+      "maxLatency": 10000000,
+      "tlkrPssblPlcmnt": ["host-c"],
+      "lstnsrPssblPlcmnt": [["host-c"]],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 50000,
+      "jitter": 0,
+      "pathLists": [["host-c.Port1"]]
+    }
+  ],
+  "index": 0
 }
