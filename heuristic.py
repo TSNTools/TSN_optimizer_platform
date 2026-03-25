@@ -8,6 +8,11 @@ import numpy as np
 from evaluator import ScheduleEncodingType, TSNConstraintEvaluator
 from schedule import Schedule
 
+# Keep local to avoid coupling metric computation to TSNScheduling imports.
+BYTE_2_BIT = 8
+MBPS_2_BPNS = 0.001
+TOL = 1.1
+
 
 @dataclass
 class HeuristicRunResult:
@@ -93,14 +98,18 @@ def fragmentation_metrics(
     wind_lengths: np.ndarray,
     cycle_ns: int,
     thresholds: Optional[Sequence[int]] = None,
+    reference_speed_mbps: Optional[float] = None,
+    incoming_stream_count: Optional[int] = None,
+    frame_mix_percentages: Optional[Sequence[float]] = None,
 ) -> Dict[str, object]:
     """
     Defragmentation-oriented metrics from compact encoding.
 
     Core metrics:
     - largest hole per port (+mean, +max)
-    - count of holes >= threshold c (how many c-sized streams can be placed conservatively)
-    - c-capacity by floor(hole/c)
+    - usable space (total free ns across all ports)
+    - accommodated streams by floor(hole / frame_duration_ns)
+    - optional service blocking ratio for a frame-size demand mix
     """
     gaps = _gaps_per_port(compact=compact, wind_lengths=wind_lengths, cycle_ns=int(cycle_ns))
     largest_per_port = np.asarray([max(gs) if gs else 0 for gs in gaps], dtype=int)
@@ -111,23 +120,86 @@ def fragmentation_metrics(
         "largest_hole_mean": float(np.mean(largest_per_port)) if largest_per_port.size else 0.0,
         "largest_hole_max": int(np.max(largest_per_port)) if largest_per_port.size else 0,
         "gap_count_total": int(len(flat_gaps)),
+        "usable_space_total_ns": int(sum(flat_gaps)),
     }
 
     if thresholds:
-        holes_ge_c_per_port: Dict[int, np.ndarray] = {}
-        holes_ge_c_total: Dict[int, int] = {}
-        c_capacity_total: Dict[int, int] = {}
+        class_sizes_bytes = [int(x) for x in thresholds if int(x) > 0]
+        if class_sizes_bytes:
+            speed = float(reference_speed_mbps) if reference_speed_mbps else 1000.0
+            speed = max(speed, 1e-9)
 
-        for c in thresholds:
-            cc = int(c)
-            per_port = np.asarray([sum(1 for g in gs if g >= cc) for gs in gaps], dtype=int)
-            holes_ge_c_per_port[cc] = per_port
-            holes_ge_c_total[cc] = int(np.sum(per_port))
-            c_capacity_total[cc] = int(sum(sum(g // cc for g in gs) for gs in gaps))
+            frame_duration_ns: Dict[int, int] = {
+                b: int(np.ceil((b * BYTE_2_BIT * TOL) / (speed * MBPS_2_BPNS))) for b in class_sizes_bytes
+            }
 
-        out["holes_ge_c_per_port"] = holes_ge_c_per_port
-        out["holes_ge_c_total"] = holes_ge_c_total
-        out["c_capacity_total"] = c_capacity_total
+            usable_holes_total: Dict[int, int] = {}
+            accommodated_streams_total: Dict[int, int] = {}
+
+            for b in class_sizes_bytes:
+                c_ns = max(1, int(frame_duration_ns[b]))
+                usable_holes_total[b] = int(sum(1 for g in flat_gaps if g >= c_ns))
+                accommodated_streams_total[b] = int(sum(g // c_ns for g in flat_gaps))
+
+            out["frame_duration_ns"] = frame_duration_ns
+            out["usable_holes_total"] = usable_holes_total
+            out["accommodated_streams_total"] = accommodated_streams_total
+
+            # Backward-compatible aliases retained for existing consumers.
+            out["holes_ge_c_total"] = usable_holes_total
+            out["c_capacity_total"] = accommodated_streams_total
+
+            if incoming_stream_count is not None and frame_mix_percentages is not None:
+                total = max(0, int(incoming_stream_count))
+                percentages = [float(x) for x in frame_mix_percentages]
+                if total > 0 and percentages and len(percentages) == len(class_sizes_bytes):
+                    pct_sum = float(sum(percentages))
+                    if pct_sum <= 0:
+                        percentages = [100.0 / len(class_sizes_bytes)] * len(class_sizes_bytes)
+                        pct_sum = 100.0
+
+                    # Largest-remainder rounding keeps class demand sum exactly equal to total.
+                    raw = [(p / pct_sum) * total for p in percentages]
+                    base = [int(np.floor(x)) for x in raw]
+                    rem = total - sum(base)
+                    order = sorted(range(len(raw)), key=lambda i: raw[i] - base[i], reverse=True)
+                    for i in range(rem):
+                        base[order[i % len(order)]] += 1
+
+                    demand_counts: Dict[int, int] = {class_sizes_bytes[i]: int(base[i]) for i in range(len(class_sizes_bytes))}
+
+                    # Shared-gap greedy packing by descending duration (first-fit on sorted holes).
+                    working_holes = sorted([int(g) for g in flat_gaps], reverse=True)
+                    accepted_counts: Dict[int, int] = {b: 0 for b in class_sizes_bytes}
+
+                    class_order = sorted(class_sizes_bytes, key=lambda b: frame_duration_ns[b], reverse=True)
+                    for b in class_order:
+                        need = int(demand_counts[b])
+                        dur = max(1, int(frame_duration_ns[b]))
+                        for _ in range(need):
+                            placed = False
+                            for idx, hole in enumerate(working_holes):
+                                if hole >= dur:
+                                    working_holes[idx] = hole - dur
+                                    accepted_counts[b] += 1
+                                    placed = True
+                                    break
+                            if not placed:
+                                break
+                            # Maintain descending order after local update.
+                            while idx + 1 < len(working_holes) and working_holes[idx] < working_holes[idx + 1]:
+                                working_holes[idx], working_holes[idx + 1] = working_holes[idx + 1], working_holes[idx]
+                                idx += 1
+
+                    accepted_total = int(sum(accepted_counts.values()))
+                    blocked_total = int(total - accepted_total)
+                    out["incoming_stream_count"] = total
+                    out["frame_mix_percentages"] = {class_sizes_bytes[i]: float(percentages[i]) for i in range(len(class_sizes_bytes))}
+                    out["demand_counts"] = demand_counts
+                    out["accepted_counts"] = accepted_counts
+                    out["accommodated_streams_mix_total"] = accepted_total
+                    out["blocked_streams_total"] = blocked_total
+                    out["service_block_ratio"] = float(blocked_total / total)
 
     return out
 
@@ -498,15 +570,15 @@ def _move_stream_first_fit(
 def choose_departures(
     compact: np.ndarray,
     p: int,
-    stream_ages: Optional[Sequence[float]] = None,
     departed_stream_ids: Optional[Sequence[int]] = None,
+    random_seed: Optional[int] = None,
 ) -> List[int]:
     """
     Choose stream IDs to depart before OF-FF.
 
     Priority:
     1) Use provided departed_stream_ids (filtered to active streams)
-    2) Else select oldest active streams from stream_ages
+    2) Else select random active streams
     """
     active = np.where(np.any(compact > 0, axis=0))[0].tolist()
     active_set = set(active)
@@ -518,12 +590,13 @@ def choose_departures(
         selected = [int(s) for s in departed_stream_ids if int(s) in active_set]
         return selected[: int(p)]
 
-    if stream_ages is None:
-        # Default deterministic order: larger stream index treated as older.
-        stream_ages = np.arange(compact.shape[1], dtype=float)
+    k = min(int(p), len(active))
+    if k <= 0:
+        return []
 
-    ordered = sorted(active, key=lambda s: float(stream_ages[s]), reverse=True)
-    return ordered[: int(p)]
+    rng = np.random.default_rng(random_seed)
+    picked = rng.choice(np.asarray(active, dtype=int), size=k, replace=False)
+    return [int(s) for s in picked.tolist()]
 
 
 def compact_after_departures(
@@ -552,14 +625,17 @@ def of_ff(
     n: int,
     stream_ages: Optional[Sequence[float]] = None,
     departed_stream_ids: Optional[Sequence[int]] = None,
-    frame_size_thresholds: Optional[Sequence[int]] = (500, 1000, 2000, 5000),
+    departure_random_seed: Optional[int] = None,
+    frame_size_thresholds: Optional[Sequence[int]] = (64, 128, 256),
+    frame_mix_percentages: Optional[Sequence[float]] = (50.0, 25.0, 25.0),
+    incoming_stream_count: int = 100,
 ) -> HeuristicRunResult:
     """
-    Run OF-FF(p,n) heuristic end-to-end:
-    - Build compact encoding from instance.schedule
-    - Apply p departures (Schedule.remove_stream)
-    - Move oldest n streams with first-fit if scheduling does not worsen
-    - Convert resulting compact encoding back to Schedule
+    Run OF-FF(p,n) heuristic end-to-end.
+
+    Baseline semantics in the returned result:
+    - "before" means post-departure, pre-defragmentation.
+    - "after" means post-defragmentation.
     """
     with problem.use_instance(instance):
         n_ports = int(problem.n_ports)
@@ -581,8 +657,8 @@ def of_ff(
         selected_departures = choose_departures(
             compact=before,
             p=int(p),
-            stream_ages=stream_ages_arr,
             departed_stream_ids=departed_stream_ids,
+            random_seed=departure_random_seed,
         )
 
         work = compact_after_departures(
@@ -592,6 +668,9 @@ def of_ff(
             cycle_ns=cycle_ns,
             departure_stream_ids=selected_departures,
         )
+
+        # Baseline for defragmentation comparison is after departures.
+        pre_defrag = work.copy()
 
         # Step 2: oldest n active streams after departures.
         active_after_departure = np.where(np.any(work > 0, axis=0))[0]
@@ -637,25 +716,31 @@ def of_ff(
                 baseline_row_sums = _violation_row_sums(sched_eval, work)
                 moved_streams.append(int(stream_idx))
 
-        before_viol = scheduler_violation_sum(sched_eval, before)
+        before_viol = scheduler_violation_sum(sched_eval, pre_defrag)
         after_viol = scheduler_violation_sum(sched_eval, work)
 
         metrics_before = fragmentation_metrics(
-            compact=before,
+            compact=pre_defrag,
             wind_lengths=np.asarray(sched_eval.windLengths),
             cycle_ns=cycle_ns,
             thresholds=frame_size_thresholds,
+            reference_speed_mbps=float(np.mean(sched_eval.port_speeds)) if sched_eval.port_speeds.size else 1000.0,
+            incoming_stream_count=int(incoming_stream_count),
+            frame_mix_percentages=frame_mix_percentages,
         )
         metrics_after = fragmentation_metrics(
             compact=work,
             wind_lengths=np.asarray(sched_eval.windLengths),
             cycle_ns=cycle_ns,
             thresholds=frame_size_thresholds,
+            reference_speed_mbps=float(np.mean(sched_eval.port_speeds)) if sched_eval.port_speeds.size else 1000.0,
+            incoming_stream_count=int(incoming_stream_count),
+            frame_mix_percentages=frame_mix_percentages,
         )
         metrics_delta = _metrics_delta(metrics_before, metrics_after)
 
         before_schedule = Schedule.from_compact_encoding(
-            compact_encoding=before,
+            compact_encoding=pre_defrag,
             windLengths=sched_eval.windLengths,
             stream_intervals=sched_eval.stream_intervals,
             cycle_ns=cycle_ns,
@@ -668,7 +753,7 @@ def of_ff(
         )
 
     return HeuristicRunResult(
-        before_compact=before,
+        before_compact=pre_defrag,
         after_compact=work,
         before_schedule=before_schedule,
         after_schedule=after_schedule,
@@ -691,7 +776,10 @@ def of_ff_with_current_info(
     n: int,
     stream_ages: Optional[Sequence[float]] = None,
     departed_stream_ids: Optional[Sequence[int]] = None,
-    frame_size_thresholds: Optional[Sequence[int]] = (500, 1000, 2000, 5000),
+    departure_random_seed: Optional[int] = None,
+    frame_size_thresholds: Optional[Sequence[int]] = (64, 128, 256),
+    frame_mix_percentages: Optional[Sequence[float]] = (50.0, 25.0, 25.0),
+    incoming_stream_count: int = 100,
 ) -> Tuple[HeuristicRunResult, List[List[Dict[str, int]]]]:
     """
     Run OF-FF and also return "current" per-stream info for selected streams.
@@ -706,7 +794,10 @@ def of_ff_with_current_info(
         n=n,
         stream_ages=stream_ages,
         departed_stream_ids=departed_stream_ids,
+        departure_random_seed=departure_random_seed,
         frame_size_thresholds=frame_size_thresholds,
+        frame_mix_percentages=frame_mix_percentages,
+        incoming_stream_count=incoming_stream_count,
     )
 
     current_info: List[List[Dict[str, int]]] = []
@@ -730,7 +821,7 @@ def of_ff_with_current_info(
 
 def print_run_summary(result: HeuristicRunResult, max_thresholds: int = 10) -> None:
     """Pretty-print a compact summary of OF-FF run outcomes and metrics."""
-    print("=== OF-FF Summary ===")
+    print("=== OF-FF Summary (after departure -> after defrag) ===")
     print("Departed streams:", result.departed_stream_ids)
     print("Considered streams:", result.considered_stream_ids)
     print("Moved streams:", result.moved_stream_ids)
@@ -765,20 +856,31 @@ def print_run_summary(result: HeuristicRunResult, max_thresholds: int = 10) -> N
             md.get("largest_hole_max", "n/a"),
             ")",
         )
+    if "largest_hole_per_port" in mb and "largest_hole_per_port" in ma:
+        print("Largest hole per port before:", mb["largest_hole_per_port"])
+        print("Largest hole per port after :", ma["largest_hole_per_port"])
 
-    holes_before = mb.get("holes_ge_c_total", {})
-    holes_after = ma.get("holes_ge_c_total", {})
-    cap_before = mb.get("c_capacity_total", {})
-    cap_after = ma.get("c_capacity_total", {})
+    holes_before = mb.get("usable_holes_total", mb.get("holes_ge_c_total", {}))
+    holes_after = ma.get("usable_holes_total", ma.get("holes_ge_c_total", {}))
+    cap_before = mb.get("accommodated_streams_total", mb.get("c_capacity_total", {}))
+    cap_after = ma.get("accommodated_streams_total", ma.get("c_capacity_total", {}))
 
     if holes_before and holes_after:
-        print("\nHoles >= c (before -> after):")
+        print("\nUsable holes by frame size (before -> after):")
         thresholds = sorted(list(holes_before.keys()))[: max(0, int(max_thresholds))]
         for c in thresholds:
-            print(f"  c={c}: {holes_before[c]} -> {holes_after.get(c, 'n/a')}")
+            print(f"  frame_size={c}B: {holes_before[c]} -> {holes_after.get(c, 'n/a')}")
 
     if cap_before and cap_after:
-        print("\nC-capacity total (before -> after):")
+        print("\nAccommodated streams total (before -> after):")
         thresholds = sorted(list(cap_before.keys()))[: max(0, int(max_thresholds))]
         for c in thresholds:
-            print(f"  c={c}: {cap_before[c]} -> {cap_after.get(c, 'n/a')}")
+            print(f"  frame_size={c}B: {cap_before[c]} -> {cap_after.get(c, 'n/a')}")
+
+    if "service_block_ratio" in mb and "service_block_ratio" in ma:
+        print(
+            "\nService block ratio before -> after:",
+            f"{100.0 * float(mb['service_block_ratio']):.2f}%",
+            "->",
+            f"{100.0 * float(ma['service_block_ratio']):.2f}%",
+        )

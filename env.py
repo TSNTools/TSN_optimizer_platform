@@ -1,39 +1,22 @@
 """
-TSN Defragmentation Environment for DRL
-
-Observation (state):
-    stream_placement : (N, P) normalised offsets (+1 encoding)
-    stream_features  : (N, 5) [offset, duration, period, latency, hop_cost]
-    port_metrics     : (P, 3) [utilization, useless_gap_ratio, avg_useful_gap]
-    adjacency_matrix : (2, E_max) line-graph edge list
-
-Action:
-    (N, P) matrix – action[i,j] = desired_offset / cycle + 1   (0 = unused)
-    Decoding supports:
-      - multi-move mode: many streams can move in one step,
-      - single-move mode: at most one stream move per step.
-    In both cases, downstream offsets are auto-adjusted with hop delays.
-
-Reward:
-    R = delta_fragmentation  –  move_penalty * (n_moved > 0)
-    delta_frag = (gaps_old - gaps_new) / max(1, gaps_old)
-
-    Additional mode: 'paper_simple'
-    r_t = w1*DeltaAdmissionFit + w2*DeltaFragScore
-          - w3*ShiftCost - w4*MovedStreams - w5*1[invalid]
-
-All internal times are in **nanoseconds** (matching TSNScheduling).
+State/action are unchanged.
+Reward is simple and normalized:
+    reward = w_admission * delta_admission_rate - w_violation * violation_increase_ratio
 """
 
-import math
 import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
 from typing import Dict, List, Optional
 
 from schedule import Schedule, Slot
+from evaluator import TSNConstraintEvaluator, ScheduleEncodingType
+from heuristic import fragmentation_metrics
 from tsn_scheduling_problem import TSNScheduling, MBPS_2_BPNS
 from usecase_generator import Usecase
+
+BYTE_2_BIT = 8
+TOL = 1.1
 
 
 class TSNDefragEnv(gym.Env):
@@ -49,34 +32,26 @@ class TSNDefragEnv(gym.Env):
         problem: TSNScheduling,
         usecase: Usecase,
         gap_threshold_ratio: float = 0.01,
-        move_penalty: float = 0.01,
         max_edges: int = 200,
-        fragmentation_metric: str = "hybrid",
         single_move_per_step: bool = False,
-        reward_mode: str = "simple",
         init_from_usecase_schedule: bool = True,
         reward_weights: Optional[Dict[str, float]] = None,
-        admission_template_count: int = 8,
     ):
         super().__init__()
 
         self.problem = problem
         self.usecase = usecase
-        self.move_penalty = move_penalty
         self.max_edges = max_edges
-        self.fragmentation_metric = fragmentation_metric
         self.single_move_per_step = single_move_per_step
-        self.reward_mode = reward_mode
         self.init_from_usecase_schedule = init_from_usecase_schedule
-        self.admission_template_count = max(1, int(admission_template_count))
+        self.reward_frame_sizes = (64, 128, 256)
+        self.reward_mix_percentages = (50.0, 25.0, 25.0)
+        self.reward_incoming_stream_count = 100
 
-        # Weights for reward_mode='paper_simple'
+        # Simple normalized reward.
         default_weights = {
-            "w1_admission": 2.0,
-            "w2_frag": 1.0,
-            "w3_shift": 0.05,
-            "w4_moved": 0.2,
-            "w5_invalid": 100.0,
+            "w_admission": 1.0,
+            "w_violation": 0.50,
         }
         self.reward_weights = dict(default_weights)
         if reward_weights:
@@ -163,9 +138,12 @@ class TSNDefragEnv(gym.Env):
             # line-graph adjacency
             self._adjacency = self._build_adjacency()
 
-            # Candidate templates used by lightweight admission-fit estimate.
-            self.admission_templates = self._build_admission_templates(
-                self.admission_template_count
+            # Scheduling-only evaluator used to validate feasibility directly.
+            self.sched_eval = TSNConstraintEvaluator(
+                self.problem,
+                check_routing=False,
+                check_task_placement=False,
+                scheduling_type=ScheduleEncodingType.START_TIME,
             )
 
         # ── Gym spaces ─────────────────────────────────────────────────
@@ -459,175 +437,6 @@ class TSNDefragEnv(gym.Env):
             total += len(self._port_gaps(pidx))
         return total
 
-    def _count_useless_gaps(self) -> int:
-        """Count gaps below threshold across all ports."""
-        total = 0
-        for pidx in range(self.n_ports):
-            gaps = self._port_gaps(pidx)
-            total += sum(1 for g in gaps if g < self.gap_threshold_ns)
-        return total
-
-    def _useless_gap_time_ratio(self) -> float:
-        """
-        Aggregate ratio of useless-gap time over one cycle across all ports.
-        """
-        if self.n_ports <= 0 or self.cycle_ns <= 0:
-            return 0.0
-
-        ratio_sum = 0.0
-        for pidx in range(self.n_ports):
-            gaps = self._port_gaps(pidx)
-            useless_time = sum(g for g in gaps if g < self.gap_threshold_ns)
-            ratio_sum += useless_time / self.cycle_ns
-        return ratio_sum / self.n_ports
-
-    def _fragmentation_value(self) -> float:
-        """
-        Scalar fragmentation objective:
-        - 'gap_count': total number of gaps.
-        - 'useless_gap_count': count of gaps < threshold.
-        - 'hybrid': useless_gap_count + useless_gap_time_ratio.
-        """
-        if self.fragmentation_metric == "gap_count":
-            return float(self._count_gaps())
-        if self.fragmentation_metric == "useless_gap_count":
-            return float(self._count_useless_gaps())
-        if self.fragmentation_metric == "hybrid":
-            return float(self._count_useless_gaps()) + self._useless_gap_time_ratio()
-        raise ValueError(
-            "fragmentation_metric must be one of "
-            "{'gap_count', 'useless_gap_count', 'hybrid'}"
-        )
-
-    def _simple_fragmentation_value(self) -> float:
-        """Simple objective used as default: total gap count only."""
-        return float(self._count_gaps())
-
-    def _frag_score(self) -> float:
-        """
-        FragScore(s) = mean_j[(1-useless_gap_ratio_j) + avg_useful_gap_j].
-        """
-        met = self._get_port_metrics()
-        if met.shape[0] == 0:
-            return 0.0
-        return float(np.mean((1.0 - met[:, 1]) + met[:, 2]))
-
-    def _build_admission_templates(self, max_templates: int) -> List[Dict]:
-        """
-        Build a small template set C from existing streams (lightweight proxy).
-        """
-        candidates = []
-        for sinfo in self.stream_info:
-            path = list(sinfo.get("path", []))
-            if not path:
-                continue
-            interval_ns = max(1, int(sinfo.get("interval_ns", self.cycle_ns)))
-            weight = float(self.cycle_ns) / float(interval_ns)
-            candidates.append(
-                {
-                    "path": path,
-                    "port_dur_ns": dict(sinfo.get("port_dur_ns", {})),
-                    "weight": weight,
-                }
-            )
-
-        # Keep the highest-priority templates (shorter intervals -> higher weight).
-        candidates.sort(key=lambda x: x["weight"], reverse=True)
-        return candidates[:max_templates]
-
-    def _template_fits(self, template: Dict) -> bool:
-        """
-        Lightweight fit(c, s): template fits if each path port has a gap large
-        enough for one transmission window.
-        """
-        for pid in template.get("path", []):
-            pidx = pid - 1
-            needed = float(template.get("port_dur_ns", {}).get(pid, 0.0))
-            gaps = self._port_gaps(pidx)
-            if not any(g >= needed for g in gaps):
-                return False
-        return True
-
-    def _template_fit_ratio(self, template: Dict) -> float:
-        """
-        Continuous fit proxy in [0,1]:
-        for each path port, compute max_gap/needed (clipped), then take min over
-        ports so a single bottleneck port limits admission quality.
-        """
-        ratios = []
-        for pid in template.get("path", []):
-            pidx = pid - 1
-            needed = max(1e-9, float(template.get("port_dur_ns", {}).get(pid, 0.0)))
-            gaps = self._port_gaps(pidx)
-            max_gap = max(gaps) if gaps else 0.0
-            ratios.append(min(1.0, max_gap / needed))
-
-        if not ratios:
-            return 0.0
-        return float(min(ratios))
-
-    def _admission_fit_score(self) -> float:
-        """
-        AdmissionFit(s) = sum_{c in C} w_c * fit(c, s)
-        """
-        if not getattr(self, "admission_templates", None):
-            return 0.0
-        total = 0.0
-        for tmpl in self.admission_templates:
-            total += float(tmpl.get("weight", 1.0)) * self._template_fit_ratio(tmpl)
-        return total
-
-    def _has_any_port_overlap(self) -> bool:
-        """Return True if any port has overlapping occurrences in [0, cycle)."""
-        for pidx, sched in self.port_schedules.items():
-            if not sched:
-                continue
-            occs = []
-            for slot in sched:
-                occs.extend(slot.all_occurrences(self.cycle_ns))
-            if not occs:
-                continue
-            occs.sort(key=lambda s: s.start_ns)
-            prev_end = occs[0].end_ns
-            for occ in occs[1:]:
-                if occ.start_ns < prev_end:
-                    return True
-                prev_end = max(prev_end, occ.end_ns)
-        return False
-
-    def _violates_latency_constraints(self) -> bool:
-        """
-        Lightweight latency validation on first occurrences:
-        (last_port_start + last_port_duration) - first_port_start <= max_latency.
-        """
-        for s_idx, sinfo in enumerate(self.stream_info):
-            path = sinfo.get("path", [])
-            if not path:
-                continue
-            first_pid = path[0]
-            last_pid = path[-1]
-            offsets = self.stream_offsets.get(s_idx, {})
-            if first_pid not in offsets or last_pid not in offsets:
-                continue
-
-            first_start = float(offsets[first_pid])
-            last_start = float(offsets[last_pid])
-            last_dur = float(sinfo.get("port_dur_ns", {}).get(last_pid, 0.0))
-            e2e_latency = (last_start + last_dur) - first_start
-            if e2e_latency > float(sinfo.get("max_latency_ns", math.inf)):
-                return True
-        return False
-
-    def _invalid_schedule_flag(self) -> int:
-        """
-        1 if schedule violates core constraints, else 0.
-        """
-        if self._has_any_port_overlap():
-            return 1
-        if self._violates_latency_constraints():
-            return 1
-        return 0
-
     @staticmethod
     def _decode_placement_matrix(placement: np.ndarray) -> np.ndarray:
         """
@@ -645,6 +454,28 @@ class TSNDefragEnv(gym.Env):
             "port_metrics": self._get_port_metrics(),
             "adjacency_matrix": self._adjacency.copy(),
         }
+
+    def _current_compact(self) -> np.ndarray:
+        """Current schedule as compact start-time encoding (0 means inactive)."""
+        return self.get_combined_schedule().to_compact_encoding(self.n_ports, self.n_streams)
+
+    def _violation_sum(self, compact: np.ndarray) -> int:
+        """Aggregate scheduling-only violation count from evaluator."""
+        return int(self.sched_eval.per_stream_all_violations(compact).sum())
+
+    def _admission_rate(self, compact: np.ndarray) -> float:
+        """Admission rate proxy in [0,1] computed as 1 - service_block_ratio."""
+        metrics = fragmentation_metrics(
+            compact=compact,
+            wind_lengths=np.asarray(self.sched_eval.windLengths),
+            cycle_ns=int(self.cycle_ns),
+            thresholds=self.reward_frame_sizes,
+            reference_speed_mbps=float(np.mean(self.sched_eval.port_speeds)) if self.sched_eval.port_speeds.size else 1000.0,
+            incoming_stream_count=int(self.reward_incoming_stream_count),
+            frame_mix_percentages=self.reward_mix_percentages,
+        )
+        sbr = float(metrics.get("service_block_ratio", 1.0))
+        return float(np.clip(1.0 - sbr, 0.0, 1.0))
 
     # ================================================================== #
     # Gym interface
@@ -666,14 +497,9 @@ class TSNDefragEnv(gym.Env):
         )
 
         old_placement = self._get_stream_placement()
-        old_admission_fit = self._admission_fit_score()
-        old_frag_score = self._frag_score()
-        old_invalid = int(self._invalid_schedule_flag())
-
-        if self.reward_mode == "simple":
-            old_frag = self._simple_fragmentation_value()
-        else:
-            old_frag = self._fragmentation_value()
+        old_compact = self._current_compact()
+        old_violation_sum = self._violation_sum(old_compact)
+        old_admission_rate = self._admission_rate(old_compact)
         n_moved = 0
 
         moved_stream = None
@@ -745,64 +571,47 @@ class TSNDefragEnv(gym.Env):
                 moved_stream = moved_actions[0]["stream_id"]
                 moved_port = moved_actions[0]["port_id"] - 1
 
-        if self.reward_mode == "simple":
-            new_frag = self._simple_fragmentation_value()
-        else:
-            new_frag = self._fragmentation_value()
-
         new_placement = self._get_stream_placement()
-        new_admission_fit = self._admission_fit_score()
-        new_frag_score = self._frag_score()
+        new_compact = self._current_compact()
+        new_violation_sum = self._violation_sum(new_compact)
+        new_admission_rate = self._admission_rate(new_compact)
 
         x_old = self._decode_placement_matrix(old_placement)
         x_new = self._decode_placement_matrix(new_placement)
-        shift_cost = float(np.sum(np.abs(x_new - x_old)))
         moved_streams_matrix = int(np.sum(np.any(np.abs(x_new - x_old) > 1e-9, axis=1)))
-        invalid = int(self._invalid_schedule_flag())
-        invalid_new = 1 if (invalid == 1 and old_invalid == 0) else 0
-
-        delta = (old_frag - new_frag) / max(1.0, old_frag)
-        if self.reward_mode == "paper_simple":
-            delta_admission = float(new_admission_fit - old_admission_fit)
-            delta_frag_score = float(new_frag_score - old_frag_score)
-            w = self.reward_weights
-            reward = (
-                w["w1_admission"] * delta_admission
-                + w["w2_frag"] * delta_frag_score
-                - w["w3_shift"] * shift_cost
-                - w["w4_moved"] * moved_streams_matrix
-                - w["w5_invalid"] * invalid_new
+        violation_ratio = float(np.clip(new_violation_sum / max(1, self.n_streams), 0.0, 1.0))
+        violation_increase_ratio = float(
+            np.clip(
+                (new_violation_sum - old_violation_sum) / max(1, abs(old_violation_sum) + 1),
+                0.0,
+                1.0,
             )
-        else:
-            delta_admission = float(new_admission_fit - old_admission_fit)
-            delta_frag_score = float(new_frag_score - old_frag_score)
-            reward = delta - self.move_penalty * n_moved
+        )
+
+        delta_admission_rate = float(np.clip(new_admission_rate - old_admission_rate, -1.0, 1.0))
+
+        w = self.reward_weights
+        reward = (
+            w["w_admission"] * delta_admission_rate
+            - w["w_violation"] * violation_increase_ratio
+        )
 
         info = {
-            "old_fragmentation": old_frag,
-            "new_fragmentation": new_frag,
-            "delta_frag": delta,
+            "old_admission_rate": float(old_admission_rate),
+            "new_admission_rate": float(new_admission_rate),
+            "delta_admission_rate": float(delta_admission_rate),
             "n_moved": n_moved,
             "all_gaps": self._count_gaps(),
-            "useless_gaps": self._count_useless_gaps(),
-            "useless_gap_time_ratio": self._useless_gap_time_ratio(),
-            "fragmentation_metric": self.fragmentation_metric,
-            "reward_mode": self.reward_mode,
             "single_move_per_step": self.single_move_per_step,
             "moved_stream": moved_stream,
             "moved_port": moved_port,
             "moved_actions": moved_actions,
-            "old_admission_fit": float(old_admission_fit),
-            "new_admission_fit": float(new_admission_fit),
-            "delta_admission_fit": float(delta_admission),
-            "old_frag_score": float(old_frag_score),
-            "new_frag_score": float(new_frag_score),
-            "delta_frag_score": float(delta_frag_score),
-            "shift_cost": float(shift_cost),
             "moved_streams_matrix": int(moved_streams_matrix),
-            "invalid": int(invalid),
-            "invalid_old": int(old_invalid),
-            "invalid_new": int(invalid_new),
+            "old_violation_sum": int(old_violation_sum),
+            "new_violation_sum": int(new_violation_sum),
+            "violation_ratio": float(violation_ratio),
+            "violation_increase_ratio": float(violation_increase_ratio),
+            "is_feasible": bool(new_violation_sum == 0),
             "reward_weights": dict(self.reward_weights),
         }
         return self._get_obs(), reward, False, False, info
@@ -839,3 +648,7 @@ class TSNDefragEnv(gym.Env):
             for slot in self.port_schedules[pidx]:
                 combined.append(slot)
         return combined
+
+    def get_current_compact(self) -> np.ndarray:
+        """Public helper for training/evaluation scripts."""
+        return self._current_compact()

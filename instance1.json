@@ -475,7 +475,7 @@
         {
             "type": "switch",
             "name": "switch-c1",
-            "procDelay": 40000,
+            "procDelay": 40,
             "ports": {
                 "Port1": {
                     "name": "Port1",
@@ -570,7 +570,7 @@
         {
             "type": "switch",
             "name": "switch-c2",
-            "procDelay": 40000,
+            "procDelay": 40,
             "ports": {
                 "Port1": {
                     "name": "Port1",
@@ -657,7 +657,7 @@
         {
             "type": "switch",
             "name": "switch-c3",
-            "procDelay": 40000,
+            "procDelay": 40,
             "ports": {
                 "Port1": {
                     "name": "Port1",
@@ -756,7 +756,7 @@
         {
             "type": "switch",
             "name": "switch-c4",
-            "procDelay": 40000,
+            "procDelay": 40,
             "ports": {
                 "Port1": {
                     "name": "Port1",
@@ -855,7 +855,7 @@
         {
             "type": "switch",
             "name": "switch-p0-a1",
-            "procDelay": 40000,
+            "procDelay": 40,
             "ports": {
                 "Port1": {
                     "name": "Port1",
@@ -922,7 +922,7 @@
         {
             "type": "switch",
             "name": "switch-p0-a2",
-            "procDelay": 40000,
+            "procDelay": 40,
             "ports": {
                 "Port1": {
                     "name": "Port1",
@@ -1025,7 +1025,7 @@
         {
             "type": "switch",
             "name": "switch-p0-e1",
-            "procDelay": 40000,
+            "procDelay": 40,
             "ports": {
                 "Port1": {
                     "name": "Port1",
@@ -1100,7 +1100,7 @@
         {
             "type": "switch",
             "name": "switch-p0-e2",
-            "procDelay": 40000,
+            "procDelay": 40,
             "ports": {
                 "Port1": {
                     "name": "Port1",
@@ -1207,7 +1207,7 @@
         {
             "type": "switch",
             "name": "switch-p1-a1",
-            "procDelay": 40000,
+            "procDelay": 40,
             "ports": {
                 "Port1": {
                     "name": "Port1",
@@ -1302,7 +1302,7 @@
         {
             "type": "switch",
             "name": "switch-p1-a2",
-            "procDelay": 40000,
+            "procDelay": 40,
             "ports": {
                 "Port1": {
                     "name": "Port1",
@@ -1425,7 +1425,7 @@
         {
             "type": "switch",
             "name": "switch-p1-e1",
-            "procDelay": 40000,
+            "procDelay": 40,
             "ports": {
                 "Port1": {
                     "name": "Port1",
@@ -1564,7 +1564,7 @@
         {
             "type": "switch",
             "name": "switch-p1-e2",
-            "procDelay": 40000,
+            "procDelay": 40,
             "ports": {
                 "Port1": {
                     "name": "Port1",
@@ -1655,7 +1655,7 @@
         {
             "type": "switch",
             "name": "switch-p2-a1",
-            "procDelay": 40000,
+            "procDelay": 40,
             "ports": {
                 "Port1": {
                     "name": "Port1",
@@ -1754,7 +1754,7 @@
         {
             "type": "switch",
             "name": "switch-p2-a2",
-            "procDelay": 40000,
+            "procDelay": 40,
             "ports": {
                 "Port1": {
                     "name": "Port1",
@@ -1841,7 +1841,7 @@
         {
             "type": "switch",
             "name": "switch-p2-e1",
-            "procDelay": 40000,
+            "procDelay": 40,
             "ports": {
                 "Port1": {
                     "name": "Port1",
@@ -1940,7 +1940,7 @@
         {
             "type": "switch",
             "name": "switch-p2-e2",
-            "procDelay": 40000,
+            "procDelay": 40,
             "ports": {
                 "Port1": {
                     "name": "Port1",
@@ -2027,7 +2027,7 @@
         {
             "type": "switch",
             "name": "switch-p3-a1",
-            "procDelay": 40000,
+            "procDelay": 40,
             "ports": {
                 "Port1": {
                     "name": "Port1",
@@ -2138,7 +2138,7 @@
         {
             "type": "switch",
             "name": "switch-p3-a2",
-            "procDelay": 40000,
+            "procDelay": 40,
             "ports": {
                 "Port1": {
                     "name": "Port1",
@@ -2217,7 +2217,7 @@
         {
             "type": "switch",
             "name": "switch-p3-e1",
-            "procDelay": 40000,
+            "procDelay": 40,
             "ports": {
                 "Port1": {
                     "name": "Port1",
@@ -2304,7 +2304,7 @@
         {
             "type": "switch",
             "name": "switch-p3-e2",
-            "procDelay": 40000,
+            "procDelay": 40,
             "ports": {
                 "Port1": {
                     "name": "Port1",
