@@ -458,9 +458,11 @@ class Schedule(list):
         """
         return [slot for slot in self if slot.stream_id == stream_id]
 
-    def plot(self, tick: float = 1.0, span: Optional[int] = None, label: bool = False, 
+    def plot(self, tick: float = 1.0, span: Optional[int] = None, label: bool = False,
              port_ids: Optional[List[int]] = None,
-             stream_ids: Optional[List[int]] = None):
+             stream_ids: Optional[List[int]] = None,
+             cycles: int = 1,
+             by_cycle: bool = False):
         """
         Visualize schedule occurrences with one axis per port.
     
@@ -469,11 +471,17 @@ class Schedule(list):
         tick : float
             Time unit scaling.
         span : int
-            Max time to display.
+            Max x-axis span in ticks. If None, uses cycle_ns * cycles.
         label : bool
             Annotate bars with stream ids.
         port_id : int or None
             If provided, plot only this port.
+        cycles : int
+            Number of schedule cycles to render when span is None.
+        by_cycle : bool
+            If True, wrap x-axis to one cycle and stack occurrences per cycle index.
+            This makes delayed first appearances (e.g., on downstream ports) visible
+            in the exact cycle they first occur.
     
         Returns
         -------
@@ -482,10 +490,22 @@ class Schedule(list):
         """
         if self.validate_conflicts():
             print("Warning!!! schedule has conflicts, plot may be inaccurate.")
-        # Expand occurrences
+
+        if cycles < 1:
+            raise ValueError("cycles must be >= 1")
+
+        if span is None:
+            span_ns = int(self.cycle_ns * cycles)
+            span_ticks = int(span_ns / tick)
+        else:
+            # Backward-compatible behavior: span is interpreted as x-axis ticks.
+            span_ticks = int(span)
+            span_ns = int(span_ticks * tick)
+
+        # Expand occurrences over the requested time span.
         occurrences = []
         for slot in self:
-            occurrences.extend(slot.all_occurrences(self.cycle_ns))
+            occurrences.extend(slot.all_occurrences(span_ns))
 
          # Filter port if requested
         if port_ids is not None:
@@ -500,9 +520,6 @@ class Schedule(list):
             fig, ax = plt.subplots()
             ax.set_title("Empty schedule")
             return fig, [ax]
-    
-        if span is None:
-            span = int(self.cycle_ns / tick)
     
         # Group occurrences by port
         ports = sorted({o.port_id for o in occurrences if o.port_id is not None})
@@ -529,37 +546,87 @@ class Schedule(list):
         stream_to_color = {sid: i for i, sid in enumerate(all_stream_ids)}
     
         for ax, port in zip(axs, ports):
-    
-            for s in port_occ[port]:
-    
-                start_ticks = s.start_ns / tick
-                width_ticks = (s.end_ns - s.start_ns) / tick
-    
-                color_idx = stream_to_color.get(s.stream_id, 0)
-                color = cmap(color_idx / max(1, len(all_stream_ids)-1))
-    
-                ax.barh(
-                    y=0,
-                    width=width_ticks,
-                    left=start_ticks,
-                    height=0.8,
-                    color=color,
-                    edgecolor="black"
-                )
-    
-                if label and s.stream_id is not None:
-                    ax.text(
-                        start_ticks + width_ticks/2,
-                        0,
-                        str(s.stream_id),
-                        ha="center",
-                        va="center",
-                        color="white",
-                        fontsize=9
+
+            if not by_cycle:
+                for s in port_occ[port]:
+                    start_ticks = s.start_ns / tick
+                    width_ticks = (s.end_ns - s.start_ns) / tick
+
+                    color_idx = stream_to_color.get(s.stream_id, 0)
+                    color = cmap(color_idx / max(1, len(all_stream_ids)-1))
+
+                    ax.barh(
+                        y=0,
+                        width=width_ticks,
+                        left=start_ticks,
+                        height=0.8,
+                        color=color,
+                        edgecolor="black"
                     )
-    
-            ax.set_ylabel(f"Port {port}")
-            ax.set_yticks([])
+
+                    if label and s.stream_id is not None:
+                        ax.text(
+                            start_ticks + width_ticks/2,
+                            0,
+                            str(s.stream_id),
+                            ha="center",
+                            va="center",
+                            color="white",
+                            fontsize=9
+                        )
+
+                ax.set_ylabel(f"Port {port}")
+                ax.set_yticks([])
+            else:
+                # Wrap to cycle-local x and stack bars on the cycle row where they occur.
+                for s in port_occ[port]:
+                    seg_start = int(s.start_ns)
+                    seg_end = int(s.end_ns)
+
+                    while seg_start < seg_end and seg_start < span_ns:
+                        cyc_idx = int(seg_start // self.cycle_ns)
+                        if cyc_idx >= cycles:
+                            break
+
+                        cyc_start = cyc_idx * self.cycle_ns
+                        cyc_end = cyc_start + self.cycle_ns
+
+                        part_start = max(seg_start, cyc_start)
+                        part_end = min(seg_end, cyc_end)
+                        if part_end <= part_start:
+                            break
+
+                        start_ticks = (part_start - cyc_start) / tick
+                        width_ticks = (part_end - part_start) / tick
+
+                        color_idx = stream_to_color.get(s.stream_id, 0)
+                        color = cmap(color_idx / max(1, len(all_stream_ids)-1))
+
+                        ax.barh(
+                            y=cyc_idx,
+                            width=width_ticks,
+                            left=start_ticks,
+                            height=0.8,
+                            color=color,
+                            edgecolor="black"
+                        )
+
+                        if label and s.stream_id is not None:
+                            ax.text(
+                                start_ticks + width_ticks/2,
+                                cyc_idx,
+                                str(s.stream_id),
+                                ha="center",
+                                va="center",
+                                color="white",
+                                fontsize=8
+                            )
+
+                        seg_start = part_end
+
+                ax.set_ylabel(f"Port {port}")
+                ax.set_yticks(list(range(cycles)))
+                ax.set_yticklabels([f"C{c+1}" for c in range(cycles)])
 
         # legend
         legend_handles = []
@@ -579,9 +646,12 @@ class Schedule(list):
         )
     
         axs[-1].set_xlabel(f"Time (tick={tick})")
-        axs[-1].set_xlim(0, span)
+        if by_cycle:
+            axs[-1].set_xlim(0, int(self.cycle_ns / tick))
+        else:
+            axs[-1].set_xlim(0, span_ticks)
     
-        fig.suptitle(f"Schedule visualization (cycle={self.cycle_ns})")
+        fig.suptitle(f"Schedule visualization (cycle={self.cycle_ns}, cycles={cycles})")
     
         plt.tight_layout()
         #plt.close(fig)
