@@ -10,6 +10,11 @@ Action semantics:
 Reward semantics:
 - Fragmentation-improvement reward (gap count + largest hole),
   with penalties for invalid actions and unnecessary moves.
+
+Reward modes:
+- weighted_fragmentation: nuanced weighted score for mature experiments.
+- gap_improvement_binary: simple signal to test if policy can reduce gap count.
+- hole_improvement_binary: simple signal to test if policy can increase largest-hole mean.
 """
 
 import copy
@@ -48,6 +53,7 @@ class TSNDefragEnv(gym.Env):
         reward_incoming_stream_count: int = 100,
         max_candidates: int = 10,
         max_steps: int = 60,
+        reward_mode: str = "weighted_fragmentation",
         force_current_start_candidate: bool = False,
         debug_candidate_validation: bool = True,
     ):
@@ -62,10 +68,22 @@ class TSNDefragEnv(gym.Env):
         self.max_steps = max(1, int(max_steps))
         self.step_count = 0
         self.current_stream_id = 0
+        self.reward_mode = str(reward_mode)
         self.force_current_start_candidate = bool(force_current_start_candidate)
         self.debug_candidate_validation = bool(debug_candidate_validation)
         self.initial_violation_sum = 0
         self.initial_violation_dict: Dict[str, int] = {}
+
+        supported_reward_modes = {
+            "weighted_fragmentation",
+            "gap_improvement_binary",
+            "hole_improvement_binary",
+        }
+        if self.reward_mode not in supported_reward_modes:
+            raise ValueError(
+                f"Unsupported reward_mode='{self.reward_mode}'. "
+                f"Supported modes: {sorted(supported_reward_modes)}"
+            )
 
         frame_sizes = reward_frame_sizes if reward_frame_sizes is not None else [64, 128, 256]
         mix_percentages = reward_mix_percentages if reward_mix_percentages is not None else [50.0, 25.0, 25.0]
@@ -755,14 +773,38 @@ class TSNDefragEnv(gym.Env):
         move_penalty = 1.0 if int(applied_first_offset_ns) != int(old_first_offset) else 0.0
         invalid_penalty = 1.0 if (invalid_selection or rollback_applied) else 0.0
 
-        # Reward stays fragmentation-based because sparse schedules can make
-        # admission nearly saturated and weak as a learning signal.
-        reward = (
-            float(self.reward_weights.get("w_gap", 1.0)) * float(delta_gap_norm)
-            + float(self.reward_weights.get("w_hole", 0.5)) * float(delta_hole_norm)
-            - float(self.reward_weights.get("w_move", 0.01)) * float(move_penalty)
-            - float(self.reward_weights.get("w_invalid", 1.0)) * float(invalid_penalty)
-        )
+        # Admission is kept as a diagnostic only. Sparse scenarios can saturate
+        # admission rate, so reward-mode ablations are useful for learnability checks.
+        if self.reward_mode == "weighted_fragmentation":
+            reward = (
+                float(self.reward_weights.get("w_gap", 1.0)) * float(delta_gap_norm)
+                + float(self.reward_weights.get("w_hole", 0.5)) * float(delta_hole_norm)
+                - float(self.reward_weights.get("w_move", 0.01)) * float(move_penalty)
+                - float(self.reward_weights.get("w_invalid", 1.0)) * float(invalid_penalty)
+            )
+        elif self.reward_mode == "gap_improvement_binary":
+            # Debug mode: direct signal for whether action reduces fragmentation count.
+            if invalid_selection or rollback_applied:
+                reward = -1.0
+            elif delta_gap > 0:
+                reward = 1.0
+            elif delta_gap == 0:
+                reward = 0.0
+            else:
+                reward = -1.0
+        elif self.reward_mode == "hole_improvement_binary":
+            # Debug mode: direct signal for whether action increases contiguous free space.
+            if invalid_selection or rollback_applied:
+                reward = -1.0
+            elif delta_hole > 0:
+                reward = 1.0
+            elif delta_hole == 0:
+                reward = 0.0
+            else:
+                reward = -1.0
+        else:
+            # Guarded by constructor validation, but keep a safe fallback.
+            reward = 0.0
 
         truncated = bool(self.step_count >= self.max_steps)
         terminated = False
@@ -813,6 +855,7 @@ class TSNDefragEnv(gym.Env):
             # Initial schedule feasibility is explicitly surfaced for debugging.
             "initial_violation_sum": int(self.initial_violation_sum),
             "initial_violation_dict": dict(self.initial_violation_dict),
+            "reward_mode": self.reward_mode,
             "reward_weights": dict(self.reward_weights),
         }
 

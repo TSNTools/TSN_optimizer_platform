@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 from typing import Dict, List, Sequence, Tuple
 
@@ -34,6 +35,7 @@ class RewardTraceCallback(BaseCallback):
                 "phase": self.phase,
                 "instance": self.instance_name,
                 "global_step": int(self.num_timesteps),
+                "reward_mode": info0.get("reward_mode", "unknown"),
                 "reward": mean_reward,
                 # Attempted violations are the primary safety/debug signal.
                 # Final/post-rollback violations can remain near zero.
@@ -70,27 +72,15 @@ class RewardTraceCallback(BaseCallback):
 def make_env(
     problem: TSNScheduling,
     instance_path: str,
-    reward_weights: Dict[str, float],
     seed: int,
-    reward_frame_sizes: Sequence[int],
-    reward_mix_percentages: Sequence[float],
-    reward_incoming_stream_count: int,
-    max_steps: int,
-    max_candidates: int,
+    env_kwargs: Dict[str, object],
 ):
     def _build():
         usecase = problem.import_scheduling_usecase(instance_path)
         env = TSNDefragEnv(
             problem=problem,
             usecase=usecase,
-            single_move_per_step=True,
-            init_from_usecase_schedule=True,
-            reward_weights=reward_weights,
-            reward_frame_sizes=list(reward_frame_sizes),
-            reward_mix_percentages=list(reward_mix_percentages),
-            reward_incoming_stream_count=int(reward_incoming_stream_count),
-            max_steps=int(max_steps),
-            max_candidates=int(max_candidates),
+            **env_kwargs,
         )
         env.reset(seed=seed)
         return env
@@ -236,6 +226,7 @@ def rollout_and_collect(
                 "phase": phase,
                 "instance": instance_name,
                 "global_step": int(collected + 1),
+                "reward_mode": info0.get("reward_mode", "unknown"),
                 "reward": float(reward[0]),
                 "is_feasible": float(bool(info0.get("is_feasible", False))),
                 "attempted_violation_sum": float(info0.get("attempted_violation_sum", np.nan)),
@@ -415,6 +406,60 @@ def plot_attempted_violation_category_means(df: pd.DataFrame, phase: str, out_pa
     plt.close()
 
 
+def reward_sign_summary(df: pd.DataFrame, phase: str) -> Dict[str, float]:
+    """Return fraction of positive/zero/negative rewards for one phase."""
+    work = df[df["phase"] == phase].copy()
+    if work.empty or "reward" not in work.columns:
+        return {
+            "phase": phase,
+            "n": 0,
+            "positive_fraction": np.nan,
+            "zero_fraction": np.nan,
+            "negative_fraction": np.nan,
+        }
+
+    rewards = work["reward"].dropna().to_numpy(dtype=float)
+    n = int(rewards.size)
+    if n == 0:
+        return {
+            "phase": phase,
+            "n": 0,
+            "positive_fraction": np.nan,
+            "zero_fraction": np.nan,
+            "negative_fraction": np.nan,
+        }
+
+    pos = float(np.mean(rewards > 0))
+    zer = float(np.mean(np.isclose(rewards, 0.0)))
+    neg = float(np.mean(rewards < 0))
+    return {
+        "phase": phase,
+        "n": n,
+        "positive_fraction": pos,
+        "zero_fraction": zer,
+        "negative_fraction": neg,
+    }
+
+
+def plot_reward_sign_summary(summary: Dict[str, float], out_path: Path) -> None:
+    labels = ["positive", "zero", "negative"]
+    values = [
+        float(summary.get("positive_fraction", 0.0)),
+        float(summary.get("zero_fraction", 0.0)),
+        float(summary.get("negative_fraction", 0.0)),
+    ]
+    x = np.arange(len(labels))
+    plt.figure(figsize=(5.8, 4.0))
+    plt.bar(x, values)
+    plt.xticks(x, labels)
+    plt.ylim(0.0, 1.0)
+    plt.ylabel("Fraction")
+    plt.title(f"Reward Sign Summary ({summary.get('phase', 'unknown')})")
+    plt.tight_layout()
+    plt.savefig(out_path)
+    plt.close()
+
+
 def plot_metric_comparison(df: pd.DataFrame, out_path: Path) -> None:
     if df.empty:
         return
@@ -456,6 +501,23 @@ def plot_metric_comparison(df: pd.DataFrame, out_path: Path) -> None:
 
 def parse_list(text: str, cast_type):
     return [cast_type(x.strip()) for x in text.split(",") if x.strip()]
+
+
+def create_numbered_run_dir(base_out_dir: Path) -> Path:
+    """Create outputs/run_XXX folder and return it."""
+    base_out_dir.mkdir(parents=True, exist_ok=True)
+    run_numbers: List[int] = []
+    for p in base_out_dir.iterdir():
+        if not p.is_dir() or not p.name.startswith("run_"):
+            continue
+        suffix = p.name[4:]
+        if suffix.isdigit():
+            run_numbers.append(int(suffix))
+
+    next_run = (max(run_numbers) + 1) if run_numbers else 1
+    run_dir = base_out_dir / f"run_{next_run:03d}"
+    run_dir.mkdir(parents=True, exist_ok=False)
+    return run_dir
 
 
 def plot_violation_categories_before_after(df: pd.DataFrame, phase: str, out_path: Path) -> None:
@@ -509,13 +571,21 @@ def main() -> None:
     parser.add_argument("--frame-sizes", default="10,64,2500")
     parser.add_argument("--mix-percentages", default="0,0,100")
     parser.add_argument("--incoming-stream-count", type=int, default=500)
-    parser.add_argument("--max-steps", type=int, default=10)
-    parser.add_argument("--max-candidates", type=int, default=16)
+    parser.add_argument("--max-steps", type=int, default=60)
+    parser.add_argument("--max-candidates", type=int, default=10)
+    parser.add_argument(
+        "--reward-mode",
+        default="weighted_fragmentation",
+        choices=["weighted_fragmentation", "gap_improvement_binary", "hole_improvement_binary"],
+    )
     parser.add_argument("--w-gap", type=float, default=1.0)
     parser.add_argument("--w-hole", type=float, default=0.5)
     parser.add_argument("--w-move", type=float, default=0.01)
     parser.add_argument("--w-invalid", type=float, default=1.0)
+    parser.add_argument("--force-current-start-candidate", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--debug-candidate-validation", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--reward-ma-window", type=int, default=100)
+    parser.add_argument("--single-frame-size", type=int, default=None)
     parser.add_argument("--out-dir", default="outputs")
     args = parser.parse_args()
 
@@ -526,11 +596,14 @@ def main() -> None:
     frame_sizes = parse_list(args.frame_sizes, int)
     mix_percentages = parse_list(args.mix_percentages, float)
 
+    if args.single_frame_size is not None:
+        frame_sizes = [int(args.single_frame_size)]
+        mix_percentages = [100.0]
+
     if len(frame_sizes) != len(mix_percentages):
         raise ValueError("frame_sizes and mix_percentages must have the same length")
 
-    out_dir = Path(args.out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir = create_numbered_run_dir(Path(args.out_dir))
 
     reward_weights = {
         "w_gap": float(args.w_gap),
@@ -538,6 +611,35 @@ def main() -> None:
         "w_move": float(args.w_move),
         "w_invalid": float(args.w_invalid),
     }
+
+    env_kwargs: Dict[str, object] = {
+        "single_move_per_step": True,
+        "init_from_usecase_schedule": True,
+        "reward_mode": str(args.reward_mode),
+        "reward_weights": reward_weights,
+        "reward_frame_sizes": list(frame_sizes),
+        "reward_mix_percentages": list(mix_percentages),
+        "reward_incoming_stream_count": int(args.incoming_stream_count),
+        "max_steps": int(args.max_steps),
+        "max_candidates": int(args.max_candidates),
+        "force_current_start_candidate": bool(args.force_current_start_candidate),
+        "debug_candidate_validation": bool(args.debug_candidate_validation),
+    }
+
+    ppo_kwargs: Dict[str, object] = {
+        "n_steps": 256,
+        "batch_size": 64,
+        "learning_rate": 3e-4,
+        "gamma": 0.99,
+        "gae_lambda": 0.95,
+        "ent_coef": 0.01,
+        "clip_range": 0.2,
+        "verbose": 1,
+        "seed": int(args.seed),
+    }
+
+    incoming_stream_count = int(args.incoming_stream_count)
+    reward_mode = str(args.reward_mode)
 
     problem = TSNScheduling(args.config)
 
@@ -560,31 +662,13 @@ def main() -> None:
         env_fn = make_env(
             problem,
             train_path,
-            reward_weights,
             seed=args.seed + idx,
-            reward_frame_sizes=frame_sizes,
-            reward_mix_percentages=mix_percentages,
-            reward_incoming_stream_count=int(args.incoming_stream_count),
-            max_steps=int(args.max_steps),
-            max_candidates=int(args.max_candidates),
+            env_kwargs=env_kwargs,
         )
         vec_env = DummyVecEnv([env_fn])
 
         if model is None:
-            # Standard PPO starting values for small custom environments.
-            model = PPO(
-                "MultiInputPolicy",
-                vec_env,
-                n_steps=256,
-                batch_size=64,
-                learning_rate=3e-4,
-                gamma=0.99,
-                gae_lambda=0.95,
-                ent_coef=0.01,
-                clip_range=0.2,
-                verbose=1,
-                seed=args.seed,
-            )
+            model = PPO("MultiInputPolicy", vec_env, **ppo_kwargs)
         else:
             model.set_env(vec_env)
 
@@ -597,7 +681,7 @@ def main() -> None:
             eval_steps=int(args.eval_steps),
             frame_sizes=frame_sizes,
             mix_percentages=mix_percentages,
-            incoming_stream_count=int(args.incoming_stream_count),
+            incoming_stream_count=int(incoming_stream_count),
             phase="train",
             instance_name=train_path,
         )
@@ -612,13 +696,8 @@ def main() -> None:
             make_env(
                 problem,
                 test_instance,
-                reward_weights,
                 seed=args.seed + 999,
-                reward_frame_sizes=frame_sizes,
-                reward_mix_percentages=mix_percentages,
-                reward_incoming_stream_count=int(args.incoming_stream_count),
-                max_steps=int(args.max_steps),
-                max_candidates=int(args.max_candidates),
+                env_kwargs=env_kwargs,
             )
         ]
     )
@@ -628,7 +707,7 @@ def main() -> None:
         eval_steps=int(args.eval_steps),
         frame_sizes=frame_sizes,
         mix_percentages=mix_percentages,
-        incoming_stream_count=int(args.incoming_stream_count),
+        incoming_stream_count=int(incoming_stream_count),
         phase="eval",
         instance_name=test_instance,
     )
@@ -660,6 +739,9 @@ def main() -> None:
     eval_violation_category_png = out_dir / "drl_eval_violation_categories_before_after.png"
     train_attempted_violation_category_png = out_dir / "drl_train_attempted_violation_categories.png"
     eval_attempted_violation_category_png = out_dir / "drl_eval_attempted_violation_categories.png"
+    reward_sign_summary_csv = out_dir / "drl_reward_sign_summary.csv"
+    train_reward_sign_png = out_dir / "drl_train_reward_sign_summary.png"
+    eval_reward_sign_png = out_dir / "drl_eval_reward_sign_summary.png"
     metric_png = out_dir / "drl_metric_before_after.png"
     model_path = out_dir / "ppo_tsn_defrag_model.zip"
 
@@ -816,11 +898,21 @@ def main() -> None:
         phase="eval",
         out_path=eval_attempted_violation_category_png,
     )
+
+    train_sign = reward_sign_summary(reward_df, phase="train")
+    eval_sign = reward_sign_summary(reward_df, phase="eval")
+    sign_df = pd.DataFrame([train_sign, eval_sign])
+    sign_df.to_csv(reward_sign_summary_csv, index=False)
+    plot_reward_sign_summary(train_sign, train_reward_sign_png)
+    plot_reward_sign_summary(eval_sign, eval_reward_sign_png)
+
     plot_metric_comparison(metrics_df, metric_png)
     model.save(model_path)
 
     print(f"Saved reward trace: {reward_csv}")
     print(f"Saved metrics summary: {metrics_csv}")
+    print(f"Saved run directory: {out_dir}")
+    print(f"Reward mode: {reward_mode}")
     print(f"Saved train reward plot: {train_reward_png}")
     print(f"Saved train reward moving-average plot: {train_reward_ma_png}")
     print(f"Saved train final-violations plot: {train_final_viol_png}")
@@ -839,6 +931,9 @@ def main() -> None:
     print(f"Saved eval delta-hole plot: {eval_delta_hole_png}")
     print(f"Saved eval admission plot: {eval_admission_png}")
     print(f"Saved eval attempted-violation-category plot: {eval_attempted_violation_category_png}")
+    print(f"Saved reward sign summary CSV: {reward_sign_summary_csv}")
+    print(f"Saved train reward-sign plot: {train_reward_sign_png}")
+    print(f"Saved eval reward-sign plot: {eval_reward_sign_png}")
     print(f"Saved train violation-category plot: {train_violation_category_png}")
     print(f"Saved eval violation-category plot: {eval_violation_category_png}")
     print(f"Saved metric plot: {metric_png}")

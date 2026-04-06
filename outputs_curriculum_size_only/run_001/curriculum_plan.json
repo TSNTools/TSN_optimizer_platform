@@ -1,0 +1,54 @@
+{
+  "seed": 42,
+  "train_instances": [
+    "instance1.json"
+  ],
+  "stages": [
+    {
+      "name": "easy",
+      "incoming_stream_count": 500,
+      "frame_size": 512,
+      "timesteps": 15000
+    },
+    {
+      "name": "medium",
+      "incoming_stream_count": 500,
+      "frame_size": 1500,
+      "timesteps": 15000
+    },
+    {
+      "name": "hard",
+      "incoming_stream_count": 500,
+      "frame_size": 2500,
+      "timesteps": 20000
+    }
+  ],
+  "base_env_kwargs": {
+    "single_move_per_step": true,
+    "init_from_usecase_schedule": true,
+    "reward_mode": "hole_improvement_binary",
+    "reward_weights": {
+      "w_gap": 1.0,
+      "w_hole": 0.5,
+      "w_move": 0.01,
+      "w_invalid": 1.0
+    },
+    "max_steps": 60,
+    "max_candidates": 10,
+    "force_current_start_candidate": false,
+    "debug_candidate_validation": true
+  },
+  "ppo_kwargs": {
+    "n_steps": 256,
+    "batch_size": 64,
+    "learning_rate": 0.0003,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "ent_coef": 0.01,
+    "clip_range": 0.2,
+    "verbose": 1,
+    "seed": 42
+  },
+  "auto_advance_metric": "none",
+  "auto_advance_threshold": 0.0
+}
