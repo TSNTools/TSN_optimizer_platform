@@ -221,22 +221,34 @@ class Schedule(list):
 
     @classmethod
     def from_usecase(cls, usecase, port_name_to_id):
+        original_to_index = {}
+        for idx, stream in enumerate(usecase.streams):
+            original_id = stream.get("originalStreamId")
+            if original_id is not None:
+                original_to_index[int(original_id)] = idx
     
         def transmission_window_to_slots(tw, port_name):
             slots = []
             start = int(tw["start"])
             open_queues = [i for i, ch in enumerate(tw["state"]) if ch == "o"]
-            stream_idxs = [int(s) for s in tw["stream_sequence"]]
-            for s_idx in stream_idxs:
-                period_ns = usecase.streams[s_idx]['interval'] #* MS_TO_NS
-                duration_ns = usecase.window_length(s_idx, port_name)
+            stream_ids = [int(s) for s in tw["stream_sequence"]]
+            for stream_id in stream_ids:
+                stream_idx = original_to_index.get(stream_id, stream_id)
+                if stream_idx < 0 or stream_idx >= len(usecase.streams):
+                    continue
+
+                period_ns = usecase.streams[stream_idx]['interval'] #* MS_TO_NS
+                duration_ns = tw.get("duration")
+                if duration_ns is None:
+                    duration_ns = usecase.window_length(stream_idx, port_name)
+                duration_ns = max(1, int(duration_ns))
                 for qid in open_queues:
                     slots.append(
                         Slot(
                             start_ns=start,
                             end_ns=start + duration_ns,
                             period_ns=period_ns,
-                            stream_id=s_idx,
+                            stream_id=stream_id,
                             port_id=port_id,
                             queue_id=qid,
                         )
@@ -266,6 +278,20 @@ class Schedule(list):
         for slots in all_slots.values():
             base = min(slots, key=lambda s: s.start_ns)
             schedule.append(base)
+
+        # Persist port metadata on the schedule to keep plotting order consistent.
+        schedule.port_id_to_name = {
+            pid: name for name, pid in port_name_to_id.items() if pid != 0
+        }
+        schedule.port_sort_key = {}
+        for pid, pname in schedule.port_id_to_name.items():
+            pmeta = usecase.ports.get(pname, {})
+            src = pmeta.get("sourceNode")
+            dst = pmeta.get("destNode")
+            if src is not None and dst is not None:
+                schedule.port_sort_key[pid] = (str(src), str(dst))
+            else:
+                schedule.port_sort_key[pid] = (str(pname), "")
     
         return schedule
         
@@ -521,8 +547,15 @@ class Schedule(list):
             ax.set_title("Empty schedule")
             return fig, [ax]
     
-        # Group occurrences by port
-        ports = sorted({o.port_id for o in occurrences if o.port_id is not None})
+        # Group occurrences by port.
+        # Prefer ILP-like source->dest ordering when metadata is available.
+        ports = {o.port_id for o in occurrences if o.port_id is not None}
+        if hasattr(self, "port_sort_key"):
+            ports = sorted(ports, key=lambda p: self.port_sort_key.get(p, (str(p), "")))
+        elif hasattr(self, "port_id_to_name"):
+            ports = sorted(ports, key=lambda p: self.port_id_to_name.get(p, str(p)))
+        else:
+            ports = sorted(ports)
     
         port_occ = {p: [] for p in ports}
         for o in occurrences:
@@ -571,11 +604,14 @@ class Schedule(list):
                             str(s.stream_id),
                             ha="center",
                             va="center",
-                            color="white",
+                            color="black",
                             fontsize=9
                         )
 
-                ax.set_ylabel(f"Port {port}")
+                if hasattr(self, "port_id_to_name"):
+                    ax.set_ylabel(self.port_id_to_name.get(port, f"Port {port}"))
+                else:
+                    ax.set_ylabel(f"Port {port}")
                 ax.set_yticks([])
             else:
                 # Wrap to cycle-local x and stack bars on the cycle row where they occur.
@@ -618,13 +654,16 @@ class Schedule(list):
                                 str(s.stream_id),
                                 ha="center",
                                 va="center",
-                                color="white",
+                                color="black",
                                 fontsize=8
                             )
 
                         seg_start = part_end
 
-                ax.set_ylabel(f"Port {port}")
+                if hasattr(self, "port_id_to_name"):
+                    ax.set_ylabel(self.port_id_to_name.get(port, f"Port {port}"))
+                else:
+                    ax.set_ylabel(f"Port {port}")
                 ax.set_yticks(list(range(cycles)))
                 ax.set_yticklabels([f"C{c+1}" for c in range(cycles)])
 
