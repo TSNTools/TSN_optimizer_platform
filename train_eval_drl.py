@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 from typing import Dict, List, Sequence, Tuple
 
@@ -378,32 +377,81 @@ def plot_moving_average_metric_per_instance_and_avg(
     plt.close(fig)
 
 
-def plot_attempted_violation_category_means(df: pd.DataFrame, phase: str, out_path: Path) -> None:
-    """Mean attempted violation counts per category over steps."""
-    work = df[df["phase"] == phase].copy()
-    if work.empty or "attempted_violation_dict" not in work.columns:
+def plot_train_online_reward_trend_with_envelope(
+    df: pd.DataFrame,
+    out_path: Path,
+    window: int,
+) -> None:
+    """Primary training plot: rolling mean with min/max envelope by global_step."""
+    if df.empty:
         return
 
-    rows = [v for v in work["attempted_violation_dict"].tolist() if isinstance(v, dict) and v]
-    if not rows:
+    work = df[df["phase"] == "train_online"].copy()
+    if work.empty or "reward" not in work.columns or "global_step" not in work.columns:
         return
 
-    categories = sorted({k for d in rows for k in d.keys()})
-    if not categories:
+    work = work.dropna(subset=["instance", "reward", "global_step"])
+    if work.empty:
         return
 
-    means = [float(np.mean([float(d.get(cat, 0.0)) for d in rows])) for cat in categories]
+    work["global_step"] = work["global_step"].astype(int)
+    work = work.sort_values(["instance", "global_step"])
 
-    x = np.arange(len(categories))
-    plt.figure(figsize=(max(10, 1.2 * len(categories)), 4.8))
-    plt.bar(x, means)
-    plt.xticks(x, categories, rotation=25, ha="right")
-    plt.ylabel("Mean Attempted Violation Count")
-    # Attempted categories reflect what the policy proposed pre-rollback.
-    plt.title(f"Attempted Violation Categories ({phase})")
-    plt.tight_layout()
-    plt.savefig(out_path)
-    plt.close()
+    w = max(1, int(window))
+    work["reward_roll_mean"] = work.groupby("instance")["reward"].transform(
+        lambda s: s.rolling(window=w, min_periods=1).mean()
+    )
+    work["reward_roll_min"] = work.groupby("instance")["reward"].transform(
+        lambda s: s.rolling(window=w, min_periods=1).min()
+    )
+    work["reward_roll_max"] = work.groupby("instance")["reward"].transform(
+        lambda s: s.rolling(window=w, min_periods=1).max()
+    )
+
+    instances = sorted(work["instance"].dropna().unique().tolist())
+    if not instances:
+        return
+
+    fig, axes = plt.subplots(len(instances) + 1, 1, figsize=(10, 2.8 * (len(instances) + 1)), sharex=False)
+    if len(instances) + 1 == 1:
+        axes = [axes]
+
+    for i, instance_name in enumerate(instances):
+        grp = work[work["instance"] == instance_name]
+        x = grp["global_step"].to_numpy(dtype=int)
+        y_mean = grp["reward_roll_mean"].to_numpy(dtype=float)
+        y_min = grp["reward_roll_min"].to_numpy(dtype=float)
+        y_max = grp["reward_roll_max"].to_numpy(dtype=float)
+
+        axes[i].plot(x, y_mean, linewidth=1.8, label="rolling mean")
+        axes[i].fill_between(x, y_min, y_max, alpha=0.22, label="rolling min/max")
+        axes[i].set_title(str(instance_name))
+        axes[i].set_xlabel("Global Step")
+        axes[i].set_ylabel("Reward")
+        axes[i].legend(loc="best")
+
+    by_step = work.groupby("global_step")["reward"].mean().sort_index()
+    overall = pd.DataFrame({"reward": by_step})
+    overall["reward_roll_mean"] = overall["reward"].rolling(window=w, min_periods=1).mean()
+    overall["reward_roll_min"] = overall["reward"].rolling(window=w, min_periods=1).min()
+    overall["reward_roll_max"] = overall["reward"].rolling(window=w, min_periods=1).max()
+
+    x_o = overall.index.to_numpy(dtype=int)
+    y_o_mean = overall["reward_roll_mean"].to_numpy(dtype=float)
+    y_o_min = overall["reward_roll_min"].to_numpy(dtype=float)
+    y_o_max = overall["reward_roll_max"].to_numpy(dtype=float)
+
+    axes[-1].plot(x_o, y_o_mean, color="black", linewidth=2.0, label="overall rolling mean")
+    axes[-1].fill_between(x_o, y_o_min, y_o_max, color="gray", alpha=0.25, label="overall rolling min/max")
+    axes[-1].set_title("Overall Average Across Instances")
+    axes[-1].set_xlabel("Global Step")
+    axes[-1].set_ylabel("Reward")
+    axes[-1].legend(loc="best")
+
+    fig.suptitle("Train Online Reward Trend (Rolling Mean + Min/Max Envelope)")
+    fig.tight_layout()
+    fig.savefig(out_path)
+    plt.close(fig)
 
 
 def reward_sign_summary(df: pd.DataFrame, phase: str) -> Dict[str, float]:
@@ -520,40 +568,6 @@ def create_numbered_run_dir(base_out_dir: Path) -> Path:
     return run_dir
 
 
-def plot_violation_categories_before_after(df: pd.DataFrame, phase: str, out_path: Path) -> None:
-    work = df[df["phase"] == phase].copy()
-    if work.empty:
-        return
-
-    before_cols = sorted([c for c in work.columns if c.startswith("before_violation_")])
-    after_cols = sorted([c for c in work.columns if c.startswith("after_violation_")])
-    if not before_cols or not after_cols:
-        return
-
-    categories = [c[len("before_violation_") :] for c in before_cols]
-    before_vals = []
-    after_vals = []
-    for cat in categories:
-        b_col = f"before_violation_{cat}"
-        a_col = f"after_violation_{cat}"
-        before_vals.append(float(work[b_col].mean()) if b_col in work.columns else 0.0)
-        after_vals.append(float(work[a_col].mean()) if a_col in work.columns else 0.0)
-
-    x = np.arange(len(categories))
-    width = 0.38
-
-    plt.figure(figsize=(max(10, 1.2 * len(categories)), 4.8))
-    plt.bar(x - width / 2, before_vals, width=width, label="before")
-    plt.bar(x + width / 2, after_vals, width=width, label="after")
-    plt.xticks(x, categories, rotation=25, ha="right")
-    plt.ylabel("Violation Count")
-    plt.title(f"Scheduling Violations Per Category ({phase})")
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(out_path)
-    plt.close()
-
-
 def _instance_shape(problem: TSNScheduling, instance_path: str) -> Tuple[int, int]:
     usecase = problem.import_scheduling_usecase(instance_path)
     with problem.use_instance(usecase):
@@ -563,19 +577,19 @@ def _instance_shape(problem: TSNScheduling, instance_path: str) -> Tuple[int, in
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train on instances and evaluate with V1.1 candidate-index TSN defragmentation env.")
     parser.add_argument("--config", default="uc_config.cfg")
-    parser.add_argument("--train-instances", default="instance1.json")
-    parser.add_argument("--test-instance", default="instance1.json")
-    parser.add_argument("--timesteps-per-train-instance", type=int, default=10_000)
+    parser.add_argument("--train-instances", default="instance2.json")
+    parser.add_argument("--test-instance", default="instance2.json")
+    parser.add_argument("--timesteps-per-train-instance", type=int, default=10000)
     parser.add_argument("--eval-steps", type=int, default=500)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--frame-sizes", default="10,64,2500")
+    parser.add_argument("--frame-sizes", default="10,64,1500")
     parser.add_argument("--mix-percentages", default="0,0,100")
     parser.add_argument("--incoming-stream-count", type=int, default=500)
-    parser.add_argument("--max-steps", type=int, default=60)
-    parser.add_argument("--max-candidates", type=int, default=10)
+    parser.add_argument("--max-steps", type=int, default=100)
+    parser.add_argument("--max-candidates", type=int, default=30)
     parser.add_argument(
         "--reward-mode",
-        default="weighted_fragmentation",
+        default="hole_improvement_binary",
         choices=["weighted_fragmentation", "gap_improvement_binary", "hole_improvement_binary"],
     )
     parser.add_argument("--w-gap", type=float, default=1.0)
@@ -654,7 +668,8 @@ def main() -> None:
             )
 
     train_trace: List[Dict[str, float]] = []
-    eval_trace: List[Dict[str, float]] = []
+    train_rollout_trace: List[Dict[str, float]] = []
+    eval_rollout_trace: List[Dict[str, float]] = []
     metric_rows: List[Dict[str, float]] = []
 
     model: PPO | None = None
@@ -672,7 +687,7 @@ def main() -> None:
         else:
             model.set_env(vec_env)
 
-        cb = RewardTraceCallback(train_trace, phase="train", instance_name=train_path)
+        cb = RewardTraceCallback(train_trace, phase="train_online", instance_name=train_path)
         model.learn(total_timesteps=int(args.timesteps_per_train_instance), reset_num_timesteps=False, callback=cb)
 
         train_metric_row, train_eval_rewards = rollout_and_collect(
@@ -682,11 +697,11 @@ def main() -> None:
             frame_sizes=frame_sizes,
             mix_percentages=mix_percentages,
             incoming_stream_count=int(incoming_stream_count),
-            phase="train",
+            phase="train_rollout",
             instance_name=train_path,
         )
         metric_rows.append(train_metric_row)
-        train_trace.extend(train_eval_rewards)
+        train_rollout_trace.extend(train_eval_rewards)
 
     if model is None:
         raise RuntimeError("Training did not start.")
@@ -708,234 +723,126 @@ def main() -> None:
         frame_sizes=frame_sizes,
         mix_percentages=mix_percentages,
         incoming_stream_count=int(incoming_stream_count),
-        phase="eval",
+        phase="eval_rollout",
         instance_name=test_instance,
     )
     metric_rows.append(eval_metric_row)
-    eval_trace.extend(eval_rewards)
+    eval_rollout_trace.extend(eval_rewards)
 
-    reward_df = pd.concat([pd.DataFrame(train_trace), pd.DataFrame(eval_trace)], ignore_index=True)
+    train_online_df = pd.DataFrame(train_trace)
+    rollout_df = pd.concat([pd.DataFrame(train_rollout_trace), pd.DataFrame(eval_rollout_trace)], ignore_index=True)
     metrics_df = pd.DataFrame(metric_rows)
 
     reward_csv = out_dir / "drl_reward_trace.csv"
+    rollout_reward_csv = out_dir / "drl_rollout_trace_debug.csv"
     metrics_csv = out_dir / "drl_metrics_summary.csv"
-    train_reward_png = out_dir / "drl_train_reward_over_steps.png"
-    train_reward_ma_png = out_dir / "drl_train_reward_ma_over_steps.png"
-    train_final_viol_png = out_dir / "drl_train_final_violations_over_steps.png"
-    train_attempted_viol_png = out_dir / "drl_train_attempted_violations_over_steps.png"
-    train_rollback_png = out_dir / "drl_train_rollback_over_steps.png"
+    train_online_reward_trend_envelope_png = out_dir / "drl_train_online_reward_trend_envelope.png"
+    debug_train_online_reward_raw_png = out_dir / "debug_train_online_reward_raw.png"
     train_delta_gap_png = out_dir / "drl_train_delta_gap_over_steps.png"
     train_delta_hole_png = out_dir / "drl_train_delta_hole_over_steps.png"
     train_admission_png = out_dir / "drl_train_admission_over_steps.png"
-    eval_reward_png = out_dir / "drl_eval_reward_over_steps.png"
-    eval_reward_ma_png = out_dir / "drl_eval_reward_ma_over_steps.png"
-    eval_final_viol_png = out_dir / "drl_eval_final_violations_over_steps.png"
-    eval_attempted_viol_png = out_dir / "drl_eval_attempted_violations_over_steps.png"
-    eval_rollback_png = out_dir / "drl_eval_rollback_over_steps.png"
     eval_delta_gap_png = out_dir / "drl_eval_delta_gap_over_steps.png"
     eval_delta_hole_png = out_dir / "drl_eval_delta_hole_over_steps.png"
     eval_admission_png = out_dir / "drl_eval_admission_over_steps.png"
-    train_violation_category_png = out_dir / "drl_train_violation_categories_before_after.png"
-    eval_violation_category_png = out_dir / "drl_eval_violation_categories_before_after.png"
-    train_attempted_violation_category_png = out_dir / "drl_train_attempted_violation_categories.png"
-    eval_attempted_violation_category_png = out_dir / "drl_eval_attempted_violation_categories.png"
-    reward_sign_summary_csv = out_dir / "drl_reward_sign_summary.csv"
-    train_reward_sign_png = out_dir / "drl_train_reward_sign_summary.png"
-    eval_reward_sign_png = out_dir / "drl_eval_reward_sign_summary.png"
+    reward_sign_summary_csv = out_dir / "drl_train_online_reward_sign_summary.csv"
+    train_reward_sign_png = out_dir / "drl_train_online_reward_sign_summary.png"
     metric_png = out_dir / "drl_metric_before_after.png"
     model_path = out_dir / "ppo_tsn_defrag_model.zip"
 
-    reward_df.to_csv(reward_csv, index=False)
+    train_online_df.to_csv(reward_csv, index=False)
+    rollout_df.to_csv(rollout_reward_csv, index=False)
     metrics_df.to_csv(metrics_csv, index=False)
 
-    plot_metric_per_instance_and_avg(
-        reward_df,
-        phase="train",
-        metric_col="reward",
-        y_label="Reward",
-        title="Train Reward Over Steps (Per Instance + Average)",
-        out_path=train_reward_png,
-    )
-    plot_moving_average_metric_per_instance_and_avg(
-        reward_df,
-        phase="train",
-        metric_col="reward",
-        y_label="Reward Moving Average",
-        title="Train Reward Moving Average Over Steps (Per Instance + Average)",
-        out_path=train_reward_ma_png,
+    # Primary training visualization: online callback reward only.
+    plot_train_online_reward_trend_with_envelope(
+        train_online_df,
+        out_path=train_online_reward_trend_envelope_png,
         window=int(args.reward_ma_window),
     )
+
+    # Optional debug-only raw online reward plot.
     plot_metric_per_instance_and_avg(
-        reward_df,
-        phase="train",
-        metric_col="final_violation_sum",
-        y_label="Final/Post-Rollback Violation Sum",
-        title="Train Final/Post-Rollback Violations Over Steps (Per Instance + Average)",
-        out_path=train_final_viol_png,
+        train_online_df,
+        phase="train_online",
+        metric_col="reward",
+        y_label="Reward",
+        title="Debug Train Online Reward Over Steps (Per Instance + Average)",
+        out_path=debug_train_online_reward_raw_png,
     )
+
     plot_metric_per_instance_and_avg(
-        reward_df,
-        phase="train",
-        metric_col="attempted_violation_sum",
-        y_label="Attempted Violation Sum",
-        title="Train Attempted Violations Over Steps (Per Instance + Average)",
-        out_path=train_attempted_viol_png,
-    )
-    plot_metric_per_instance_and_avg(
-        reward_df,
-        phase="train",
-        metric_col="rollback_applied",
-        y_label="Rollback Applied (0/1)",
-        title="Train Rollback Events Over Steps (Per Instance + Average)",
-        out_path=train_rollback_png,
-    )
-    plot_metric_per_instance_and_avg(
-        reward_df,
-        phase="train",
+        rollout_df,
+        phase="train_rollout",
         metric_col="delta_gap",
         y_label="Delta Gap",
         title="Train Delta Gap Over Steps (Per Instance + Average)",
         out_path=train_delta_gap_png,
     )
     plot_metric_per_instance_and_avg(
-        reward_df,
-        phase="train",
+        rollout_df,
+        phase="train_rollout",
         metric_col="delta_hole",
         y_label="Delta Hole",
         title="Train Delta Hole Over Steps (Per Instance + Average)",
         out_path=train_delta_hole_png,
     )
     plot_metric_per_instance_and_avg(
-        reward_df,
-        phase="train",
+        rollout_df,
+        phase="train_rollout",
         metric_col="admission_rate",
         y_label="Admission Rate",
         title="Train Admission Rate Over Steps (Per Instance + Average)",
         out_path=train_admission_png,
     )
+
     plot_metric_per_instance_and_avg(
-        reward_df,
-        phase="eval",
-        metric_col="reward",
-        y_label="Reward",
-        title="Eval Reward Over Steps (Per Instance + Average)",
-        out_path=eval_reward_png,
-    )
-    plot_moving_average_metric_per_instance_and_avg(
-        reward_df,
-        phase="eval",
-        metric_col="reward",
-        y_label="Reward Moving Average",
-        title="Eval Reward Moving Average Over Steps (Per Instance + Average)",
-        out_path=eval_reward_ma_png,
-        window=int(args.reward_ma_window),
-    )
-    plot_metric_per_instance_and_avg(
-        reward_df,
-        phase="eval",
-        metric_col="final_violation_sum",
-        y_label="Final/Post-Rollback Violation Sum",
-        title="Eval Final/Post-Rollback Violations Over Steps (Per Instance + Average)",
-        out_path=eval_final_viol_png,
-    )
-    plot_metric_per_instance_and_avg(
-        reward_df,
-        phase="eval",
-        metric_col="attempted_violation_sum",
-        y_label="Attempted Violation Sum",
-        title="Eval Attempted Violations Over Steps (Per Instance + Average)",
-        out_path=eval_attempted_viol_png,
-    )
-    plot_metric_per_instance_and_avg(
-        reward_df,
-        phase="eval",
-        metric_col="rollback_applied",
-        y_label="Rollback Applied (0/1)",
-        title="Eval Rollback Events Over Steps (Per Instance + Average)",
-        out_path=eval_rollback_png,
-    )
-    plot_metric_per_instance_and_avg(
-        reward_df,
-        phase="eval",
+        rollout_df,
+        phase="eval_rollout",
         metric_col="delta_gap",
         y_label="Delta Gap",
         title="Eval Delta Gap Over Steps (Per Instance + Average)",
         out_path=eval_delta_gap_png,
     )
     plot_metric_per_instance_and_avg(
-        reward_df,
-        phase="eval",
+        rollout_df,
+        phase="eval_rollout",
         metric_col="delta_hole",
         y_label="Delta Hole",
         title="Eval Delta Hole Over Steps (Per Instance + Average)",
         out_path=eval_delta_hole_png,
     )
     plot_metric_per_instance_and_avg(
-        reward_df,
-        phase="eval",
+        rollout_df,
+        phase="eval_rollout",
         metric_col="admission_rate",
         y_label="Admission Rate",
         title="Eval Admission Rate Over Steps (Per Instance + Average)",
         out_path=eval_admission_png,
     )
-    plot_violation_categories_before_after(
-        metrics_df,
-        phase="train",
-        out_path=train_violation_category_png,
-    )
-    plot_violation_categories_before_after(
-        metrics_df,
-        phase="eval",
-        out_path=eval_violation_category_png,
-    )
-    plot_attempted_violation_category_means(
-        reward_df,
-        phase="train",
-        out_path=train_attempted_violation_category_png,
-    )
-    plot_attempted_violation_category_means(
-        reward_df,
-        phase="eval",
-        out_path=eval_attempted_violation_category_png,
-    )
 
-    train_sign = reward_sign_summary(reward_df, phase="train")
-    eval_sign = reward_sign_summary(reward_df, phase="eval")
-    sign_df = pd.DataFrame([train_sign, eval_sign])
+    train_sign = reward_sign_summary(train_online_df, phase="train_online")
+    sign_df = pd.DataFrame([train_sign])
     sign_df.to_csv(reward_sign_summary_csv, index=False)
     plot_reward_sign_summary(train_sign, train_reward_sign_png)
-    plot_reward_sign_summary(eval_sign, eval_reward_sign_png)
 
     plot_metric_comparison(metrics_df, metric_png)
     model.save(model_path)
 
     print(f"Saved reward trace: {reward_csv}")
+    print(f"Saved rollout debug trace: {rollout_reward_csv}")
     print(f"Saved metrics summary: {metrics_csv}")
     print(f"Saved run directory: {out_dir}")
     print(f"Reward mode: {reward_mode}")
-    print(f"Saved train reward plot: {train_reward_png}")
-    print(f"Saved train reward moving-average plot: {train_reward_ma_png}")
-    print(f"Saved train final-violations plot: {train_final_viol_png}")
-    print(f"Saved train attempted-violations plot: {train_attempted_viol_png}")
-    print(f"Saved train rollback plot: {train_rollback_png}")
+    print(f"Saved train-online reward trend plot: {train_online_reward_trend_envelope_png}")
+    print(f"Saved debug train-online raw reward plot: {debug_train_online_reward_raw_png}")
     print(f"Saved train delta-gap plot: {train_delta_gap_png}")
     print(f"Saved train delta-hole plot: {train_delta_hole_png}")
     print(f"Saved train admission plot: {train_admission_png}")
-    print(f"Saved train attempted-violation-category plot: {train_attempted_violation_category_png}")
-    print(f"Saved eval reward plot: {eval_reward_png}")
-    print(f"Saved eval reward moving-average plot: {eval_reward_ma_png}")
-    print(f"Saved eval final-violations plot: {eval_final_viol_png}")
-    print(f"Saved eval attempted-violations plot: {eval_attempted_viol_png}")
-    print(f"Saved eval rollback plot: {eval_rollback_png}")
     print(f"Saved eval delta-gap plot: {eval_delta_gap_png}")
     print(f"Saved eval delta-hole plot: {eval_delta_hole_png}")
     print(f"Saved eval admission plot: {eval_admission_png}")
-    print(f"Saved eval attempted-violation-category plot: {eval_attempted_violation_category_png}")
-    print(f"Saved reward sign summary CSV: {reward_sign_summary_csv}")
-    print(f"Saved train reward-sign plot: {train_reward_sign_png}")
-    print(f"Saved eval reward-sign plot: {eval_reward_sign_png}")
-    print(f"Saved train violation-category plot: {train_violation_category_png}")
-    print(f"Saved eval violation-category plot: {eval_violation_category_png}")
+    print(f"Saved train-online reward sign summary CSV: {reward_sign_summary_csv}")
+    print(f"Saved train-online reward sign plot: {train_reward_sign_png}")
     print(f"Saved metric plot: {metric_png}")
     print(f"Saved model: {model_path}")
 
