@@ -594,7 +594,7 @@ class Schedule(list):
                         left=start_ticks,
                         height=0.8,
                         color=color,
-                        edgecolor="black"
+                        edgecolor="white"
                     )
 
                     if label and s.stream_id is not None:
