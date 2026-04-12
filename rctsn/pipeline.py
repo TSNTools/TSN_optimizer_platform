@@ -33,7 +33,7 @@ def parse_args():
     parser.add_argument('--streams', type=int, help='Number of streams to process',
                        default=None) # Changed default to None to distinguish from not set
     parser.add_argument('--batch-size', type=int, help='Batch size for processing',
-                       default=10)
+                       default=20)
     parser.add_argument('--time-limit', type=int, help='Time limit for solver in seconds',
                        default=60)
     parser.add_argument('--k-paths', type=int, help='Number of paths per stream',

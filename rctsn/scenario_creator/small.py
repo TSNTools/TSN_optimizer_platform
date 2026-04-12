@@ -22,19 +22,19 @@ if __name__ == "__main__":
     factory = NetworkGenerator(subnet_id="0")
 
     # Create a ring with 5 switches
-    ring_switches = factory.create_star(4)
+    ring_switches = factory.create_line(2)
     
     # Add wireless and wired devices to the network
     # - More wireless nodes with end devices
     factory.add_wireless_devices(wn_count=0, wed_per_wn=0)
     # - More wired devices to the switches
-    factory.add_wired_devices(devices_per_switch=3)
+    factory.add_wired_devices(devices_per_switch=1)
 
     # Define stream settings using dictionaries for better clarity
     # We explicitly specify the latency factors, gamma values, and jitter factors
     # NOTE: This small scenario is wired-only (no WN/WED devices).
     wed_to_wed_count = 0
-    ed_to_ed_count = 500
+    ed_to_ed_count = 10
     wed_to_ed_count = 0
 
     wed_wed_settings = {
@@ -47,9 +47,9 @@ if __name__ == "__main__":
     }
     
     ed_ed_settings = {
-        "packet_sizes": [32, 64, 128, 256, 512, 1024, 1420],
-        "periods": [500, 1000, 2000, 4000, 8000],
-        "latency_factors": [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+        "packet_sizes": [1024],
+        "periods": [180],
+        "latency_factors": [0.5, 0.8],
         "priorities": [1],
         "gammas": [1.0],
         "jitter_factors": [0]  # New parameter for jitter as a ratio of period

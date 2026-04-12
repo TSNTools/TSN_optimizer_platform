@@ -579,14 +579,14 @@ def main() -> None:
     parser.add_argument("--config", default="uc_config.cfg")
     parser.add_argument("--train-instances", default="instance2.json")
     parser.add_argument("--test-instance", default="instance2.json")
-    parser.add_argument("--timesteps-per-train-instance", type=int, default=10000)
+    parser.add_argument("--timesteps-per-train-instance", type=int, default=20000)
     parser.add_argument("--eval-steps", type=int, default=500)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--frame-sizes", default="10,64,1500")
     parser.add_argument("--mix-percentages", default="0,0,100")
     parser.add_argument("--incoming-stream-count", type=int, default=500)
     parser.add_argument("--max-steps", type=int, default=100)
-    parser.add_argument("--max-candidates", type=int, default=30)
+    parser.add_argument("--max-candidates", type=int, default=2)
     parser.add_argument(
         "--reward-mode",
         default="hole_improvement_binary",

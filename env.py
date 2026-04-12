@@ -23,6 +23,7 @@ from typing import Dict, List, Optional, Tuple
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
+from dataclasses import dataclass, field
 
 from evaluator import ScheduleEncodingType, TSNConstraintEvaluator
 from heuristic import fragmentation_metrics
@@ -32,6 +33,14 @@ from usecase_generator import Usecase
 
 BYTE_2_BIT = 8
 TOL = 1.1
+
+@dataclass
+class StreamMoveCandidate:
+    stream_id: int
+    per_port_start_ns: Dict[int, int] # key = actual port_id from path
+    score: float=0.0
+    source: str="generated"
+    debug: Dict[str, object] = field(default_factory=dict)
 
 
 class TSNDefragEnv(gym.Env):
@@ -208,48 +217,46 @@ class TSNDefragEnv(gym.Env):
             adj[1, i] = d
         return adj
 
-    def _place_stream(self, s_idx: int, first_offset_ns: float) -> None:
-        """Place one stream from first-hop offset and propagate downstream by hop delays."""
-        sinfo = self.stream_info[s_idx]
+    def _derive_path_offsets_from_first_start(self, s_idx:int, first_offset_ns: float) -> Dict[int, float]:
+        sinfo: self.stream_info[s_idx]
         path = sinfo["path"]
-        if not path:
-            return
-
-        for pid in path:
-            pidx = pid - 1
-            if pidx in self.port_schedules:
-                self.port_schedules[pidx] = Schedule(
-                    cycle_ns=self.cycle_ns,
-                    iterable=[s for s in self.port_schedules[pidx] if s.stream_id != s_idx],
-                )
-
         offsets: Dict[int, float] = {}
         cum_delay = 0.0
+
         for k, pid in enumerate(path):
             dur = float(sinfo["port_dur_ns"].get(pid, 0.0))
             max_start = max(0.0, float(self.cycle_ns) - dur)
             offset = max(0.0, min(max_start, float(first_offset_ns) + cum_delay))
             offsets[pid] = offset
-            if k < len(sinfo["hop_delays"]):
+            if k<len(sinfo["hop_delays"]):
                 cum_delay += float(sinfo["hop_delays"][k])
 
-        for pid, offset in offsets.items():
+        return offsets
+    
+    def _place_stream_with_offsets(self, s_idx: int, offsets: Dict[int, float]) -> None:
+        sinfo = self.stream_info[s_idx]
+        path = sinfo["path"]
+        if not path:
+            return
+        
+        for pid in path:
             pidx = pid - 1
-            if pidx not in self.port_schedules:
-                self.port_schedules[pidx] = Schedule(cycle_ns=self.cycle_ns)
+            if pidx in self.port_schedules:
+                self.port_schedules[pidx] = Schedule(
+                    cycle_ns = self.cycle_ns,
+                    iterable = [s for s in self.port_schedules[pidx] if s.stream_id != s_idx]
+                )
 
+        clipped_offsets: Dict[int, float] = {}
+        for pid in path:
             dur = float(sinfo["port_dur_ns"].get(pid, 0.0))
-            slot = Slot(
-                start_ns=int(round(offset)),
-                end_ns=int(round(offset + dur)),
-                period_ns=int(sinfo["interval_ns"]),
-                queue_id=pidx,
-                stream_id=s_idx,
-                port_id=pid,
-            )
-            self.port_schedules[pidx].append(slot)
+            raw = float(offsets.get(pid, 0.0))
+            max_start = max(0.0, float(self.cycle_ns) - dur)
+            clipped_offsets[pid] = max(0.0, min(max_start, raw))
 
-        self.stream_offsets[s_idx] = offsets
+    def _place_stream(self, s_idx: int, first_offset_ns: float) -> None:
+        offsets = self._derive_path_offsets_from_first_start(s_idx, first_offset_ns)
+        self._place_stream_with_offsets(s_idx, offsets)
 
     def _create_initial_schedule(self) -> None:
         """Simple default initialization: all streams start at 0 on first port."""
@@ -374,6 +381,16 @@ class TSNDefragEnv(gym.Env):
         occupied = self._first_port_occupied_intervals_excluding_stream(s_idx)
         return not self._overlaps_any(st, en, occupied)
 
+    def _build_full_path_candidate_from_first_start(self, s_idx: int, first_offset_ns: int) -> StreamMoveCandidate:
+        offsets = self._derive_path_offsets_from_first_start(s_idx, first_offset_ns)
+        return StreamMoveCandidate(
+            stream_id=int(s_idx),
+            per_port_start_ns={int(pid): int(round(st)) for pid, st in offsets.items()},
+            score=0.0,
+            source="first_hop_seed",
+            debug={"seed_first_offset_ns": int(first_offset_ns)},
+        )
+
     def _raw_stream_move_candidates(self, s_idx: int) -> List[int]:
         """Raw first-hop candidates from first-port occupancy and gap boundaries."""
         if s_idx < 0 or s_idx >= self.n_streams:
@@ -418,22 +435,18 @@ class TSNDefragEnv(gym.Env):
             candidates.append(int(current_start))
         return sorted(set(int(c) for c in candidates))
 
-    def _simulate_stream_move_compact(self, s_idx: int, first_offset_ns: int) -> np.ndarray:
-        """Simulate one stream move and return compact schedule, restoring state afterwards."""
+    def _simulate_stream_move_compact(self, cand: StreamMoveCandidate) -> np.ndarray:
         old_port_schedules = copy.deepcopy(self.port_schedules)
         old_stream_offsets = copy.deepcopy(self.stream_offsets)
         try:
-            self._place_stream(int(s_idx), float(int(first_offset_ns)))
+            self._place_stream_with_offsets(int(cand.stream_id), cand.per_port_start_ns)
             return self._current_compact().copy()
         finally:
             self.port_schedules = old_port_schedules
             self.stream_offsets = old_stream_offsets
 
-    def _candidate_is_fully_feasible(self, s_idx: int, first_offset_ns: int) -> bool:
-        """Validate candidate by evaluating full propagated schedule feasibility."""
-        # First-port-only checks are not enough: downstream hop propagation can create
-        # conflicts. Evaluate the full attempted compact schedule instead.
-        compact = self._simulate_stream_move_compact(s_idx, first_offset_ns)
+    def _candidate_is_fully_feasible(self, cand: StreamMoveCandidate) -> bool:
+        compact = self._simulate_stream_move_compact(cand)
         return bool(self._violation_sum(compact) == 0)
 
     def _stream_move_candidate_debug(self, s_idx: int) -> List[Dict[str, object]]:
@@ -441,55 +454,28 @@ class TSNDefragEnv(gym.Env):
         _, debug_records = self._compute_stream_candidates(s_idx, include_debug=True)
         return debug_records
 
-    def _compute_stream_candidates(
-        self, s_idx: int, include_debug: bool = False
-    ) -> Tuple[List[int], List[Dict[str, object]]]:
-        """Candidate pipeline with explicit full-schedule validation stage."""
+    def _compute_stream_candidates(self, s_idx: int, include_debug: bool = False):
         current_start = int(self._stream_current_first_start_ns(s_idx))
-        raw_candidates = self._raw_stream_move_candidates(s_idx)
+        raw_first_hop = self._raw_stream_move_candidates(s_idx)
 
-        considered = sorted(set(raw_candidates + [int(current_start)]))
-        final_candidates: List[int] = []
+        considered = sorted(set(raw_first_hop + [current_start]))
+        final_candidates: List[StreamMoveCandidate] = []
         debug_records: List[Dict[str, object]] = []
 
-        for cand in considered:
-            cand_i = int(cand)
-            is_current = bool(cand_i == int(current_start))
-            is_raw = bool(cand_i in raw_candidates)
-            passes_first = bool(self._candidate_passes_first_port_filter(s_idx, cand_i))
-            passes_full = bool(self._candidate_is_fully_feasible(s_idx, cand_i))
+        for first_st in considered:
+            cand = self._build_full_path_candidate_from_first_start(s_idx, int(first_st))
+            passes_first = bool(self._candidate_passes_first_port_filter(s_idx, int(first_st)))
+            passes_full = bool(self._candidate_is_fully_feasible(cand))
+            is_current = int(first_st) == int(current_start)
 
             included = False
             fallback_only = False
             if passes_full:
                 included = True
             elif is_current and self.force_current_start_candidate:
-                # Forcing current start can violate the "all candidates are safe" assumption,
-                # so this is explicitly marked as fallback-unsafe in debug metadata.
                 included = True
                 fallback_only = True
 
-            if included:
-                final_candidates.append(cand_i)
-
-            if include_debug or self.debug_candidate_validation:
-                debug_records.append(
-                    {
-                        "candidate_start_ns": int(cand_i),
-                        "is_current_start": bool(is_current),
-                        "is_raw_candidate": bool(is_raw),
-                        "passes_first_port_filter": bool(passes_first),
-                        "passes_full_evaluator": bool(passes_full),
-                        "included_in_final_candidates": bool(included),
-                        "included_only_by_fallback": bool(fallback_only),
-                    }
-                )
-
-        final_unique = sorted(set(final_candidates))
-        if len(final_unique) > self.max_candidates:
-            final_unique = final_unique[: self.max_candidates]
-
-        return final_unique, debug_records
 
     def _stream_move_candidates(self, s_idx: int) -> List[int]:
         """Final candidates exposed to agent after full-schedule validation."""
@@ -523,14 +509,18 @@ class TSNDefragEnv(gym.Env):
         self.current_stream_id = int(active[(idx + 1) % len(active)])
 
     def _candidate_obs_for_stream(self, s_idx: int) -> Tuple[np.ndarray, np.ndarray]:
-        """Fixed-size candidate offsets + validity mask for observation."""
-        offsets = np.zeros((self.max_candidates,), dtype=np.int64)
+        starts = np.zeros((self.max_candidates, self.n_ports), dtype=np.int64)
         mask = np.zeros((self.max_candidates,), dtype=np.int8)
         cands = self._stream_move_candidates(int(s_idx))
+
         for i, cand in enumerate(cands[: self.max_candidates]):
-            offsets[i] = int(cand)
+            for pid, st in cand.per_port_start_ns.items():
+                pidx = int(pid) - 1
+                if 0 <= pidx < self.n_ports:
+                    starts[i, pidx] = int(st) + 1
             mask[i] = 1
-        return offsets, mask
+        
+        return starts, mask
 
     def _first_active_stream_id(self) -> int:
         active = self._active_stream_ids()
@@ -611,14 +601,18 @@ class TSNDefragEnv(gym.Env):
 
     def _get_obs(self) -> Dict[str, np.ndarray]:
         stream_id = int(np.clip(self.current_stream_id, 0, max(0, self.n_streams - 1)))
-        cand_offsets, cand_mask = self._candidate_obs_for_stream(stream_id)
         return {
             "stream_placement": self._get_stream_placement(),
             "stream_features": self._get_stream_features(),
             "port_metrics": self._get_port_metrics(),
             "adjacency_matrix": self._adjacency.copy(),
-            "candidate_offsets": cand_offsets,
-            "candidate_mask": cand_mask,
+            "candidate_starts": spaces.Box(
+                low=0,
+                high=self.cycle_ns,
+                shape=(self.max_candidates, self.n_ports),
+                dtype=np.int64,
+            ),
+            "candidate_mask": spaces.Box(0, 1, (self.max_candidates,), np.int8),
             "current_stream_id": np.asarray([stream_id], dtype=np.int64),
         }
 
@@ -698,8 +692,7 @@ class TSNDefragEnv(gym.Env):
         """Apply one candidate index to current focus stream and return transition."""
         self.step_count += 1
 
-        # V1.1 design: action is only candidate_index. Focus stream comes from observation.
-        # This keeps action meaning fully grounded in observed candidate list.
+
         selected_candidate_index = int(np.asarray(action).item())
         chosen_stream = int(np.clip(self.current_stream_id, 0, max(0, self.n_streams - 1)))
 
@@ -715,29 +708,23 @@ class TSNDefragEnv(gym.Env):
         candidates, candidate_debug_records = self._compute_stream_candidates(chosen_stream, include_debug=True)
         valid_candidate_count = len(candidates)
 
-        selected_candidate_was_current_start = False
-        selected_candidate_was_fallback_unsafe = False
-        selected_candidate_passed_full_evaluator = False
+        selected_candidate = None
+        selected_first_offset = None
+        selected_candidate_path_offsets = None
 
         invalid_selection = selected_candidate_index < 0 or selected_candidate_index >= valid_candidate_count
-        selected_first_offset_ns: Optional[int] = None
-        applied_first_offset_ns = int(old_first_offset)
 
         move_attempted = False
         if not invalid_selection:
             move_attempted = True
-            selected_first_offset_ns = int(candidates[selected_candidate_index])
-            self._place_stream(chosen_stream, float(selected_first_offset_ns))
-            applied_first_offset_ns = self._stream_current_first_start_ns(chosen_stream)
+            selected_candidate = candidates[selected_candidate_index]
+            selected_candidate_path_offsets = dict(selected_candidate.per_port_start_ns)
 
-            selected_candidate_was_current_start = bool(
-                int(selected_first_offset_ns) == int(old_first_offset)
-            )
-            for rec in candidate_debug_records:
-                if int(rec["candidate_start_ns"]) == int(selected_first_offset_ns):
-                    selected_candidate_was_fallback_unsafe = bool(rec["included_only_by_fallback"])
-                    selected_candidate_passed_full_evaluator = bool(rec["passes_full_evaluator"])
-                    break
+            first_pid = self._stream_first_port(chosen_stream)
+            if first_pid is not None:
+                selected_first_offset_ns = int(selected_candidate.per_port_start_ns.get(first_pid, old_first_offset))
+
+            self._place_stream_with_offsets(chosen_stream, selected_candidate.per_port_start_ns)
 
         attempted_compact = self._current_compact()
         attempted_violation_sum = self._violation_sum(attempted_compact)
@@ -837,9 +824,6 @@ class TSNDefragEnv(gym.Env):
             "selected_candidate_index": int(selected_candidate_index),
             "selected_first_offset_ns": int(selected_first_offset_ns) if selected_first_offset_ns is not None else None,
             "applied_first_offset_ns": int(applied_first_offset_ns),
-            "selected_candidate_was_current_start": bool(selected_candidate_was_current_start),
-            "selected_candidate_was_fallback_unsafe": bool(selected_candidate_was_fallback_unsafe),
-            "selected_candidate_passed_full_evaluator": bool(selected_candidate_passed_full_evaluator),
             "step_count": int(self.step_count),
             "candidate_debug_records": candidate_debug_records,
             "attempted_violation_row_sums": attempted_violation_row_sums.astype(int).tolist(),
@@ -857,6 +841,7 @@ class TSNDefragEnv(gym.Env):
             "initial_violation_dict": dict(self.initial_violation_dict),
             "reward_mode": self.reward_mode,
             "reward_weights": dict(self.reward_weights),
+            "selected_candidate_path_offsets": selected_candidate_path_offsets or {},
         }
 
         return self._get_obs(), float(reward), terminated, truncated, info
