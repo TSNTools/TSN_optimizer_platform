@@ -615,7 +615,7 @@ class  UsecaseGenerator():
 # constants
 MBPS_2_BPNS = 0.001
 BYTE_2_BIT = 8
-TOL = 1.1  # tolerance is 0.1 of the frame length
+TOL = 1  # tolerance is 0 of the frame length
 
 class  Usecase():
     def __init__(self, configFile, index= None, topology=None, streams=None, schedule=None):

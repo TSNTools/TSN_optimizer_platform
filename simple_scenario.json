@@ -28,22 +28,6 @@
               ]
             },
             {
-              "start": 22000,
-              "duration": 13000,
-              "state": "CCCCCo",
-              "stream_sequence": [
-                7
-              ]
-            },
-            {
-              "start": 22000,
-              "duration": 13000,
-              "state": "CCCCCo",
-              "stream_sequence": [
-                7
-              ]
-            },
-            {
               "start": 35000,
               "duration": 13000,
               "state": "CCCCCo",
@@ -64,7 +48,7 @@
               "duration": 13000,
               "state": "CCCCCo",
               "stream_sequence": [
-                8
+                6
               ]
             },
             {
@@ -72,7 +56,7 @@
               "duration": 13000,
               "state": "CCCCCo",
               "stream_sequence": [
-                8
+                6
               ]
             },
             {
@@ -111,7 +95,7 @@
               "duration": 13000,
               "state": "CCCCCo",
               "stream_sequence": [
-                9
+                7
               ]
             },
             {
@@ -119,7 +103,7 @@
               "duration": 13000,
               "state": "CCCCCo",
               "stream_sequence": [
-                9
+                7
               ]
             },
             {
@@ -136,22 +120,6 @@
               "state": "CCCCCo",
               "stream_sequence": [
                 0
-              ]
-            },
-            {
-              "start": 26000,
-              "duration": 13000,
-              "state": "CCCCCo",
-              "stream_sequence": [
-                6
-              ]
-            },
-            {
-              "start": 26000,
-              "duration": 13000,
-              "state": "CCCCCo",
-              "stream_sequence": [
-                6
               ]
             },
             {
@@ -206,7 +174,7 @@
               "duration": 13000,
               "state": "CCCCCo",
               "stream_sequence": [
-                9
+                7
               ]
             },
             {
@@ -215,14 +183,6 @@
               "state": "CCCCCo",
               "stream_sequence": [
                 0
-              ]
-            },
-            {
-              "start": 52000,
-              "duration": 13000,
-              "state": "CCCCCo",
-              "stream_sequence": [
-                6
               ]
             },
             {
@@ -259,14 +219,6 @@
               ]
             },
             {
-              "start": 35000,
-              "duration": 13000,
-              "state": "CCCCCo",
-              "stream_sequence": [
-                7
-              ]
-            },
-            {
               "start": 48000,
               "duration": 13000,
               "state": "CCCCCo",
@@ -279,7 +231,7 @@
               "duration": 13000,
               "state": "CCCCCo",
               "stream_sequence": [
-                8
+                6
               ]
             },
             {
@@ -315,14 +267,6 @@
               ]
             },
             {
-              "start": 48000,
-              "duration": 13000,
-              "state": "CCCCCo",
-              "stream_sequence": [
-                7
-              ]
-            },
-            {
               "start": 61000,
               "duration": 13000,
               "state": "CCCCCo",
@@ -335,7 +279,7 @@
               "duration": 13000,
               "state": "CCCCCo",
               "stream_sequence": [
-                8
+                6
               ]
             },
             {
@@ -360,7 +304,7 @@
               "duration": 13000,
               "state": "CCCCCo",
               "stream_sequence": [
-                9
+                7
               ]
             },
             {
@@ -369,14 +313,6 @@
               "state": "CCCCCo",
               "stream_sequence": [
                 0
-              ]
-            },
-            {
-              "start": 39000,
-              "duration": 13000,
-              "state": "CCCCCo",
-              "stream_sequence": [
-                6
               ]
             },
             {
@@ -638,66 +574,6 @@
       "interval": 100000,
       "maxFramesPerInterval": 1,
       "maxFrameSize": 1024,
-      "maxLatency": 70000,
-      "tlkrPssblPlcmnt": [
-        "0-ED2"
-      ],
-      "lstnsrPssblPlcmnt": [
-        [
-          "0-ED1"
-        ]
-      ],
-      "earliest-transmit-offset": 0,
-      "latest-transmit-offset": 91808,
-      "jitter": 0,
-      "offset": 26000,
-      "accLatency": 0,
-      "pathLists": [
-        [
-          "0-ED2.Port1",
-          "0-SW2.P2",
-          "0-SW1.P1",
-          "0-ED1.Port1"
-        ]
-      ],
-      "originalStreamId": 6
-    },
-    {
-      "name": "stream-7",
-      "type": "isochronous",
-      "interval": 100000,
-      "maxFramesPerInterval": 1,
-      "maxFrameSize": 1024,
-      "maxLatency": 90000,
-      "tlkrPssblPlcmnt": [
-        "0-ED1"
-      ],
-      "lstnsrPssblPlcmnt": [
-        [
-          "0-ED2"
-        ]
-      ],
-      "earliest-transmit-offset": 0,
-      "latest-transmit-offset": 91808,
-      "jitter": 0,
-      "offset": 22000,
-      "accLatency": 0,
-      "pathLists": [
-        [
-          "0-ED1.Port1",
-          "0-SW1.P2",
-          "0-SW2.P1",
-          "0-ED2.Port1"
-        ]
-      ],
-      "originalStreamId": 7
-    },
-    {
-      "name": "stream-8",
-      "type": "isochronous",
-      "interval": 100000,
-      "maxFramesPerInterval": 1,
-      "maxFrameSize": 1024,
       "maxLatency": 90000,
       "tlkrPssblPlcmnt": [
         "0-ED1"
@@ -720,10 +596,10 @@
           "0-ED2.Port1"
         ]
       ],
-      "originalStreamId": 8
+      "originalStreamId": 6
     },
     {
-      "name": "stream-9",
+      "name": "stream-7",
       "type": "isochronous",
       "interval": 100000,
       "maxFramesPerInterval": 1,
@@ -750,7 +626,7 @@
           "0-ED1.Port1"
         ]
       ],
-      "originalStreamId": 9
+      "originalStreamId": 7
     }
   ],
   "index": null

@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 # constants
 BYTE_2_BIT = 8
 MBPS_2_BPNS = 0.001
-TOL = 1.1  # tolerance is 0.1 of the frame length
+TOL = 1  # tolerance is 0 of the frame length
 
 def require_instance(func):
     """Decorator: call self.no_instance_assigned() if no usecase is active."""

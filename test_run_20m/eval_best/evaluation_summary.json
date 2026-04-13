@@ -1,0 +1,120 @@
+{
+  "run_dir": "test_run_20m",
+  "model_path": "test_run_20m/best_model.zip",
+  "episodes": 1,
+  "config": "uc_config.cfg",
+  "instance": "simple_scenario.json",
+  "episode_results": [
+    {
+      "before": {
+        "violation_sum": 0,
+        "largest_hole_ns": 35000.0,
+        "total_useless_gaps": 0.0,
+        "total_gap_count": 15.0,
+        "mean_utilization": 0.52,
+        "violation_row_sums": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "after": {
+        "violation_sum": 0,
+        "largest_hole_ns": 36000.0,
+        "total_useless_gaps": 2.0,
+        "total_gap_count": 16.0,
+        "mean_utilization": 0.5083333333333333,
+        "violation_row_sums": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "episode_reward": -1503.96,
+      "steps": 24,
+      "invalid_moves": 3,
+      "reward_trace_first_20": [
+        -500.0,
+        -2.0,
+        0.0,
+        2.0,
+        -500.0,
+        0.0,
+        -2.0,
+        2.04,
+        -500.0,
+        -2.0,
+        0.0,
+        2.0,
+        0.0,
+        0.0,
+        0.0,
+        -2.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "largest_hole_trace_first_20": [
+        35000.0,
+        35000.0,
+        35000.0,
+        35000.0,
+        35000.0,
+        35000.0,
+        35000.0,
+        35000.0,
+        36000.0,
+        36000.0,
+        36000.0,
+        36000.0,
+        36000.0,
+        36000.0,
+        36000.0,
+        36000.0,
+        36000.0,
+        36000.0,
+        36000.0,
+        36000.0
+      ],
+      "useless_gap_trace_first_20": [
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "delta": {
+        "largest_hole_ns": 1000.0,
+        "total_useless_gaps": 2.0,
+        "total_gap_count": 1.0,
+        "mean_utilization": -0.011666666666666714,
+        "violation_sum": 0
+      }
+    }
+  ],
+  "mean_episode_reward": -1503.96,
+  "mean_invalid_moves": 3.0,
+  "mean_delta_largest_hole_ns": 1000.0,
+  "mean_delta_total_useless_gaps": 2.0,
+  "mean_delta_total_gap_count": 1.0
+}

@@ -520,37 +520,44 @@ class TSNConstraintEvaluator:
 
     def _per_stream_macrocycle_overlap_violations(self, chromosome):
         """
-        Detect periodic window overlaps over the macro-cycle.
-        Implements the periodic-interval collision test: 
-            (phase1 - phase2) mod gcd(interval1, interval2) < window1 + window2; where phase = start % interval
-        chromosome[p,s] = start time (0 = inactive)
-        """
-    
-        active = chromosome > 0  # (P,S)
+        Detect window overlaps.
 
-        # --- normalize start times into stream phase
-        phase = chromosome % self.stream_intervals[None, :]
-    
-        # --- pairwise start-time differences (P,S,S) without abs
-        diff = phase[:, :, None] - phase[:, None, :]
-    
-        # --- periodic phase difference using precomputed gcd
-        delta = np.mod(diff, self.streams_pairwise_gcl)
-    
-        # --- overlap condition
-        overlap = delta < self.stream_pairwise_windowSum
-    
-        # remove self comparisons
-        overlap &= self.pair_mask
-    
-        # require both streams active on same port
+        Logic:
+        - same-period streams: check direct same-cycle interval overlap
+        - different-period streams: check periodic overlap with gcd logic
+        """
+        active = chromosome > 0  # (P,S)
+        starts = chromosome.astype(float)
+        ends = starts + self.windLengths
+
         both_active = active[:, :, None] & active[:, None, :]
+        pair_mask = self.pair_mask
+
+        same_period = self.stream_intervals[:, None] == self.stream_intervals[None, :]
+        diff_period = ~same_period
+
+        # ----- same-period direct overlap -----
+        # [s1,e1) overlaps [s2,e2) iff s1 < e2 and e1 > s2
+        s1 = starts[:, :, None]
+        e1 = ends[:, :, None]
+        s2 = starts[:, None, :]
+        e2 = ends[:, None, :]
+        same_period_overlap = (s1 < e2) & (e1 > s2)
+
+        # ----- different-period periodic overlap -----
+        phase = chromosome % self.stream_intervals[None, :]
+        diff = phase[:, :, None] - phase[:, None, :]
+        delta = np.mod(diff, self.streams_pairwise_gcl)
+        diff_period_overlap = delta < self.stream_pairwise_windowSum
+
+        overlap = np.zeros_like(diff_period_overlap, dtype=bool)
+        overlap |= same_period_overlap & same_period[None, :, :]
+        overlap |= diff_period_overlap & diff_period[None, :, :]
+
         overlap &= both_active
-    
-        # --- count violations per stream
-        # (sum over ports and partner streams)
+        overlap &= pair_mask
+
         v = overlap.sum(axis=(0, 2))
-    
         return v[np.newaxis, :]
         
     def _per_stream_window_sequence_violations(self, chromosome):
