@@ -75,6 +75,8 @@ def make_env(args):
         useless_gap_weight=args.useless_gap_weight,
         max_steps=args.max_steps,
         init_from_usecase_schedule=not args.no_usecase_schedule,
+        reset_mode=args.reset_mode,
+        freeze_reset_after_episode=args.freeze_reset_after_episode,
     )
 
     env = EpisodeStatsWrapper(env)
@@ -99,7 +101,10 @@ def main():
     parser.add_argument("--useless-gap-threshold-bytes", type=int, default=1024)
     parser.add_argument("--invalid-penalty", type=float, default=10000.0)
     parser.add_argument("--largest-hole-weight", type=float, default=1.0)
+    parser.add_argument("--acceptance-weight", type=float, default=1.0)
     parser.add_argument("--useless-gap-weight", type=float, default=1.0)
+    parser.add_argument("--expected-incoming-bytes", type=int, default=1024)
+
     parser.add_argument("--max-steps", type=int, default=2_000_000)
     parser.add_argument("--learning-rate", type=float, default=1e-4)
     parser.add_argument("--buffer-size", type=int, default=100_000)
@@ -113,6 +118,8 @@ def main():
     parser.add_argument("--exploration-final-eps", type=float, default=0.05)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--no-usecase-schedule", action="store_true")
+    parser.add_argument("--reset-mode", choices=["always", "never", "freeze_after"], default="never")
+    parser.add_argument("--freeze-reset-after-episode", type=int, default=100000)
     args = parser.parse_args()
 
     os.makedirs(args.out_dir, exist_ok=True)

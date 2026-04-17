@@ -1,0 +1,633 @@
+{
+  "nodes": [
+    {
+      "type": "host",
+      "name": "0-ED1",
+      "ports": {
+        "Port1": {
+          "name": "Port1",
+          "speed": 1000,
+          "queueCount": 6,
+          "basetime": 0,
+          "scheduleCycle": 100000,
+          "schedule": [
+            {
+              "start": 0,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                4
+              ]
+            },
+            {
+              "start": 0,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                4
+              ]
+            },
+            {
+              "start": 20000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                5
+              ]
+            },
+            {
+              "start": 20000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                5
+              ]
+            },
+            {
+              "start": 40000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                6
+              ]
+            },
+            {
+              "start": 40000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                6
+              ]
+            },
+            {
+              "start": 61000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                1
+              ]
+            },
+            {
+              "start": 61000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                1
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "host",
+      "name": "0-ED2",
+      "ports": {
+        "Port1": {
+          "name": "Port1",
+          "speed": 1000,
+          "queueCount": 6,
+          "basetime": 0,
+          "scheduleCycle": 100000,
+          "schedule": [
+            {
+              "start": 0,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                7
+              ]
+            },
+            {
+              "start": 0,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                7
+              ]
+            },
+            {
+              "start": 20000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                0
+              ]
+            },
+            {
+              "start": 20000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                0
+              ]
+            },
+            {
+              "start": 40000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                3
+              ]
+            },
+            {
+              "start": 40000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                3
+              ]
+            },
+            {
+              "start": 61000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                2
+              ]
+            },
+            {
+              "start": 61000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                2
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "switch",
+      "name": "0-SW1",
+      "ports": {
+        "P1": {
+          "name": "P1",
+          "speed": 1000,
+          "queueCount": 6,
+          "basetime": 0,
+          "scheduleCycle": 100000,
+          "schedule": [
+            {
+              "start": 26000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                7
+              ]
+            },
+            {
+              "start": 46000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                0
+              ]
+            },
+            {
+              "start": 66000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                3
+              ]
+            },
+            {
+              "start": 87000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                2
+              ]
+            }
+          ]
+        },
+        "P2": {
+          "name": "P2",
+          "speed": 1000,
+          "queueCount": 6,
+          "basetime": 0,
+          "scheduleCycle": 100000,
+          "schedule": [
+            {
+              "start": 13000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                4
+              ]
+            },
+            {
+              "start": 33000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                5
+              ]
+            },
+            {
+              "start": 53000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                6
+              ]
+            },
+            {
+              "start": 74000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                1
+              ]
+            }
+          ]
+        }
+      },
+      "procDelay": 2000
+    },
+    {
+      "type": "switch",
+      "name": "0-SW2",
+      "ports": {
+        "P1": {
+          "name": "P1",
+          "speed": 1000,
+          "queueCount": 6,
+          "basetime": 0,
+          "scheduleCycle": 100000,
+          "schedule": [
+            {
+              "start": 26000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                4
+              ]
+            },
+            {
+              "start": 46000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                5
+              ]
+            },
+            {
+              "start": 66000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                6
+              ]
+            },
+            {
+              "start": 87000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                1
+              ]
+            }
+          ]
+        },
+        "P2": {
+          "name": "P2",
+          "speed": 1000,
+          "queueCount": 6,
+          "basetime": 0,
+          "scheduleCycle": 100000,
+          "schedule": [
+            {
+              "start": 13000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                7
+              ]
+            },
+            {
+              "start": 33000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                0
+              ]
+            },
+            {
+              "start": 53000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                3
+              ]
+            },
+            {
+              "start": 74000,
+              "duration": 13000,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                2
+              ]
+            }
+          ]
+        }
+      },
+      "procDelay": 2000
+    }
+  ],
+  "links": [
+    {
+      "sourceNode": "0-SW1",
+      "sourcePort": "0-SW1.P2",
+      "destNode": "0-SW2",
+      "destPort": "0-SW2.P2",
+      "propDelay": 2000,
+      "linkBw": 1000
+    },
+    {
+      "sourceNode": "0-SW1",
+      "sourcePort": "0-SW1.P1",
+      "destNode": "0-ED1",
+      "destPort": "0-ED1.Port1",
+      "propDelay": 2000,
+      "linkBw": 1000
+    },
+    {
+      "sourceNode": "0-SW2",
+      "sourcePort": "0-SW2.P2",
+      "destNode": "0-SW1",
+      "destPort": "0-SW1.P2",
+      "propDelay": 2000,
+      "linkBw": 1000
+    },
+    {
+      "sourceNode": "0-SW2",
+      "sourcePort": "0-SW2.P1",
+      "destNode": "0-ED2",
+      "destPort": "0-ED2.Port1",
+      "propDelay": 2000,
+      "linkBw": 1000
+    },
+    {
+      "sourceNode": "0-ED1",
+      "sourcePort": "0-ED1.Port1",
+      "destNode": "0-SW1",
+      "destPort": "0-SW1.P1",
+      "propDelay": 2000,
+      "linkBw": 1000
+    },
+    {
+      "sourceNode": "0-ED2",
+      "sourcePort": "0-ED2.Port1",
+      "destNode": "0-SW2",
+      "destPort": "0-SW2.P1",
+      "propDelay": 2000,
+      "linkBw": 1000
+    }
+  ],
+  "streams": [
+    {
+      "name": "stream-0",
+      "type": "isochronous",
+      "interval": 100000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 100000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 91808,
+      "jitter": 0,
+      "offset": 13000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 0
+    },
+    {
+      "name": "stream-1",
+      "type": "isochronous",
+      "interval": 100000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 100000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 91808,
+      "jitter": 0,
+      "offset": 61000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 1
+    },
+    {
+      "name": "stream-2",
+      "type": "isochronous",
+      "interval": 100000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 100000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 91808,
+      "jitter": 0,
+      "offset": 52000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 2
+    },
+    {
+      "name": "stream-3",
+      "type": "isochronous",
+      "interval": 100000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 90000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 91808,
+      "jitter": 0,
+      "offset": 39000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 3
+    },
+    {
+      "name": "stream-4",
+      "type": "isochronous",
+      "interval": 100000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 50000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 91808,
+      "jitter": 0,
+      "offset": 0,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 4
+    },
+    {
+      "name": "stream-5",
+      "type": "isochronous",
+      "interval": 100000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 80000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 91808,
+      "jitter": 0,
+      "offset": 35000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 5
+    },
+    {
+      "name": "stream-6",
+      "type": "isochronous",
+      "interval": 100000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 90000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 91808,
+      "jitter": 0,
+      "offset": 48000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 6
+    },
+    {
+      "name": "stream-7",
+      "type": "isochronous",
+      "interval": 100000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 50000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 91808,
+      "jitter": 0,
+      "offset": 0,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 7
+    }
+  ],
+  "index": null
+}

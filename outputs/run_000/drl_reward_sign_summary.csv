@@ -1,3 +1,0 @@
-phase,n,positive_fraction,zero_fraction,negative_fraction
-train,10740,0.20502793296089386,0.14981378026070763,0.6451582867783985
-eval,500,0.288,0.228,0.484

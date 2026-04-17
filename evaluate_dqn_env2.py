@@ -27,6 +27,7 @@ def build_env(config: str, instance_path: str, run_args: Dict[str, Any]) -> TSND
         useless_gap_weight=float(run_args.get("useless_gap_weight", 1.0)),
         max_steps=int(run_args.get("max_steps", 100)),
         init_from_usecase_schedule=not bool(run_args.get("no_usecase_schedule", False)),
+        expected_incoming_bytes=int(run_args.get("expected_incoming_bytes", 1024)),
     )
     return env
 
@@ -44,6 +45,7 @@ def schedule_metrics(env: TSNDefragStepEnv) -> Dict[str, Any]:
         "total_gap_count": float(g["total_gap_count"]),
         "mean_utilization": float(g["mean_utilization"]),
         "violation_row_sums": row_sums,
+        "acceptance_count": float(g["acceptance_count"]),
     }
 
 
@@ -64,6 +66,7 @@ def rollout_episode(model: DQN, env: TSNDefragStepEnv, deterministic: bool = Tru
     rewards: List[float] = []
     largest_hole_trace: List[float] = [before_metrics["largest_hole_ns"]]
     useless_gap_trace: List[float] = [before_metrics["total_useless_gaps"]]
+    acceptance_trace: List[float] = [before_metrics["acceptance_count"]]
 
     terminated = False
     truncated = False
@@ -77,7 +80,14 @@ def rollout_episode(model: DQN, env: TSNDefragStepEnv, deterministic: bool = Tru
             invalid_moves += 1
         largest_hole_trace.append(float(info.get("largest_hole_after_ns", largest_hole_trace[-1])))
         useless_gap_trace.append(float(info.get("useless_gaps_after", useless_gap_trace[-1])))
+        acceptance_trace.append(float(info.get("acceptance_after", acceptance_trace[-1])))
 
+    final_violation_sum = int(env._violation_sum())
+    if final_violation_sum != 0:
+        raise RuntimeError(
+            f"Evaluation ended in an invalid schedule. violation_sum={final_violation_sum}"
+        )
+    
     after_metrics = schedule_metrics(env)
     final_schedule = env.get_combined_schedule()
 
@@ -90,6 +100,7 @@ def rollout_episode(model: DQN, env: TSNDefragStepEnv, deterministic: bool = Tru
         "reward_trace_first_20": rewards[:20],
         "largest_hole_trace_first_20": largest_hole_trace[:20],
         "useless_gap_trace_first_20": useless_gap_trace[:20],
+        "acceptance_trace_first_20": acceptance_trace[:20],
         "delta": {
             "largest_hole_ns": float(after_metrics["largest_hole_ns"] - before_metrics["largest_hole_ns"]),
             "total_useless_gaps": float(after_metrics["total_useless_gaps"] - before_metrics["total_useless_gaps"]),
@@ -143,6 +154,10 @@ def main() -> None:
 
     env = build_env(config=config, instance_path=instance_path, run_args=run_args)
     model = DQN.load(model_path)
+
+     # Force greedy action selection
+    if hasattr(model, "exploration_rate"):
+        model.exploration_rate = 0.0
 
     # Save the initial schedule plot once
     env.reset()

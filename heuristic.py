@@ -11,7 +11,7 @@ from schedule import Schedule
 # Keep local to avoid coupling metric computation to TSNScheduling imports.
 BYTE_2_BIT = 8
 MBPS_2_BPNS = 0.001
-TOL = 1.1
+TOL = 1.0
 
 
 @dataclass

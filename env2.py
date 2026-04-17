@@ -38,17 +38,16 @@ class TSNDefragStepEnv(gym.Env):
 
     Action space
     ------------
-    Discrete(2)
-      0 -> move backward by 1 us
-      1 -> move forward  by 1 us
+    Discrete(3)
+        0 -> move backward by 1 us
+        1 -> keep current position
+        2 -> move forward by 1 us
+
 
     Observation space
     -----------------
-    Dict of three compact vectors:
-      - focus_features: information about the currently focused hop and its
-        immediate temporal neighborhood on that port.
-      - port_features: summary of the current port.
-      - global_features: summary of the whole schedule.
+    Dict with one compact vector:
+        - focus_features: local slot context + latency + local/global fragmentation signals
 
     Reward
     ------
@@ -69,10 +68,15 @@ class TSNDefragStepEnv(gym.Env):
         step_ns: int = MICROSECOND_NS,
         useless_gap_threshold_bytes: int = 1024,
         invalid_penalty: float = 10_000.0,
+        expected_incoming_bytes: int = 1024,
         largest_hole_weight: float = 1.0,
         useless_gap_weight: float = 1.0,
         max_steps: int = 2_000_000,
         init_from_usecase_schedule: bool = True,
+        reset_mode: str = "never",
+        freeze_reset_after_episode: int = 100_000,
+        acceptance_weight: float = 1.0,
+
     ):
         super().__init__()
         self.problem = problem
@@ -85,10 +89,25 @@ class TSNDefragStepEnv(gym.Env):
         self.max_steps = int(max_steps)
         self.init_from_usecase_schedule = bool(init_from_usecase_schedule)
 
+        self.expected_incoming_bytes = int(expected_incoming_bytes)
+        self.acceptance_weight = float(acceptance_weight)
+
+        self.reset_mode = str(reset_mode)
+        self.freeze_reset_after_episode = int(freeze_reset_after_episode)
+
+        if self.reset_mode not in {"always", "never", "freeze_after"}:
+            raise ValueError(
+                f"Unsupported reset_mode={self.reset_mode}. "
+                "Use one of: 'always', 'never', 'freeze_after'."
+    )
+
         self.step_count = 0
         self.focus = FocusRef(port_index=0, slot_index=0)
         self.last_valid_port_schedules: Dict[int, Schedule] = {}
         self.last_valid_stream_offsets: Dict[int, Dict[int, float]] = {}
+
+        self.episode_count = 0
+        self.has_built_initial_state = False
 
         with self.problem.use_instance(self.usecase):
             self.n_ports = int(self.problem.n_ports)
@@ -150,12 +169,12 @@ class TSNDefragStepEnv(gym.Env):
         # Simple, informative dict observation for DQN MultiInputPolicy.
         self.observation_space = spaces.Dict(
             {
-                "focus_features": spaces.Box(low=-1.0, high=1.0, shape=(12,), dtype=np.float32),
-                "port_features": spaces.Box(low=0.0, high=1.0, shape=(6,), dtype=np.float32),
-                "global_features": spaces.Box(low=0.0, high=1.0, shape=(6,), dtype=np.float32),
+                "focus_features": spaces.Box(low=-1.0, high=1.0, shape=(19,), dtype=np.float32),
             }
         )
-        self.action_space = spaces.Discrete(2)
+        
+        self.action_deltas_us = [-5, -1, 0, 1, 5]
+        self.action_space = spaces.Discrete(len(self.action_deltas_us))
 
         self.port_schedules: Dict[int, Schedule] = {}
         self.stream_offsets: Dict[int, Dict[int, float]] = {}
@@ -241,6 +260,10 @@ class TSNDefragStepEnv(gym.Env):
     def _backup_current_as_last_valid(self) -> None:
         self.last_valid_port_schedules = copy.deepcopy(self.port_schedules)
         self.last_valid_stream_offsets = copy.deepcopy(self.stream_offsets)
+
+    def _expected_incoming_duration_ns_for_port(self, port_id: int) -> float:
+        spd = self._port_speed_mbps.get(int(port_id), 1000.0)
+        return (self.expected_incoming_bytes * BYTE_2_BIT) / (spd * MBPS_2_BPNS) + 4000.0
 
     def _restore_last_valid(self) -> None:
         self.port_schedules = copy.deepcopy(self.last_valid_port_schedules)
@@ -367,15 +390,21 @@ class TSNDefragStepEnv(gym.Env):
         total_useless_gaps = 0.0
         total_gap_count = 0.0
         total_used_time = 0.0
+        acceptance_count = 0.0
 
         for pidx in range(self.n_ports):
             port_id = pidx + 1
             threshold_ns = self._useless_gap_threshold_ns_for_port(port_id)
+            expected_dur_ns = self._expected_incoming_duration_ns_for_port(port_id)
             gaps = self._port_gaps(pidx)
+
             largest_hole_ns = max(largest_hole_ns, max(gaps) if gaps else 0.0)
             total_useless_gaps += sum(1 for g in gaps if g < threshold_ns)
             total_gap_count += len(gaps)
             total_used_time += float(self.cycle_ns) - float(sum(gaps))
+
+            if expected_dur_ns > 0:
+                acceptance_count += sum(int(g // expected_dur_ns) for g in gaps)
 
         mean_util = total_used_time / max(1.0, float(self.n_ports * self.cycle_ns))
         return {
@@ -383,6 +412,7 @@ class TSNDefragStepEnv(gym.Env):
             "total_useless_gaps": float(total_useless_gaps),
             "total_gap_count": float(total_gap_count),
             "mean_utilization": float(np.clip(mean_util, 0.0, 1.0)),
+            "acceptance_count": float(acceptance_count),
         }
 
     def _port_metrics(self, pidx: int) -> Dict[str, float]:
@@ -398,10 +428,48 @@ class TSNDefragStepEnv(gym.Env):
             "utilization": float(np.clip(util, 0.0, 1.0)),
             "largest_hole_norm": float((max(gaps) if gaps else 0.0) / float(self.cycle_ns)),
             "useless_gap_ratio": float(useless_count / max(1.0, len(gaps))),
+            "useless_gap_count_norm": float(min(useless_count, self.n_streams) / max(1.0, self.n_streams)),
             "mean_gap_norm": float(np.mean(gaps) / float(self.cycle_ns)) if gaps else 0.0,
             "mean_useful_gap_norm": float(np.mean(useful_gaps) / float(self.cycle_ns)) if useful_gaps else 0.0,
             "slot_count_norm": float(min(len(slots), self.n_streams) / max(1.0, self.n_streams)),
         }
+    
+    def _current_stream_latency_ns(self, stream_id: int) -> float:
+        stream_id = int(stream_id)
+        if stream_id < 0 or stream_id >= self.n_streams:
+            return 0.0
+
+        offsets = self.stream_offsets.get(stream_id, {})
+        path = list(self.stream_info[stream_id]["path"])
+        if not path:
+            return 0.0
+
+        starts = []
+        ends = []
+
+        for pid in path:
+            pid = int(pid)
+            if pid not in offsets:
+                continue
+            st = float(offsets[pid])
+            dur = float(self.stream_info[stream_id]["port_dur_ns"].get(pid, 0.0))
+            starts.append(st)
+            ends.append(st + dur)
+
+        if not starts or not ends:
+            return 0.0
+
+        return max(ends) - min(starts)
+
+
+    def _port_acceptance_count(self, pidx: int) -> float:
+        port_id = pidx + 1
+        expected_dur_ns = self._expected_incoming_duration_ns_for_port(port_id)
+        if expected_dur_ns <= 0:
+            return 0.0
+
+        gaps = self._port_gaps(pidx)
+        return float(sum(int(g // expected_dur_ns) for g in gaps))
 
     # ------------------------------------------------------------------
     # Observation
@@ -411,6 +479,15 @@ class TSNDefragStepEnv(gym.Env):
         g = self._global_metrics()
         p = self._port_metrics(int(ctx["port_index"]))
 
+        port_acceptance = self._port_acceptance_count(int(ctx["port_index"]))
+        global_acceptance_norm = float(
+            min(g["acceptance_count"], self.n_ports * self.n_streams)
+            / max(1.0, self.n_ports * self.n_streams)
+        )
+        port_acceptance_norm = float(
+            min(port_acceptance, self.n_streams) / max(1.0, self.n_streams)
+        )
+
         stream_id = int(ctx["stream_id"])
         sinfo = self.stream_info[stream_id] if 0 <= stream_id < self.n_streams else {
             "interval_ns": self.cycle_ns,
@@ -418,6 +495,13 @@ class TSNDefragStepEnv(gym.Env):
             "total_hop_cost_ns": 0.0,
             "path": [],
         }
+
+        current_latency_ns = self._current_stream_latency_ns(stream_id)
+
+        global_useless_norm = float(
+            min(g["total_useless_gaps"], self.n_ports * self.n_streams)
+            / max(1.0, self.n_ports * self.n_streams)
+        )
 
         focus_features = np.asarray(
             [
@@ -433,38 +517,20 @@ class TSNDefragStepEnv(gym.Env):
                 (float(sinfo["interval_ns"]) / self.cycle_ns) * 2.0 - 1.0,
                 (float(sinfo["max_latency_ns"]) / self.max_latency_ns) * 2.0 - 1.0,
                 float(ctx["hop_index_norm"]) * 2.0 - 1.0,
-            ],
-            dtype=np.float32,
-        )
 
-        port_features = np.asarray(
-            [
-                p["utilization"],
-                p["largest_hole_norm"],
-                p["useless_gap_ratio"],
-                p["mean_gap_norm"],
-                p["mean_useful_gap_norm"],
-                p["slot_count_norm"],
-            ],
-            dtype=np.float32,
-        )
-
-        global_features = np.asarray(
-            [
-                float(g["largest_hole_ns"] / self.cycle_ns),
-                float(min(g["total_useless_gaps"], self.n_ports * self.n_streams) / max(1.0, self.n_ports * self.n_streams)),
-                float(min(g["total_gap_count"], self.n_ports * self.n_streams) / max(1.0, self.n_ports * self.n_streams)),
-                g["mean_utilization"],
-                float(min(self.step_count, self.max_steps) / max(1, self.max_steps)),
-                float(min(len(self._active_ports()), self.n_ports) / max(1, self.n_ports)),
+                (current_latency_ns / self.max_latency_ns) * 2.0 - 1.0,
+                p["largest_hole_norm"] * 2.0 - 1.0,
+                (g["largest_hole_ns"] / self.cycle_ns) * 2.0 - 1.0,
+                p["useless_gap_count_norm"] * 2.0 - 1.0,
+                global_useless_norm * 2.0 - 1.0,
+                port_acceptance_norm * 2.0 - 1.0,
+                global_acceptance_norm * 2.0 - 1.0,
             ],
             dtype=np.float32,
         )
 
         return {
             "focus_features": focus_features,
-            "port_features": port_features,
-            "global_features": global_features,
         }
 
     # ------------------------------------------------------------------
@@ -476,6 +542,12 @@ class TSNDefragStepEnv(gym.Env):
     def _violation_sum(self) -> int:
         compact = self._current_compact()
         return int(self.sched_eval.per_stream_all_violations(compact).sum())
+
+    def normalize_min_max(self, n, min_orig, max_orig):
+        if max_orig == min_orig:
+            raise ValueError("max_orig and min_orig cannot be equal.")
+        
+        return (n - min_orig) / (max_orig - min_orig)
 
     def _move_current_focus_slot(self, delta_ns: int) -> bool:
         slot = self._current_focus_slot()
@@ -526,10 +598,11 @@ class TSNDefragStepEnv(gym.Env):
         return True
 
     def step(self, action: int):
-        self.step_count += 1
-        action = int(np.asarray(action).item())
-        delta_ns = -self.step_ns if action == 0 else self.step_ns
+        if action < 0 or action >= len(self.action_deltas_us):
+            raise ValueError(f"Invalid action: {action}")
 
+        delta_ns = int(self.action_deltas_us[action]) * self.step_ns
+        self.step_count += 1
         old_metrics = self._global_metrics()
         old_focus = FocusRef(self.focus.port_index, self.focus.slot_index)
 
@@ -550,11 +623,16 @@ class TSNDefragStepEnv(gym.Env):
         new_metrics = self._global_metrics()
 
         delta_largest_hole = (new_metrics["largest_hole_ns"] - old_metrics["largest_hole_ns"]) / float(self.cycle_ns)
-        delta_useless_gaps = old_metrics["total_useless_gaps"] - new_metrics["total_useless_gaps"]
+        delta_useless_gaps = ( old_metrics["total_useless_gaps"] - new_metrics["total_useless_gaps"] ) / max(1.0, self.n_ports * self.n_streams)
+        delta_acceptance = ( new_metrics["acceptance_count"] - old_metrics["acceptance_count"] ) / max(1.0, self.n_ports * self.n_streams)
+        #largest_hole = self.normalize_min_max(new_metrics["largest_hole_ns"], min_orig=0, max_orig=self.cycle_ns)
+        #useless_gaps = self.normalize_min_max(new_metrics["total_useless_gaps"], min_orig=0, max_orig=self.cycle_ns*self.n_ports//(self.useless_gap_threshold_bytes*8+4000))
+        #acceptance = self.normalize_min_max(new_metrics["acceptance_count"], min_orig=0, max_orig=self.cycle_ns*self.n_ports//(self.expected_incoming_bytes*8+4000))
 
         reward = (
             self.largest_hole_weight * float(delta_largest_hole)
             + self.useless_gap_weight * float(delta_useless_gaps)
+            + self.acceptance_weight * float(delta_acceptance)
             - (self.invalid_penalty if invalid else 0.0)
         )
 
@@ -581,21 +659,40 @@ class TSNDefragStepEnv(gym.Env):
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
         super().reset(seed=seed)
 
-        loaded = False
-        if self.init_from_usecase_schedule:
-            loaded = self._create_initial_schedule_from_usecase()
-        if not loaded:
-            self._create_fallback_initial_schedule()
-
-        if self._violation_sum() > 0:
-            raise ValueError(
-                "Initial schedule is already invalid. This env assumes reset() starts from a valid schedule."
+        if self.reset_mode == "always":
+            should_rebuild = True
+        elif self.reset_mode == "never":
+            should_rebuild = not self.has_built_initial_state
+        elif self.reset_mode == "freeze_after":
+            should_rebuild = (not self.has_built_initial_state) or (
+                self.episode_count < self.freeze_reset_after_episode
             )
+        else:
+            raise ValueError(f"Unsupported reset_mode={self.reset_mode}")
+
+        if should_rebuild:
+            loaded = False
+            if self.init_from_usecase_schedule:
+                loaded = self._create_initial_schedule_from_usecase()
+            if not loaded:
+                self._create_fallback_initial_schedule()
+
+            if self._violation_sum() > 0:
+                raise ValueError(
+                    "Initial schedule is already invalid. This env assumes reset() starts from a valid schedule."
+                )
+
+            self.has_built_initial_state = True
+            self._backup_current_as_last_valid()
+        else:
+            # Continue from the last valid schedule reached previously
+            self._restore_last_valid()
 
         self.step_count = 0
         active_ports = self._active_ports()
         self.focus = FocusRef(port_index=active_ports[0] if active_ports else 0, slot_index=0)
-        self._backup_current_as_last_valid()
+
+        self.episode_count += 1
         return self._get_obs(), {}
 
     def get_combined_schedule(self) -> Schedule:
