@@ -189,6 +189,349 @@ class Schedule(list):
             if slot.stream_id in stream_ids:
                 self.remove(slot)
         print(f"Removed stream(s) {stream_ids} from schedule successfully.")    
+    
+    def delete_streams(
+        self,
+        n_remove,
+        usecase=None,
+        save_json=False,
+        jsnPath=None,
+        ucFileName=None,
+        rng=None,
+    ):
+        """
+        Randomly remove n_remove streams from the currently scheduled streams.
+
+        Parameters
+        ----------
+        n_remove : int
+            Number of distinct scheduled streams to remove.
+        usecase : Usecase, optional
+            If provided, the usecase graph/streams will be refreshed to reflect
+            the new schedule. Required if save_json=True.
+        save_json : bool
+            If True, export the updated usecase to JSON.
+        jsnPath : str, optional
+            Output folder passed to usecase.to_file().
+        ucFileName : str, optional
+            Output file name passed to usecase.to_file().
+        rng : random.Random, optional
+            Random generator for reproducibility.
+
+        Returns
+        -------
+        dict
+            {"removed_stream_ids": [...], "removed_slot_count": int}
+        """
+        import random
+
+        rng = random.Random() if rng is None else rng
+
+        if not isinstance(n_remove, int) or n_remove < 0:
+            raise ValueError("n_remove must be a non-negative integer")
+
+        # distinct stream ids currently present in the schedule
+        scheduled_stream_ids = sorted({
+            slot.stream_id for slot in self
+            if slot.stream_id is not None
+        })
+
+        if n_remove > len(scheduled_stream_ids):
+            raise ValueError(
+                f"Requested removal of {n_remove} streams, "
+                f"but only {len(scheduled_stream_ids)} scheduled streams exist."
+            )
+
+        # randomly sample stream ids to remove
+        stream_ids = set(rng.sample(scheduled_stream_ids, n_remove))
+
+        # 1) remove from schedule
+        before = len(self)
+        self[:] = [slot for slot in self if slot.stream_id not in stream_ids]
+        removed_slots = before - len(self)
+
+        print(f"Removed {removed_slots} slot(s) for stream(s) {sorted(stream_ids)} from schedule.")
+
+        # nothing else requested
+        if usecase is None and not save_json:
+            return {
+                "removed_stream_ids": sorted(stream_ids),
+                "removed_slot_count": removed_slots,
+            }
+
+        # saving requires a usecase
+        if save_json and usecase is None:
+            raise ValueError("usecase must be provided when save_json=True")
+
+        # 2) refresh usecase schedule-related fields
+        if usecase is not None:
+            # clear old schedule info from graph + streams
+            usecase.removeSchedule()
+
+            # clear schedule-derived fields only for removed streams
+            # keep the stream definitions themselves to preserve IDs
+            for sid in stream_ids:
+                if 0 <= sid < len(usecase.streams):
+                    stream = usecase.streams[sid]
+                    for key in ("offset", "accLatency", "pathLists"):
+                        if key in stream:
+                            del stream[key]
+
+            # attach updated schedule back
+            usecase.addSchedule(self)
+
+        # 3) export updated json if requested
+        if save_json:
+            usecase.to_file(jsnPath=jsnPath, ucFileName=ucFileName)
+
+        return {
+            "removed_stream_ids": sorted(stream_ids),
+            "removed_slot_count": removed_slots,
+        }
+
+    def _occupied_intervals_on_port(self, port_id, period_ns):
+        """
+        Return sorted occupied intervals [start, end) on a port within one cycle.
+        """
+        intervals = []
+        for slot in self:
+            if slot.port_id != port_id:
+                continue
+            # current use case is one-cycle scheduling, but keep this safe
+            for occ in slot.all_occurrences(period_ns):
+                s = int(occ.start_ns)
+                e = int(occ.end_ns)
+                if s < period_ns and e > 0:
+                    intervals.append((max(0, s), min(period_ns, e)))
+        intervals.sort()
+        return intervals
+
+    def _first_non_overlapping_start(self, intervals, min_start, duration, period_ns):
+        """
+        Return earliest start >= min_start such that [start, start+duration) does not
+        overlap existing intervals on this port. Jump over conflicts instead of scanning
+        every integer.
+        """
+        start = int(min_start)
+        while start + duration <= period_ns:
+            jumped = False
+            for a, b in intervals:
+                if start < b and (start + duration) > a:
+                    start = int(b)   # jump to end of conflicting interval
+                    jumped = True
+                    break
+            if not jumped:
+                return start
+        return None
+        
+    def generate_and_place_line_streams_first_fit(
+        self,
+        usecase,
+        problem,
+        n_streams=1,
+        frame_size=1024,
+        period=300000,
+        latency_factors=(0.6, 0.7, 0.8),
+        queue_id=5,
+        save_json=False,
+        jsnPath=None,
+        ucFileName=None,
+        rng=None,
+    ):
+        """
+        Generate streams for the fixed 2-host / 2-switch line topology and place them
+        with sequential hop-by-hop first-fit.
+
+        Half are assigned forward path and half reverse path (randomized order),
+        without fallback to the other direction.
+
+        Optimized version:
+        - jumps over blocked windows instead of scanning every integer
+        - uses cheap per-port interval checks before evaluator calls
+        - rebuilds evaluator only once per candidate stream
+        """
+        import random
+        import numpy as np
+        from evaluator import TSNConstraintEvaluator, ScheduleEncodingType
+
+        rng = random.Random() if rng is None else rng
+
+        port_name_to_id, _ = usecase.port_name_id_mapping
+
+        forward_path = [
+            "0-ED1.Port1",
+            "0-SW1.P2",
+            "0-SW2.P1",
+            "0-ED2.Port1",
+        ]
+        reverse_path = [
+            "0-ED2.Port1",
+            "0-SW2.P2",
+            "0-SW1.P1",
+            "0-ED1.Port1",
+        ]
+
+        accepted = []
+        rejected = []
+
+        n_forward = n_streams // 2
+        n_reverse = n_streams - n_forward
+
+        direction_plan = (
+            [("0-ED1", "0-ED2", forward_path)] * n_forward +
+            [("0-ED2", "0-ED1", reverse_path)] * n_reverse
+        )
+        rng.shuffle(direction_plan)
+
+        for talker, listener, path in direction_plan:
+            stream_id = len(usecase.streams)
+            factor = rng.choice(list(latency_factors))
+            max_latency = int(round(factor * period))
+
+            stream = {
+                "name": f"stream-{stream_id}",
+                "type": "isochronous",
+                "interval": int(period),
+                "maxFramesPerInterval": 1,
+                "maxFrameSize": int(frame_size),
+                "maxLatency": int(max_latency),
+                "tlkrPssblPlcmnt": [talker],
+                "lstnsrPssblPlcmnt": [[listener]],
+                "earliest-transmit-offset": 0,
+                "latest-transmit-offset": int(period - 1),
+                "jitter": 0,
+                "pathLists": [path],
+                "originalStreamId": stream_id,
+            }
+
+            # Append once for metadata/evaluator dimensions
+            usecase.streams.append(stream)
+            problem.usecase = usecase
+            problem.build_metadata()
+
+            evaluator = TSNConstraintEvaluator(
+                problem,
+                check_routing=False,
+                check_task_placement=False,
+                scheduling_type=ScheduleEncodingType.START_TIME,
+            )
+
+            hop_port_names = path[:-1]
+            hop_port_ids = [port_name_to_id[p] for p in hop_port_names]
+
+            # Static occupied intervals from already scheduled slots
+            base_intervals = {
+                pid: self._occupied_intervals_on_port(pid, period)
+                for pid in hop_port_ids
+            }
+
+            partial_slots = []
+            hop_starts = []
+            path_failed = False
+
+            for hop_idx, pid in enumerate(hop_port_ids):
+                occupied_ns = int(max(1, round(evaluator.occupiedLengths[pid - 1, stream_id])))
+
+                if hop_idx == 0:
+                    min_start = 0
+                else:
+                    prev_pid = hop_port_ids[hop_idx - 1]
+                    prev_start = hop_starts[-1]
+                    min_start = prev_start + int(round(evaluator.all_hops_costs[prev_pid - 1, stream_id]))
+
+                # intervals already on this port + already-fixed slots of this same new stream
+                current_intervals = list(base_intervals[pid])
+                for s in partial_slots:
+                    if s.port_id == pid:
+                        current_intervals.append((int(s.start_ns), int(s.end_ns)))
+                current_intervals.sort()
+
+                hop_fixed = False
+                candidate_start = self._first_non_overlapping_start(
+                    current_intervals,
+                    min_start,
+                    occupied_ns,
+                    period,
+                )
+
+                while candidate_start is not None:
+                    candidate_slot = Slot(
+                        start_ns=int(candidate_start),
+                        end_ns=int(candidate_start + occupied_ns),
+                        period_ns=int(period),
+                        stream_id=stream_id,
+                        port_id=pid,
+                        queue_id=queue_id,
+                    )
+
+                    candidate_slots = partial_slots + [candidate_slot]
+
+                    tmp_schedule = Schedule(
+                        cycle_ns=self.cycle_ns,
+                        basetime=self.basetime,
+                        iterable=list(self) + list(candidate_slots),
+                    )
+
+                    try:
+                        compact = tmp_schedule.to_compact_encoding(problem.n_ports, problem.n_streams)
+                    except ValueError:
+                        # should be rare now; jump past this candidate end
+                        current_intervals.append((candidate_slot.start_ns, candidate_slot.end_ns))
+                        current_intervals.sort()
+                        candidate_start = self._first_non_overlapping_start(
+                            current_intervals,
+                            candidate_slot.end_ns,
+                            occupied_ns,
+                            period,
+                        )
+                        continue
+
+                    violations = evaluator.per_stream_all_violations(compact)
+                    stream_v = violations[:, stream_id]
+
+                    if np.all(stream_v == 0):
+                        partial_slots.append(candidate_slot)
+                        hop_starts.append(int(candidate_start))
+                        hop_fixed = True
+                        break
+
+                    # evaluator rejected it; treat this tested interval as blocked and jump ahead
+                    current_intervals.append((candidate_slot.start_ns, candidate_slot.end_ns))
+                    current_intervals.sort()
+                    candidate_start = self._first_non_overlapping_start(
+                        current_intervals,
+                        candidate_slot.end_ns,
+                        occupied_ns,
+                        period,
+                    )
+
+                if not hop_fixed:
+                    path_failed = True
+                    break
+
+            if path_failed:
+                usecase.streams.pop()
+                problem.usecase = usecase
+                problem.build_metadata()
+                rejected.append(stream_id)
+                continue
+
+            for slot in partial_slots:
+                self.append(slot)
+
+            if hop_starts:
+                usecase.streams[stream_id]["offset"] = int(hop_starts[0])
+
+            accepted.append(stream_id)
+
+        usecase.removeSchedule()
+        usecase.addSchedule(self)
+
+        if save_json:
+            out = usecase.to_file(jsnPath=jsnPath, ucFileName=ucFileName)
+            return {"accepted": accepted, "rejected": rejected, "output": out}
+
+        return {"accepted": accepted, "rejected": rejected}
         
     # ----------------------------
     # Conflict checking
@@ -363,35 +706,46 @@ class Schedule(list):
 
     def update_streams(self, streams, ports, port_id_to_name):
         """
-        add schedule data to streams
-        """        
+        Add schedule-derived data to streams.
+        Only streams that still have slots in the schedule are updated.
+        Streams with no slots are left untouched.
+        """
         for s_idx, stream in enumerate(streams):
-            n_listeners = len(stream['lstnsrPssblPlcmnt'])
             stream_slots = self.slots_by_stream(s_idx)
+            if not stream_slots:
+                # This stream is no longer scheduled (e.g. deleted from schedule).
+                continue
+
+            n_listeners = len(stream['lstnsrPssblPlcmnt'])
             stream_slots.sort()
+
             # talker data from first slot
             talker_slot = stream_slots[0]
             talker_port = port_id_to_name[talker_slot.port_id]
             talker_node = talker_port.split('.')[0]
+
             stream['offset'] = talker_slot.start_ns
             stream['tlkrPssblPlcmnt'] = [talker_node]
-            stream['accLatency'] = [[] for l_idx in range(n_listeners)]
-            stream['pathLists'] = [[talker_port] for l_idx in range(n_listeners)]
-            
+            stream['accLatency'] = [[] for _ in range(n_listeners)]
+            stream['pathLists'] = [[talker_port] for _ in range(n_listeners)]
+
             for slot in stream_slots[1:]:
                 port = port_id_to_name[slot.port_id]
                 node_name = port.split('.')[0]
-                pathLists = stream.get("pathLists")
+                pathLists = stream['pathLists']
+
                 for l_idx in range(n_listeners):
                     pathList = pathLists[l_idx]
-                    last = pathList[-1] # assuming talker is already there
-                    if ports[last]['destNode']==node_name:
+                    last = pathList[-1]
+                    if ports[last]['destNode'] == node_name:
                         pathList.append(port)
                         stream['accLatency'][l_idx] = slot.end_ns - stream['offset']
-            # use the last slot (forwarding to listener)
+
+            # finalize listener placement from each path
             for l_idx in range(n_listeners):
-                last = pathList[-1]
-                stream['lstnsrPssblPlcmnt'][l_idx] = [ports[port]['destNode']]
+                pathList = stream['pathLists'][l_idx]
+                last_port = pathList[-1]
+                stream['lstnsrPssblPlcmnt'][l_idx] = [ports[last_port]['destNode']]
     
     @classmethod
     def from_compact_encoding(

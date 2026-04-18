@@ -424,6 +424,26 @@ def _calc_duration_ns(packet_size_bytes, link_speed_mbps):
     speed_bits_per_ns = max(link_speed_mbps / 1000.0, 1e-12)
     return int((packet_size_bytes * 8) / speed_bits_per_ns)
 
+def _calc_occupied_duration_ns(
+    src_node,
+    node_types,
+    packet_size_bytes,
+    link_speed_mbps,
+    prop_delay_ns,
+    proc_delay_ns,
+):
+    """
+    Occupied GCL window model:
+    - talker host egress: tx + prop
+    - switch egress: tx + prop + proc
+    """
+    tx_ns = _calc_duration_ns(packet_size_bytes, link_speed_mbps)
+
+    if node_types[src_node] == "host":
+        return max(1, tx_ns + prop_delay_ns)
+
+    return max(1, tx_ns + prop_delay_ns + proc_delay_ns)
+
 
 def _is_active_stream(a, stream_id):
     direct = a.get(stream_id)
@@ -465,6 +485,8 @@ def _build_streams_json(
     node_types,
     egress_port_by_neighbor,
     link_speed_mbps,
+    prop_delay_ns,
+    proc_delay_ns,
     ilp_time_unit,
     stream_dict,
     duration_source,
@@ -511,19 +533,14 @@ def _build_streams_json(
                 src_local = "Port1"
 
             start_ns = _time_to_ns(float(time_us), ilp_time_unit)
-            duration_ns = None
-            if duration_source != "link":
-                duration_ns = _duration_from_stream_dict_ns(
-                    stream_dict,
-                    s,
-                    u,
-                    old_src,
-                    old_dst,
-                    duration_source,
-                    ilp_time_unit,
-                )
-            if duration_ns is None:
-                duration_ns = _calc_duration_ns(info["packet_size"], link_speed_mbps)
+            duration_ns = _calc_occupied_duration_ns(
+                src_node,
+                node_types,
+                info["packet_size"],
+                link_speed_mbps,
+                prop_delay_ns,
+                proc_delay_ns,
+            )
 
             schedule_entries[(src_node, src_local)].append((start_ns, duration_ns, schedule_stream_id))
             if i == 0:
@@ -535,15 +552,18 @@ def _build_streams_json(
 
         offset_ns = _time_to_ns(float(hops[0][2]), ilp_time_unit)
         duration_ns = _calc_duration_ns(info["packet_size"], link_speed_mbps)
-        talker_duration_ns = first_hop_duration_ns or duration_ns
-
-        # ILP edge timing may not explicitly include host-side egress entries.
-        # Add talker host windows explicitly so imported schedules expose host ports.
-        schedule_entries[(talker, "Port1")].append((offset_ns, talker_duration_ns, schedule_stream_id))
+        talker_duration_ns = first_hop_duration_ns or _calc_occupied_duration_ns(
+            talker,
+            node_types,
+            info["packet_size"],
+            link_speed_mbps,
+            prop_delay_ns,
+            proc_delay_ns,
+        )
 
         latest_offset = max(
             0,
-            info["period"] - duration_ns,
+            info["period"] - talker_duration_ns,
         )
 
         stream_json = {
@@ -711,6 +731,8 @@ def main():
         node_types,
         egress_port_by_neighbor,
         link_speed_mbps,
+        cfg_defaults["prop_delay_ns"],
+        cfg_defaults["proc_delay_ns"],
         args.ilp_time_unit,
         stream_dict,
         args.duration_source,

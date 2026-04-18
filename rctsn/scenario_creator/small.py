@@ -34,7 +34,7 @@ if __name__ == "__main__":
     # We explicitly specify the latency factors, gamma values, and jitter factors
     # NOTE: This small scenario is wired-only (no WN/WED devices).
     wed_to_wed_count = 0
-    ed_to_ed_count = 5
+    ed_to_ed_count = 20
     wed_to_ed_count = 0
 
     wed_wed_settings = {
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     
     ed_ed_settings = {
         "packet_sizes": [1024],
-        "periods": [100],
+        "periods": [300],
         "latency_factors": [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
         "priorities": [1],
         "gammas": [1.0],

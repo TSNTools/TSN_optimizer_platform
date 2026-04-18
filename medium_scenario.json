@@ -1,0 +1,2297 @@
+{
+  "nodes": [
+    {
+      "type": "host",
+      "name": "0-ED1",
+      "ports": {
+        "Port1": {
+          "name": "Port1",
+          "speed": 1000,
+          "queueCount": 6,
+          "basetime": 0,
+          "scheduleCycle": 300000,
+          "schedule": [
+            {
+              "start": 0,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                37
+              ]
+            },
+            {
+              "start": 13000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                32
+              ]
+            },
+            {
+              "start": 26000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                21
+              ]
+            },
+            {
+              "start": 39000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                12
+              ]
+            },
+            {
+              "start": 52000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                6
+              ]
+            },
+            {
+              "start": 65000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                26
+              ]
+            },
+            {
+              "start": 78000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                8
+              ]
+            },
+            {
+              "start": 91000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                30
+              ]
+            },
+            {
+              "start": 104000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                20
+              ]
+            },
+            {
+              "start": 117000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                3
+              ]
+            },
+            {
+              "start": 130000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                16
+              ]
+            },
+            {
+              "start": 143000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                15
+              ]
+            },
+            {
+              "start": 156000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                33
+              ]
+            },
+            {
+              "start": 169000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                39
+              ]
+            },
+            {
+              "start": 182000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                19
+              ]
+            },
+            {
+              "start": 195000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                18
+              ]
+            },
+            {
+              "start": 208000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                23
+              ]
+            },
+            {
+              "start": 231000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                36
+              ]
+            },
+            {
+              "start": 248000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                13
+              ]
+            },
+            {
+              "start": 261000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                28
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "host",
+      "name": "0-ED2",
+      "ports": {
+        "Port1": {
+          "name": "Port1",
+          "speed": 1000,
+          "queueCount": 6,
+          "basetime": 0,
+          "scheduleCycle": 300000,
+          "schedule": [
+            {
+              "start": 0,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                0
+              ]
+            },
+            {
+              "start": 13000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                34
+              ]
+            },
+            {
+              "start": 28000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                22
+              ]
+            },
+            {
+              "start": 41000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                5
+              ]
+            },
+            {
+              "start": 54000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                27
+              ]
+            },
+            {
+              "start": 67000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                25
+              ]
+            },
+            {
+              "start": 80000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                2
+              ]
+            },
+            {
+              "start": 93000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                1
+              ]
+            },
+            {
+              "start": 106000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                29
+              ]
+            },
+            {
+              "start": 119000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                7
+              ]
+            },
+            {
+              "start": 132000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                17
+              ]
+            },
+            {
+              "start": 145000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                31
+              ]
+            },
+            {
+              "start": 158000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                14
+              ]
+            },
+            {
+              "start": 171000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                24
+              ]
+            },
+            {
+              "start": 184000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                10
+              ]
+            },
+            {
+              "start": 197000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                35
+              ]
+            },
+            {
+              "start": 210000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                4
+              ]
+            },
+            {
+              "start": 235000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                9
+              ]
+            },
+            {
+              "start": 248000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                11
+              ]
+            },
+            {
+              "start": 261000,
+              "duration": 10192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                38
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "switch",
+      "name": "0-SW1",
+      "ports": {
+        "P1": {
+          "name": "P1",
+          "speed": 1000,
+          "queueCount": 6,
+          "basetime": 0,
+          "scheduleCycle": 300000,
+          "schedule": [
+            {
+              "start": 26000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                0
+              ]
+            },
+            {
+              "start": 39000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                34
+              ]
+            },
+            {
+              "start": 54000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                22
+              ]
+            },
+            {
+              "start": 67000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                5
+              ]
+            },
+            {
+              "start": 80000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                27
+              ]
+            },
+            {
+              "start": 93000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                25
+              ]
+            },
+            {
+              "start": 106000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                2
+              ]
+            },
+            {
+              "start": 119000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                1
+              ]
+            },
+            {
+              "start": 132000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                29
+              ]
+            },
+            {
+              "start": 145000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                7
+              ]
+            },
+            {
+              "start": 158000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                17
+              ]
+            },
+            {
+              "start": 171000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                31
+              ]
+            },
+            {
+              "start": 184000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                14
+              ]
+            },
+            {
+              "start": 197000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                24
+              ]
+            },
+            {
+              "start": 210000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                10
+              ]
+            },
+            {
+              "start": 223000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                35
+              ]
+            },
+            {
+              "start": 236000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                4
+              ]
+            },
+            {
+              "start": 261000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                9
+              ]
+            },
+            {
+              "start": 274000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                11
+              ]
+            },
+            {
+              "start": 287000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                38
+              ]
+            }
+          ]
+        },
+        "P2": {
+          "name": "P2",
+          "speed": 1000,
+          "queueCount": 6,
+          "basetime": 0,
+          "scheduleCycle": 300000,
+          "schedule": [
+            {
+              "start": 13000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                37
+              ]
+            },
+            {
+              "start": 26000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                32
+              ]
+            },
+            {
+              "start": 39000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                21
+              ]
+            },
+            {
+              "start": 52000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                12
+              ]
+            },
+            {
+              "start": 65000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                6
+              ]
+            },
+            {
+              "start": 78000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                26
+              ]
+            },
+            {
+              "start": 91000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                8
+              ]
+            },
+            {
+              "start": 104000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                30
+              ]
+            },
+            {
+              "start": 117000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                20
+              ]
+            },
+            {
+              "start": 130000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                3
+              ]
+            },
+            {
+              "start": 143000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                16
+              ]
+            },
+            {
+              "start": 156000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                15
+              ]
+            },
+            {
+              "start": 169000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                33
+              ]
+            },
+            {
+              "start": 182000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                39
+              ]
+            },
+            {
+              "start": 195000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                19
+              ]
+            },
+            {
+              "start": 208000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                18
+              ]
+            },
+            {
+              "start": 221000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                23
+              ]
+            },
+            {
+              "start": 244000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                36
+              ]
+            },
+            {
+              "start": 261000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                13
+              ]
+            },
+            {
+              "start": 274000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                28
+              ]
+            }
+          ]
+        }
+      },
+      "procDelay": 2000
+    },
+    {
+      "type": "switch",
+      "name": "0-SW2",
+      "ports": {
+        "P1": {
+          "name": "P1",
+          "speed": 1000,
+          "queueCount": 6,
+          "basetime": 0,
+          "scheduleCycle": 300000,
+          "schedule": [
+            {
+              "start": 26000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                37
+              ]
+            },
+            {
+              "start": 39000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                32
+              ]
+            },
+            {
+              "start": 52000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                21
+              ]
+            },
+            {
+              "start": 65000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                12
+              ]
+            },
+            {
+              "start": 78000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                6
+              ]
+            },
+            {
+              "start": 91000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                26
+              ]
+            },
+            {
+              "start": 104000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                8
+              ]
+            },
+            {
+              "start": 117000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                30
+              ]
+            },
+            {
+              "start": 130000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                20
+              ]
+            },
+            {
+              "start": 143000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                3
+              ]
+            },
+            {
+              "start": 156000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                16
+              ]
+            },
+            {
+              "start": 169000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                15
+              ]
+            },
+            {
+              "start": 182000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                33
+              ]
+            },
+            {
+              "start": 195000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                39
+              ]
+            },
+            {
+              "start": 208000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                19
+              ]
+            },
+            {
+              "start": 221000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                18
+              ]
+            },
+            {
+              "start": 234000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                23
+              ]
+            },
+            {
+              "start": 257000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                36
+              ]
+            },
+            {
+              "start": 274000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                13
+              ]
+            },
+            {
+              "start": 287000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                28
+              ]
+            }
+          ]
+        },
+        "P2": {
+          "name": "P2",
+          "speed": 1000,
+          "queueCount": 6,
+          "basetime": 0,
+          "scheduleCycle": 300000,
+          "schedule": [
+            {
+              "start": 13000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                0
+              ]
+            },
+            {
+              "start": 26000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                34
+              ]
+            },
+            {
+              "start": 41000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                22
+              ]
+            },
+            {
+              "start": 54000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                5
+              ]
+            },
+            {
+              "start": 67000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                27
+              ]
+            },
+            {
+              "start": 80000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                25
+              ]
+            },
+            {
+              "start": 93000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                2
+              ]
+            },
+            {
+              "start": 106000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                1
+              ]
+            },
+            {
+              "start": 119000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                29
+              ]
+            },
+            {
+              "start": 132000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                7
+              ]
+            },
+            {
+              "start": 145000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                17
+              ]
+            },
+            {
+              "start": 158000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                31
+              ]
+            },
+            {
+              "start": 171000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                14
+              ]
+            },
+            {
+              "start": 184000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                24
+              ]
+            },
+            {
+              "start": 197000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                10
+              ]
+            },
+            {
+              "start": 210000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                35
+              ]
+            },
+            {
+              "start": 223000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                4
+              ]
+            },
+            {
+              "start": 248000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                9
+              ]
+            },
+            {
+              "start": 261000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                11
+              ]
+            },
+            {
+              "start": 274000,
+              "duration": 12192,
+              "state": "CCCCCo",
+              "stream_sequence": [
+                38
+              ]
+            }
+          ]
+        }
+      },
+      "procDelay": 2000
+    }
+  ],
+  "links": [
+    {
+      "sourceNode": "0-SW1",
+      "sourcePort": "0-SW1.P2",
+      "destNode": "0-SW2",
+      "destPort": "0-SW2.P2",
+      "propDelay": 2000,
+      "linkBw": 1000
+    },
+    {
+      "sourceNode": "0-SW1",
+      "sourcePort": "0-SW1.P1",
+      "destNode": "0-ED1",
+      "destPort": "0-ED1.Port1",
+      "propDelay": 2000,
+      "linkBw": 1000
+    },
+    {
+      "sourceNode": "0-SW2",
+      "sourcePort": "0-SW2.P2",
+      "destNode": "0-SW1",
+      "destPort": "0-SW1.P2",
+      "propDelay": 2000,
+      "linkBw": 1000
+    },
+    {
+      "sourceNode": "0-SW2",
+      "sourcePort": "0-SW2.P1",
+      "destNode": "0-ED2",
+      "destPort": "0-ED2.Port1",
+      "propDelay": 2000,
+      "linkBw": 1000
+    },
+    {
+      "sourceNode": "0-ED1",
+      "sourcePort": "0-ED1.Port1",
+      "destNode": "0-SW1",
+      "destPort": "0-SW1.P1",
+      "propDelay": 2000,
+      "linkBw": 1000
+    },
+    {
+      "sourceNode": "0-ED2",
+      "sourcePort": "0-ED2.Port1",
+      "destNode": "0-SW2",
+      "destPort": "0-SW2.P1",
+      "propDelay": 2000,
+      "linkBw": 1000
+    }
+  ],
+  "streams": [
+    {
+      "name": "stream-0",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 240000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 0,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 0
+    },
+    {
+      "name": "stream-1",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 240000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 93000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 1
+    },
+    {
+      "name": "stream-2",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 180000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 80000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 2
+    },
+    {
+      "name": "stream-3",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 210000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 117000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 3
+    },
+    {
+      "name": "stream-4",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 300000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 210000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 4
+    },
+    {
+      "name": "stream-5",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 150000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 41000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 5
+    },
+    {
+      "name": "stream-6",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 210000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 52000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 6
+    },
+    {
+      "name": "stream-7",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 180000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 119000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 7
+    },
+    {
+      "name": "stream-8",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 180000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 78000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 8
+    },
+    {
+      "name": "stream-9",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 300000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 235000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 9
+    },
+    {
+      "name": "stream-10",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 300000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 184000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 10
+    },
+    {
+      "name": "stream-11",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 300000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 248000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 11
+    },
+    {
+      "name": "stream-12",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 180000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 39000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 12
+    },
+    {
+      "name": "stream-13",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 300000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 248000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 13
+    },
+    {
+      "name": "stream-14",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 270000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 158000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 14
+    },
+    {
+      "name": "stream-15",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 270000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 143000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 15
+    },
+    {
+      "name": "stream-16",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 240000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 130000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 16
+    },
+    {
+      "name": "stream-17",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 180000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 132000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 17
+    },
+    {
+      "name": "stream-18",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 300000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 195000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 18
+    },
+    {
+      "name": "stream-19",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 270000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 182000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 19
+    },
+    {
+      "name": "stream-20",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 240000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 104000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 20
+    },
+    {
+      "name": "stream-21",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 150000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 26000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 21
+    },
+    {
+      "name": "stream-22",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 210000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 28000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 22
+    },
+    {
+      "name": "stream-23",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 300000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 208000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 23
+    },
+    {
+      "name": "stream-24",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 210000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 171000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 24
+    },
+    {
+      "name": "stream-25",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 150000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 67000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 25
+    },
+    {
+      "name": "stream-26",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 150000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 65000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 26
+    },
+    {
+      "name": "stream-27",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 150000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 54000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 27
+    },
+    {
+      "name": "stream-28",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 300000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 261000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 28
+    },
+    {
+      "name": "stream-29",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 180000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 106000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 29
+    },
+    {
+      "name": "stream-30",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 180000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 91000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 30
+    },
+    {
+      "name": "stream-31",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 270000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 145000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 31
+    },
+    {
+      "name": "stream-32",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 150000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 13000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 32
+    },
+    {
+      "name": "stream-33",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 270000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 156000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 33
+    },
+    {
+      "name": "stream-34",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 150000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 13000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 34
+    },
+    {
+      "name": "stream-35",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 240000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 197000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 35
+    },
+    {
+      "name": "stream-36",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 270000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 231000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 36
+    },
+    {
+      "name": "stream-37",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 180000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 0,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 37
+    },
+    {
+      "name": "stream-38",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 300000,
+      "tlkrPssblPlcmnt": [
+        "0-ED2"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED1"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 261000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED2.Port1",
+          "0-SW2.P2",
+          "0-SW1.P1",
+          "0-ED1.Port1"
+        ]
+      ],
+      "originalStreamId": 38
+    },
+    {
+      "name": "stream-39",
+      "type": "isochronous",
+      "interval": 300000,
+      "maxFramesPerInterval": 1,
+      "maxFrameSize": 1024,
+      "maxLatency": 210000,
+      "tlkrPssblPlcmnt": [
+        "0-ED1"
+      ],
+      "lstnsrPssblPlcmnt": [
+        [
+          "0-ED2"
+        ]
+      ],
+      "earliest-transmit-offset": 0,
+      "latest-transmit-offset": 289808,
+      "jitter": 0,
+      "offset": 169000,
+      "accLatency": 0,
+      "pathLists": [
+        [
+          "0-ED1.Port1",
+          "0-SW1.P2",
+          "0-SW2.P1",
+          "0-ED2.Port1"
+        ]
+      ],
+      "originalStreamId": 39
+    }
+  ],
+  "index": null
+}

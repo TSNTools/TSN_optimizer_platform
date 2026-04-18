@@ -246,7 +246,50 @@ class TSNConstraintEvaluator:
         hosts_port_mask = node_egress_mask[host_mask==1].sum(0)
         hosts_adj_port_mask = egress_to_node_mask[host_mask==1].sum(0)
         self.stray_talker_mask = (1 - talker_mask) * hosts_port_mask[:,None]
-        self.stray_listener_mask = (1 - listener_adj_mask) * hosts_adj_port_mask[:,None]
+        self.stray_listener_mask = (1 - listener_adj_mask) * hosts_adj_port_mask[:,None]\
+        
+        self.occupiedLengths = np.zeros((n_ports, n_streams), dtype=float)
+
+        # Default model-based occupied lengths
+        for p_idx in range(n_ports):
+            pid = p_idx + 1
+            pdata = ports[pid]
+            src_node = pdata["sourceNode"]
+            dst_node = pdata["destNode"]
+
+            prop_delay = problem.usecase.graph[src_node][dst_node]["propDelay"]
+            src_proc = problem.usecase.graph.nodes[src_node].get("procDelay", 0)
+
+            for s_idx in range(n_streams):
+                frame_size = problem.usecase._frame_size(s_idx)
+                tx_delay = frame_size / max(self.port_speeds[p_idx] * MBPS_2_BPNS, 1e-9)
+
+                if src_node in self.hosts:
+                    # talker host window = tx + prop
+                    self.occupiedLengths[p_idx, s_idx] = tx_delay + prop_delay
+                else:
+                    # switch window = tx + prop + proc(source switch)
+                    self.occupiedLengths[p_idx, s_idx] = tx_delay + prop_delay + src_proc
+
+        # Override with actual durations from the current schedule when available.
+        # This is crucial so that already scheduled streams are checked using the
+        # real slot widths seen in the schedule object / plot, not reconstructed ones.
+        existing_schedule = getattr(problem.usecase, "schedule", None)
+        if existing_schedule is not None:
+            for slot in existing_schedule:
+                if slot.stream_id is None or slot.port_id is None:
+                    continue
+
+                p_idx = slot.port_id - 1
+                s_idx = slot.stream_id
+
+                if 0 <= p_idx < n_ports and 0 <= s_idx < n_streams:
+                    self.occupiedLengths[p_idx, s_idx] = max(
+                        1,
+                        int(slot.end_ns - slot.start_ns)
+                    )
+
+        self.occupiedLengths = np.maximum(self.occupiedLengths, 1)
         
     def _per_stream_host_role_violations(self, chromosome):
         act = chromosome > 0          # bool (no astype)
@@ -484,7 +527,7 @@ class TSNConstraintEvaluator:
     
         # Transmission window (use worst-case hop window)
         # windLengths already = transmission duration per port/stream
-        max_window = np.where(active, self.windLengths, 0).max(axis=0)
+        max_window = np.where(active, self.occupiedLengths, 0).max(axis=0)
     
         # Accumulated latency
         latency = (t_max - t_min) + max_window
@@ -528,7 +571,7 @@ class TSNConstraintEvaluator:
         """
         active = chromosome > 0  # (P,S)
         starts = chromosome.astype(float)
-        ends = starts + self.windLengths
+        ends = starts + self.occupiedLengths
 
         both_active = active[:, :, None] & active[:, None, :]
         pair_mask = self.pair_mask
@@ -548,7 +591,10 @@ class TSNConstraintEvaluator:
         phase = chromosome % self.stream_intervals[None, :]
         diff = phase[:, :, None] - phase[:, None, :]
         delta = np.mod(diff, self.streams_pairwise_gcl)
-        diff_period_overlap = delta < self.stream_pairwise_windowSum
+        occupied_pairwise_sum = (
+            self.occupiedLengths[:, :, None] + self.occupiedLengths[:, None, :]
+        )
+        diff_period_overlap = delta < occupied_pairwise_sum
 
         overlap = np.zeros_like(diff_period_overlap, dtype=bool)
         overlap |= same_period_overlap & same_period[None, :, :]
