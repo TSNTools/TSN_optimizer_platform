@@ -40,6 +40,54 @@ def plot_reward(df: pd.DataFrame, out_dir: Path, window: int) -> None:
     plt.savefig(out_dir / "reward_band.png", dpi=180)
     plt.close()
 
+def plot_realloc_and_cycles(df: pd.DataFrame, out_dir: Path, window: int) -> None:
+    if "episode_reallocations" in df.columns:
+        roll = df["episode_reallocations"].rolling(window, min_periods=1).mean()
+
+        plt.figure(figsize=(10, 4.5))
+        plt.plot(df.index + 1, df["episode_reallocations"], alpha=0.25, label="episode reallocations")
+        plt.plot(df.index + 1, roll, label=f"rolling mean ({window})")
+        plt.xlabel("Episode")
+        plt.ylabel("Reallocations")
+        plt.title("Reallocations per episode")
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(out_dir / "reallocations.png", dpi=180)
+        plt.close()
+
+    if "episode_defrag_cycles" in df.columns:
+        roll = df["episode_defrag_cycles"].rolling(window, min_periods=1).mean()
+
+        plt.figure(figsize=(10, 4.5))
+        plt.plot(df.index + 1, df["episode_defrag_cycles"], alpha=0.25, label="episode defrag cycles")
+        plt.plot(df.index + 1, roll, label=f"rolling mean ({window})")
+        plt.xlabel("Episode")
+        plt.ylabel("Defrag cycles")
+        plt.title("Defrag cycles per episode")
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(out_dir / "defrag_cycles.png", dpi=180)
+        plt.close()
+
+def plot_episode_sbr(df: pd.DataFrame, out_dir: Path, window: int) -> None:
+    if "episode_sbr" not in df.columns:
+        return
+
+    tmp = df.copy()
+    tmp["episode"] = np.arange(1, len(tmp) + 1)
+    tmp["rolling_mean"] = tmp["episode_sbr"].rolling(window, min_periods=1).mean()
+
+    plt.figure(figsize=(10, 4.5))
+    plt.plot(tmp["episode"], tmp["episode_sbr"], alpha=0.25, label="episode SBR")
+    plt.plot(tmp["episode"], tmp["rolling_mean"], label=f"rolling mean ({window})")
+    plt.xlabel("Episode")
+    plt.ylabel("SBR")
+    plt.title("Service Blocking Ratio per episode")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(out_dir / "episode_sbr.png", dpi=180)
+    plt.close()
+
 
 def plot_invalid_and_violations(df: pd.DataFrame, out_dir: Path, window: int) -> None:
     if "episode_invalid_moves" in df.columns:
@@ -195,8 +243,10 @@ def main() -> None:
     if monitor_path.exists():
         df = load_monitor_csv(monitor_path)
         plot_reward(df, out_dir, args.window)
+        plot_episode_sbr(df, out_dir, args.window)
         plot_invalid_and_violations(df, out_dir, args.window)
         plot_episode_length(df, out_dir, args.window)
+        plot_realloc_and_cycles(df, out_dir, args.window)
 
     eval_dir = None
     if args.eval_subdir:

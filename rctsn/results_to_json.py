@@ -377,6 +377,21 @@ def _extract_selected_paths(z):
             selected_path[s] = u
     return selected_path
 
+def _build_scheduled_stream_id_map(a, streams_info):
+    """
+    Build a dense remapping for active/scheduled streams only.
+
+    Returns
+    -------
+    dict
+        old_stream_id -> new_dense_stream_id
+    """
+    active_old_ids = [
+        s for s in sorted(streams_info.keys())
+        if _is_active_stream(a, s)
+    ]
+    return {old_id: new_id for new_id, old_id in enumerate(active_old_ids)}
+
 
 def _extract_first_rep_hops(x, old_to_new_name):
     path_hops = defaultdict(list)
@@ -490,6 +505,7 @@ def _build_streams_json(
     ilp_time_unit,
     stream_dict,
     duration_source,
+    scheduled_id_map,
 ):
     schedule_entries = defaultdict(list)
     streams_json = []
@@ -518,7 +534,9 @@ def _build_streams_json(
         talker = old_to_new_name[_strip_parallel_suffix(info["src"])]
         listener = old_to_new_name[_strip_parallel_suffix(info["dst"])]
 
-        schedule_stream_id = int(s)
+        if s not in scheduled_id_map:
+            continue
+        schedule_stream_id = int(scheduled_id_map[s])
         path_list = [_make_fq_port(talker, "Port1")]
 
         first_hop_duration_ns = None
@@ -722,6 +740,7 @@ def main():
 
     selected_path = _extract_selected_paths(z)
     path_hops = _extract_first_rep_hops(x, old_to_new_name)
+    scheduled_id_map = _build_scheduled_stream_id_map(a, streams_info)
     streams_json, schedule_entries = _build_streams_json(
         a,
         selected_path,
@@ -736,6 +755,7 @@ def main():
         args.ilp_time_unit,
         stream_dict,
         args.duration_source,
+        scheduled_id_map,
     )
     _inject_port_schedules(nodes_json, schedule_entries, args.default_queue_count)
 
