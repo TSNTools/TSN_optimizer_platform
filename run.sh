@@ -1,15 +1,15 @@
-mkdir -p run_05
+mkdir -p run_06
 
 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
-taskset -c 7 python -u train.py \
+taskset -c 6 python -u train.py \
   --config uc_config.cfg \
   --instance banana.json \
-  --out-dir run_05 \
-  --train-episodes 800 \
+  --out-dir run_06 \
+  --train-episodes 400 \
   --timesteps 50000 \
   --decision-points-per-episode 100 \
-  --lambda-arrival 1.0 \
-  --mu-departure 1.2 \
+  --lambda-arrival 1 \
+  --mu-departure 0.6 \
   --dt 1.0 \
   --max-candidates 5 \
   --max-steps 500 \
@@ -27,4 +27,4 @@ taskset -c 7 python -u train.py \
   --defrag-cycle-penalty 0.3 \
   --reallocation-penalty 0.05 \
   --invalid-penalty 1 \
-  > run_05/train.log 2>&1 &
+  > run_06/train.log 2>&1 &

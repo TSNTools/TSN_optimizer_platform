@@ -14,7 +14,11 @@ from evaluator import ScheduleEncodingType, TSNConstraintEvaluator
 from schedule import Schedule, Slot
 from tsn_scheduling_problem import MBPS_2_BPNS, TSNScheduling
 from usecase_generator import Usecase
-from benchmark_utils import build_network_generator_from_usecase, generate_one_arrival_stream, build_usecase_stream_from_request
+from benchmark_utils import (
+    build_network_generator_from_usecase,
+    generate_one_arrival_stream,
+    build_usecase_stream_from_request,
+)
 
 BYTE_2_BIT = 8
 
@@ -213,7 +217,7 @@ class TSNCandidatePathEnv(gym.Env):
 
         self.observation_space = spaces.Dict(
             {
-                "base_features": spaces.Box(low=-1.0, high=1.0, shape=(8,), dtype=np.float32),
+                "base_features": spaces.Box(low=-1.0, high=1.0, shape=(7,), dtype=np.float32),
                 "current_offsets": spaces.Box(low=-1.0, high=1.0, shape=(self.max_hops,), dtype=np.float32),
                 "candidate_offsets": spaces.Box(
                     low=-1.0, high=1.0, shape=(self.max_candidates, self.max_hops), dtype=np.float32
@@ -698,6 +702,8 @@ class TSNCandidatePathEnv(gym.Env):
                     self.stream_info[stream_id]["port_dur_ns"][int(slot.port_id)] = actual_dur
 
     def _rebuild_runtime_metadata(self) -> None:
+        self.problem.usecase = self.usecase
+        self.problem.build_metadata()
         with self.problem.use_instance(self.usecase):
             self.n_ports = int(self.problem.n_ports)
             self.n_streams = int(self.problem.n_streams)
@@ -830,23 +836,7 @@ class TSNCandidatePathEnv(gym.Env):
                 self.blocked_requests += 1
 
             self._load_state_from_schedule(sched)
-
-    def _begin_decision_point(self) -> bool:
-        self.decision_stream_order = self._ordered_streams_by_age()
-        self.decision_pointer = 0
-        self.in_defrag_cycle = False
-
-        if not self.decision_stream_order:
-            self.focus = StreamDecisionFocus(stream_id=0)
-            self.current_candidates = []
-            self.decision_active = False
-            return False
-
-        self.focus = StreamDecisionFocus(stream_id=int(self.decision_stream_order[0]))
-        self.current_candidates = self._candidate_list_for_stream(int(self.focus.stream_id))
-        self.decision_active = True
-        return True
-
+    
     def _advance_until_next_decision_point(self) -> bool:
         while self.episode_decision_points < self.decision_points_per_episode:
             self.current_time += self.dt
@@ -882,6 +872,22 @@ class TSNCandidatePathEnv(gym.Env):
         self.decision_active = False
         self.current_candidates = []
         return False
+    
+    def _begin_decision_point(self) -> bool:
+        self.decision_stream_order = self._ordered_streams_by_age()
+        self.decision_pointer = 0
+        self.in_defrag_cycle = False
+
+        if not self.decision_stream_order:
+            self.focus = StreamDecisionFocus(stream_id=0)
+            self.current_candidates = []
+            self.decision_active = False
+            return False
+
+        self.focus = StreamDecisionFocus(stream_id=int(self.decision_stream_order[0]))
+        self.current_candidates = self._candidate_list_for_stream(int(self.focus.stream_id))
+        self.decision_active = True
+        return True
 
     # ------------------------------------------------------------------
     # Observation
@@ -896,7 +902,6 @@ class TSNCandidatePathEnv(gym.Env):
         total_required_duration = float(self.stream_info[stream_id]["total_required_duration_ns"]) if path and stream_id < len(self.stream_info) else 0.0
         hop_count = len(path)
         current_cuts = self._stream_cut_count(stream_id, offsets=current_offsets) if path else 0
-        sbr = self._current_sbr()
 
         age_norm = np.tanh(age / max(1.0, float(self.current_time + self.dt)))
         duration_norm = float(total_required_duration / max(1.0, self.max_required_duration_ns))
@@ -904,7 +909,6 @@ class TSNCandidatePathEnv(gym.Env):
         cut_norm = float(current_cuts / max(1, self.max_hops - 1))
         frss_norm = np.tanh(float(g["frss"]))
         fse_norm = np.tanh(float(g["fse"]))
-        sbr_norm = float(np.clip(sbr, 0.0, 1.0))
         in_cycle_norm = 1.0 if self.in_defrag_cycle else 0.0
 
         base_features = np.asarray(
@@ -915,7 +919,6 @@ class TSNCandidatePathEnv(gym.Env):
                 cut_norm * 2.0 - 1.0,
                 frss_norm * 2.0 - 1.0,
                 fse_norm * 2.0 - 1.0,
-                sbr_norm * 2.0 - 1.0,
                 in_cycle_norm * 2.0 - 1.0,
             ],
             dtype=np.float32,
@@ -1004,11 +1007,12 @@ class TSNCandidatePathEnv(gym.Env):
     def step(self, action: int):
         self.step_count += 1
         action = int(np.asarray(action).item())
+        forced_to_stop = False
 
         if not self.decision_active:
             terminated = True
             truncated = False
-            info = {"stop_action": True, "forced_to_stop": bool(forced_to_stop), "invalid_move": False, **self._terminal_info()}
+            info = {"stop_action": True, "forced_to_stop": False, "invalid_move": False, **self._terminal_info()}
             return self._get_obs(), 0.0, terminated, truncated, info
 
         before_metrics = self._global_metrics()
@@ -1020,7 +1024,6 @@ class TSNCandidatePathEnv(gym.Env):
         chosen_candidate: Optional[StreamMoveCandidate] = None
         reward = 0.0
 
-        forced_to_stop = False
 
         # If action points to padded / nonexistent candidate, convert it to STOP
         if action > 0:
@@ -1031,8 +1034,8 @@ class TSNCandidatePathEnv(gym.Env):
 
         if action == 0:
             stop_action = True
-            reward = -self._current_sbr
             terminated, truncated = self._finish_decision_point_and_continue()
+            reward = 1 - self._current_sbr()
             info = {
                 "stop_action": True,
                 "forced_to_stop": bool(forced_to_stop),
@@ -1042,7 +1045,7 @@ class TSNCandidatePathEnv(gym.Env):
                 "candidate_count": int(len(self.current_candidates)),
                 "sbr": float(self._current_sbr()),
                 "frss_before": float(before_metrics["frss"]),
-                "frss_after": float(after_metrics["frss"]),
+                "frss_after": float(before_metrics["frss"]),
                 "fse_before": float(before_metrics["fse"]),
                 "fse_after": float(before_metrics["fse"]),
                 "in_defrag_cycle_before": in_defrag_cycle_before,
@@ -1081,16 +1084,17 @@ class TSNCandidatePathEnv(gym.Env):
                 self._backup_current_as_last_valid()
                 after_metrics = self._global_metrics()
                 delta_accept = after_metrics["acceptance_count"] - before_metrics["acceptance_count"]
-                delta_useless = before_metrics["total_useless_gaps"] - after_metrics["total_useless_gaps"]
+                delta_useless = (before_metrics["total_useless_gaps"] - after_metrics["total_useless_gaps"]) / 3
                 delta_hole = (after_metrics["largest_hole_ns"] - before_metrics["largest_hole_ns"]) / max(1.0, self.cycle_ns)
                 delta_frss = after_metrics["frss"] - before_metrics["frss"]
-                if delta_frss <= 0:
+                '''if delta_frss <= 0:
                     reward = -1 - self.reallocation_penalty
                 else:
                     reward = (
                         -math.log10(max(delta_frss, 1e-6))/3
                         - self.reallocation_penalty
-                    )
+                    )'''
+                reward = 2 * delta_hole - 2 * delta_useless
                 if not self.in_defrag_cycle:
                     self.in_defrag_cycle = True
                     self.episode_defrag_cycles += 1
@@ -1133,6 +1137,21 @@ class TSNCandidatePathEnv(gym.Env):
         }
         if terminated or truncated:
             info.update(self._terminal_info())
+
+        if stop_action:
+            action_str = "STOP"
+        else:
+            action_str = f"MOVE -> {chosen_candidate.offsets if chosen_candidate else 'INVALID'}"
+
+        print(
+            f"[STEP {self.step_count}] "
+            f"stream={current_stream_id} | "
+            f"{action_str} | "
+            f"reward={reward:.4f} | "
+            f"invalid={invalid} | "
+            f"sbr={self._current_sbr():.4f}"
+)
+
         return self._get_obs(), float(reward), terminated, truncated, info
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):

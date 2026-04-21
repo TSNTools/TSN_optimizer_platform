@@ -65,7 +65,6 @@ def generate_one_arrival_stream(
 
     before = len(ng.streams)
 
-    # silence prints from NetworkGenerator
     with contextlib.redirect_stdout(io.StringIO()):
         ng.generate_streams_with_dict_settings(
             wed_to_wed=0,
@@ -103,10 +102,8 @@ def generate_one_arrival_stream(
     if not added:
         return None
 
-    # keep only the first direction as the actual arrival
     arrival_stream = copy.deepcopy(added[0])
 
-    # discard everything generated in this call
     del ng.streams[before:after]
 
     if debug:
@@ -125,7 +122,6 @@ def build_usecase_stream_from_request(raw_stream, stream_id, usecase, k_paths=1,
 
     graph_nx = usecase.graph.to_undirected()
 
-    # silence print(edges_list) inside k_shortest_paths
     with contextlib.redirect_stdout(io.StringIO()):
         kpaths = k_shortest_paths(graph_nx, src, dst, k=k_paths)
 
@@ -137,7 +133,6 @@ def build_usecase_stream_from_request(raw_stream, stream_id, usecase, k_paths=1,
 
     edge_path = kpaths[0]
 
-    # Map (sourceNode, destNode) -> fully qualified port name
     edge_to_port = {}
     for port_name, pinfo in usecase.ports.items():
         edge_to_port[(pinfo["sourceNode"], pinfo["destNode"])] = port_name
@@ -148,8 +143,9 @@ def build_usecase_stream_from_request(raw_stream, stream_id, usecase, k_paths=1,
             raise KeyError(f"No egress port found in usecase.ports for edge ({u}, {v})")
         path_list.append(edge_to_port[(u, v)])
 
-    # Keep final listener host port for compatibility
-    path_list.append(f"{dst}.Port1")
+    custom_graph = nx.DiGraph()
+    for i in range(len(path_list) - 1):
+        custom_graph.add_edge(path_list[i], path_list[i + 1])
 
     stream = {
         "name": f"stream-{stream_id}",
@@ -167,6 +163,7 @@ def build_usecase_stream_from_request(raw_stream, stream_id, usecase, k_paths=1,
         "originalStreamId": stream_id,
         "priority": int(raw_stream.get("priority", 1)),
         "gamma": float(raw_stream.get("gamma", 1.0)),
+        "customGraph": custom_graph,
     }
 
     if debug:
