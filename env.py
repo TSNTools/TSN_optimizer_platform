@@ -434,15 +434,34 @@ class TSNCandidatePathEnv(gym.Env):
         return gaps
 
     def _fragmentation_rss(self) -> float:
+        """
+        FRSS based on number of useful gaps, not gap durations.
+
+        A useful gap is a gap whose duration is >= the time needed to transmit
+        useless_gap_threshold_bytes on that port.
+
+        Higher value means useful space is concentrated in fewer gaps.
+        Lower value means useful gaps are more spread out / fragmented.
+        """
         per_port_vals: List[float] = []
+
         for pidx in range(self.n_ports):
+            port_id = pidx + 1
+            threshold_ns = self._useless_gap_threshold_ns_for_port(port_id)
             gaps = self._port_gaps(pidx)
-            free_sum = float(sum(gaps))
-            if free_sum <= 0.0:
+
+            useful_gap_count = sum(1 for g in gaps if float(g) >= float(threshold_ns))
+
+            if useful_gap_count <= 0:
                 per_port_vals.append(0.0)
                 continue
-            rss_e = float(np.sqrt(np.sum(np.square(np.asarray(gaps, dtype=np.float64)))) / free_sum)
-            per_port_vals.append(rss_e)
+
+            # Count-based RSS:
+            # vector = [1, 1, ..., 1] over useful gaps
+            # sqrt(sum(1^2)) / sum(1) = sqrt(k) / k = 1/sqrt(k)
+            frss_count = 1.0 / np.sqrt(float(useful_gap_count))
+            per_port_vals.append(float(frss_count))
+
         return float(np.mean(per_port_vals)) if per_port_vals else 0.0
 
     def _fragmentation_entropy(self) -> float:
@@ -466,6 +485,7 @@ class TSNCandidatePathEnv(gym.Env):
         total_gap_count = 0.0
         total_used_time = 0.0
         acceptance_count = 0.0
+        total_useful_gaps = 0.0
 
         for pidx in range(self.n_ports):
             port_id = pidx + 1
@@ -475,6 +495,7 @@ class TSNCandidatePathEnv(gym.Env):
 
             largest_hole_ns = max(largest_hole_ns, max(gaps) if gaps else 0.0)
             total_useless_gaps += sum(1 for g in gaps if g < threshold_ns)
+            total_useful_gaps += sum(1 for g in gaps if g >= threshold_ns)
             total_gap_count += len(gaps)
             total_used_time += float(self.cycle_ns) - float(sum(gaps))
 
@@ -485,6 +506,7 @@ class TSNCandidatePathEnv(gym.Env):
         return {
             "largest_hole_ns": float(largest_hole_ns),
             "total_useless_gaps": float(total_useless_gaps),
+            "total_useful_gaps": float(total_useful_gaps),
             "total_gap_count": float(total_gap_count),
             "mean_utilization": float(np.clip(mean_util, 0.0, 1.0)),
             "acceptance_count": float(acceptance_count),
@@ -820,11 +842,12 @@ class TSNCandidatePathEnv(gym.Env):
                 self.blocked_requests += 1
                 continue
 
-            result = sched.place_stream_first_fit(
+            result = sched.place_stream_first_fit_fast(
                 stream=stream,
                 usecase=self.usecase,
                 problem=self.problem,
                 port_intervals=self.port_intervals,
+                max_candidates_per_hop=1,
             )
 
             self._rebuild_runtime_metadata()
@@ -856,6 +879,7 @@ class TSNCandidatePathEnv(gym.Env):
                         usecase=self.usecase,
                         rng=self.rng_py,
                         port_intervals=self.port_intervals,
+                        stream_arrival_times=self.stream_arrival_times,
                     )
                     self._load_state_from_schedule(sched)
                     after_ids = self._active_stream_ids()
@@ -1087,14 +1111,8 @@ class TSNCandidatePathEnv(gym.Env):
                 delta_useless = (before_metrics["total_useless_gaps"] - after_metrics["total_useless_gaps"]) / 3
                 delta_hole = (after_metrics["largest_hole_ns"] - before_metrics["largest_hole_ns"]) / max(1.0, self.cycle_ns)
                 delta_frss = after_metrics["frss"] - before_metrics["frss"]
-                '''if delta_frss <= 0:
-                    reward = -1 - self.reallocation_penalty
-                else:
-                    reward = (
-                        -math.log10(max(delta_frss, 1e-6))/3
-                        - self.reallocation_penalty
-                    )'''
-                reward = 2 * delta_hole - 2 * delta_useless
+                reward = np.clip(-5 * delta_frss, -1.0, 1.0) - self.reallocation_penalty
+                #reward = 2 * delta_hole - 2 * delta_useless
                 if not self.in_defrag_cycle:
                     self.in_defrag_cycle = True
                     self.episode_defrag_cycles += 1
@@ -1138,19 +1156,6 @@ class TSNCandidatePathEnv(gym.Env):
         if terminated or truncated:
             info.update(self._terminal_info())
 
-        if stop_action:
-            action_str = "STOP"
-        else:
-            action_str = f"MOVE -> {chosen_candidate.offsets if chosen_candidate else 'INVALID'}"
-
-        print(
-            f"[STEP {self.step_count}] "
-            f"stream={current_stream_id} | "
-            f"{action_str} | "
-            f"reward={reward:.4f} | "
-            f"invalid={invalid} | "
-            f"sbr={self._current_sbr():.4f}"
-)
 
         return self._get_obs(), float(reward), terminated, truncated, info
 

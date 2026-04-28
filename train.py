@@ -3,8 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import numpy as np
-import torch as th
 
 from stable_baselines3 import DQN
 from stable_baselines3.common.callbacks import BaseCallback, CallbackList
