@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Tuple
 import matplotlib.pyplot as plt
 from stable_baselines3 import DQN
 
-from env_candidates import TSNCandidateHopEnv
+from fake_env import TSNCandidateHopEnv
 from tsn_scheduling_problem import TSNScheduling
 
 
