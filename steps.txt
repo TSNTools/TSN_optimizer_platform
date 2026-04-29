@@ -1,0 +1,27 @@
+------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------
+----------------------------------- run ILP  ---------------------------------------------
+------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------
+
+
+1- go to rctsn/scenario_creator/small.py and fix the configuration you want (topology - number of streams - frame sizes - latencies ...)
+
+2- run python "rctsn/scenario_creator/small.py" and it will generate the needed file in rctsn/scenario_creator/output
+
+3- from output copy "streams.csv" + "network.graphml" and paste them in rctsn/data/input
+
+4- run "python rctsn/pipeline.py" with prefered args (runtime, batch size ...)
+
+------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------
+----------------------------------- conversion  ------------------------------------------
+------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------
+
+1- run "python rctsn/results_to_json.py --latest" 
+
+2- in rctsn/data/output and inside the latest run folder you will find a json file which we can use to create our instance
+
+3- copy it to root folder if you want and use it in notebook to test 
+
