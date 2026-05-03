@@ -1059,7 +1059,8 @@ class TSNCandidatePathEnv(gym.Env):
         if action == 0:
             stop_action = True
             terminated, truncated = self._finish_decision_point_and_continue()
-            reward = 1 - self._current_sbr()
+            reward = -2
+            #reward = 0.0
             info = {
                 "stop_action": True,
                 "forced_to_stop": bool(forced_to_stop),

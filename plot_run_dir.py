@@ -242,11 +242,14 @@ def main() -> None:
     monitor_path = run_dir / "monitor.csv"
     if monitor_path.exists():
         df = load_monitor_csv(monitor_path)
+        print(f"Loaded {len(df)} episodes from {monitor_path}")
         plot_reward(df, out_dir, args.window)
         plot_episode_sbr(df, out_dir, args.window)
         plot_invalid_and_violations(df, out_dir, args.window)
         plot_episode_length(df, out_dir, args.window)
         plot_realloc_and_cycles(df, out_dir, args.window)
+    else:
+        print(f"monitor.csv not found in {run_dir}, skipping training curves.")
 
     eval_dir = None
     if args.eval_subdir:

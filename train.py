@@ -136,6 +136,8 @@ def main():
     parser.add_argument("--instance", required=True)
     parser.add_argument("--out-dir", required=True)
 
+    parser.add_argument("--resume-from", type=str, default=None)
+
     parser.add_argument("--timesteps", type=int, default=100_000)
     parser.add_argument("--train-episodes", type=int, default=5)
     parser.add_argument("--seed", type=int, default=42)
@@ -178,28 +180,31 @@ def main():
     os.makedirs(args.out_dir, exist_ok=True)
     env = make_env(args)
 
-
-    model = DQN(
-        policy="MultiInputPolicy",
-        env=env,
-        learning_rate=args.learning_rate,
-        buffer_size=args.buffer_size,
-        learning_starts=args.learning_starts,
-        batch_size=args.batch_size,
-        tau=1.0,
-        gamma=args.gamma,
-        train_freq=args.train_freq,
-        gradient_steps=args.gradient_steps,
-        target_update_interval=args.target_update_interval,
-        exploration_fraction=args.exploration_fraction,
-        exploration_initial_eps=args.exploration_initial_eps,
-        exploration_final_eps=args.exploration_final_eps,
-        policy_kwargs=dict(net_arch=[256, 256]),
-        tensorboard_log=os.path.join(args.out_dir, "tb"),
-        seed=args.seed,
-        verbose=1,
-        device="cpu",
-    )
+    if args.resume_from is not None:
+        print(f"Resuming training from: {args.resume_from}")
+        model = DQN.load(args.resume_from, env=env, device="cpu")
+    else:
+        model = DQN(
+            policy="MultiInputPolicy",
+            env=env,
+            learning_rate=args.learning_rate,
+            buffer_size=args.buffer_size,
+            learning_starts=args.learning_starts,
+            batch_size=args.batch_size,
+            tau=1.0,
+            gamma=args.gamma,
+            train_freq=args.train_freq,
+            gradient_steps=args.gradient_steps,
+            target_update_interval=args.target_update_interval,
+            exploration_fraction=args.exploration_fraction,
+            exploration_initial_eps=args.exploration_initial_eps,
+            exploration_final_eps=args.exploration_final_eps,
+            policy_kwargs=dict(net_arch=[256, 256]),
+            tensorboard_log=os.path.join(args.out_dir, "tb"),
+            seed=args.seed,
+            verbose=1,
+            device="cpu",
+        )
 
     callback = CallbackList(
         [
@@ -210,7 +215,12 @@ def main():
         ]
     )
 
-    model.learn(total_timesteps=args.timesteps, callback=callback, progress_bar=True)
+    model.learn(
+        total_timesteps=args.timesteps,
+        callback=callback,
+        progress_bar=True,
+        reset_num_timesteps=False,
+    )
     model.save(os.path.join(args.out_dir, "final_model"))
 
     with open(os.path.join(args.out_dir, "run_args.json"), "w", encoding="utf-8") as f:
