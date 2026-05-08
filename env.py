@@ -65,7 +65,7 @@ class TSNCandidatePathEnv(gym.Env):
         self,
         problem: TSNScheduling,
         usecase: Usecase,
-        useless_gap_threshold_bytes: int = 1024,
+        useless_gap_threshold_bytes: int = 512,
         expected_incoming_bytes: int = 1024,
         invalid_penalty: float = 50.0,
         max_candidates: int = 10,
@@ -322,6 +322,292 @@ class TSNCandidatePathEnv(gym.Env):
     # ------------------------------------------------------------------
     # Schedule utilities
     # ------------------------------------------------------------------
+    
+    def _right_fit_offsets_for_stream(self, stream_id: int) -> Optional[List[int]]:
+        """
+        Build one true right-fit offset vector for an existing stream.
+
+        This works backwards:
+        - place the last hop as late as possible
+        - then place previous hops as late as possible while preserving causality
+
+        It only returns offsets. It does not modify the schedule.
+        """
+        stream_id = int(stream_id)
+        path = self._stream_path(stream_id)
+
+        if not path:
+            return None
+
+        period = int(self.cycle_ns)
+        hop_delays = list(self.stream_info[stream_id]["hop_delays"])
+
+        def merge_intervals(intervals):
+            cleaned = []
+            for a, b in intervals:
+                a = max(0, int(a))
+                b = min(period, int(b))
+                if b > a:
+                    cleaned.append((a, b))
+
+            if not cleaned:
+                return []
+
+            cleaned.sort()
+            merged = [cleaned[0]]
+
+            for a, b in cleaned[1:]:
+                la, lb = merged[-1]
+                if a <= lb:
+                    merged[-1] = (la, max(lb, b))
+                else:
+                    merged.append((a, b))
+
+            return merged
+
+        def fits(start, duration, intervals):
+            start = int(start)
+            end = int(start + duration)
+
+            if start < 0 or end > period:
+                return False
+
+            for a, b in intervals:
+                if start < b and end > a:
+                    return False
+
+            return True
+
+        def rightmost_start_before(latest_end, duration, intervals):
+            latest_end = min(period, int(latest_end))
+            duration = int(duration)
+
+            if duration <= 0:
+                return 0
+
+            intervals = merge_intervals(intervals)
+
+            candidates = set()
+            candidates.add(latest_end - duration)
+
+            # Just before every occupied interval is a meaningful right-fit candidate.
+            for a, _ in intervals:
+                candidates.add(int(a) - duration)
+
+            for s in sorted(candidates, reverse=True):
+                if s < 0:
+                    continue
+                if s + duration > latest_end:
+                    continue
+                if fits(s, duration, intervals):
+                    return int(s)
+
+            return None
+
+        offsets = [None for _ in path]
+
+        # Backward placement
+        for hop_idx in reversed(range(len(path))):
+            pid = int(path[hop_idx])
+            duration = int(self._stream_hop_duration_ns(stream_id, hop_idx))
+
+            if hop_idx == len(path) - 1:
+                latest_end = period
+            else:
+                # Need this hop to finish early enough for the next hop.
+                # Relation used in your forward candidate generation:
+                # next_start >= this_start + hop_delay
+                next_start = int(offsets[hop_idx + 1])
+                delay_to_next = float(hop_delays[hop_idx])
+                latest_start = int(round(next_start - delay_to_next))
+                latest_end = latest_start + duration
+
+            if latest_end <= 0:
+                return None
+
+            intervals = self._occupied_intervals_on_port_excluding_stream(
+                port_id=pid,
+                stream_id=stream_id,
+            )
+
+            st = rightmost_start_before(
+                latest_end=latest_end,
+                duration=duration,
+                intervals=intervals,
+            )
+
+            if st is None:
+                return None
+
+            offsets[hop_idx] = int(st)
+
+        if any(x is None for x in offsets):
+            return None
+
+        return [int(x) for x in offsets]
+
+
+    def select_diverse_candidates(
+        self,
+        candidates: List[StreamMoveCandidate],
+        max_candidates: int,
+    ) -> List[StreamMoveCandidate]:
+        """
+        Select a diverse final candidate set.
+
+        This is used after full-path candidates have already been generated
+        and evaluated as globally valid.
+
+        Goal:
+        - avoid returning several candidates with almost the same first-hop offset
+        - expose different schedule shapes to the DQN
+        - keep a strong fragmentation-oriented candidate
+        - include left/middle/right alternatives when available
+
+        Note:
+        The current/no-move candidate is handled separately in
+        _candidate_list_for_stream(), so this function only selects from
+        generated move candidates.
+        """
+        if not candidates:
+            return []
+
+        max_candidates = int(max_candidates)
+        if max_candidates <= 0:
+            return []
+
+        def cand_key(c: StreamMoveCandidate):
+            return tuple(int(x) for x in c.offsets)
+
+        # Remove duplicate offset vectors while preserving first occurrence.
+        unique = []
+        seen = set()
+
+        for c in candidates:
+            k = cand_key(c)
+            if k not in seen:
+                seen.add(k)
+                unique.append(c)
+
+        if len(unique) <= max_candidates:
+            return unique
+
+        # Best-by-fragmentation ordering.
+        best_sorted = sorted(
+            unique,
+            key=lambda c: (
+                -float(c.frss_after),
+                float(c.fse_after),
+                int(c.cuts),
+                tuple(int(x) for x in c.offsets),
+            ),
+        )
+
+        selected = []
+        selected_keys = set()
+
+        def add(c: StreamMoveCandidate):
+            k = cand_key(c)
+            if k not in selected_keys and len(selected) < max_candidates:
+                selected.append(c)
+                selected_keys.add(k)
+
+        # 1) Best fragmentation candidate.
+        add(best_sorted[0])
+
+        # 2) Left-most, right-most, and middle candidate by first-hop offset.
+        by_first = sorted(
+            unique,
+            key=lambda c: int(c.offsets[0]) if c.offsets else 0,
+        )
+
+        add(by_first[0])                       # left-most
+        add(by_first[-1])                      # right-most
+        add(by_first[len(by_first) // 2])      # middle
+
+        # 3) Fill remaining slots with best fragmentation-ranked candidates.
+        for c in best_sorted:
+            add(c)
+            if len(selected) >= max_candidates:
+                break
+
+        return selected[:max_candidates]
+
+
+    def select_diverse_offset_vectors(
+        self,
+        vectors: List[List[int]],
+        limit: int,
+        current_offsets: Optional[List[int]] = None,
+    ) -> List[List[int]]:
+        """
+        Diversity-aware pruning for partial/full offset vectors.
+
+        Keeps different first-hop placements instead of only the lowest-span vectors.
+        """
+        if not vectors:
+            return []
+
+        limit = int(limit)
+        if limit <= 0:
+            return []
+
+        # Remove duplicates
+        unique = []
+        seen = set()
+        for vec in vectors:
+            key = tuple(int(x) for x in vec)
+            if key not in seen:
+                seen.add(key)
+                unique.append([int(x) for x in vec])
+
+        if len(unique) <= limit:
+            return unique
+
+        selected = []
+        selected_keys = set()
+
+        def add(vec):
+            key = tuple(int(x) for x in vec)
+            if key not in selected_keys and len(selected) < limit:
+                selected.append([int(x) for x in vec])
+                selected_keys.add(key)
+
+        # 1) Keep current prefix if available
+        if current_offsets:
+            prefix_len = len(unique[0])
+            cur_prefix = [int(x) for x in current_offsets[:prefix_len]]
+
+            for vec in unique:
+                if vec == cur_prefix:
+                    add(vec)
+                    break
+
+        # 2) Keep left-most, right-most, and middle by first-hop offset
+        by_first = sorted(unique, key=lambda vec: int(vec[0]) if vec else 0)
+
+        add(by_first[0])                         # left
+        add(by_first[-1])                        # right
+        add(by_first[len(by_first) // 2])        # middle
+
+        # 3) Keep low-span alternatives
+        by_span = sorted(
+            unique,
+            key=lambda vec: (
+                max(vec) - min(vec) if vec else 0,
+                sum(vec),
+                tuple(vec),
+            ),
+        )
+
+        for vec in by_span:
+            add(vec)
+            if len(selected) >= limit:
+                break
+
+        return selected[:limit]
+    
+    
     def _place_stream_with_offsets(self, s_idx: int, offsets: Dict[int, float]) -> None:
         sinfo = self.stream_info[s_idx]
         path = list(sinfo["path"])
@@ -395,6 +681,104 @@ class TSNCandidatePathEnv(gym.Env):
 
         return [first] + remaining
 
+
+    def _candidate_potential_score_for_stream(self, stream_id: int) -> float:
+        """
+        Estimate how promising a stream is for reconfiguration.
+
+        Higher score = better candidate potential.
+
+        Uses already generated valid candidates and compares each candidate's
+        FRSS against the current global FRSS.
+        """
+        stream_id = int(stream_id)
+
+        try:
+            current_metrics = self._global_metrics()
+            current_frss = float(current_metrics["frss"])
+
+            candidates = self._candidate_list_for_stream(stream_id)
+            if not candidates:
+                return -1e9
+
+            best_delta_frss = max(
+                float(c.frss_after) - current_frss
+                for c in candidates
+                if c.source != "current"
+            ) if any(c.source != "current" for c in candidates) else 0.0
+
+            # Small extra preference for streams that actually have move candidates.
+            move_count = sum(1 for c in candidates if c.source != "current")
+
+            return float(best_delta_frss) + 1e-4 * float(move_count)
+
+        except Exception:
+            return -1e9
+
+
+    def _ordered_streams_by_candidate_potential(self) -> List[int]:
+        """
+        Order active streams by candidate potential, but only score a limited
+        oldest subset for speed.
+
+        This avoids evaluating candidates for every active stream.
+        """
+        active_ids = self._active_stream_ids()
+
+        if not active_ids:
+            return []
+
+        now = float(self.current_time)
+
+        # First sort by age
+        age_sorted = []
+
+        for sid in active_ids:
+            sid = int(sid)
+            arrival_t = float(self.stream_arrival_times.get(sid, 0.0))
+            age = now - arrival_t
+            age_sorted.append((sid, age))
+
+        age_sorted.sort(
+            key=lambda x: (
+                -float(x[1]),
+                int(x[0]),
+            )
+        )
+
+        # Only score top-k oldest streams for candidate potential
+        k = int(getattr(self, "top_k_oldest_random", 10))
+        candidate_pool = [sid for sid, _ in age_sorted[:k]]
+
+        scored = []
+
+        for sid in candidate_pool:
+            sid = int(sid)
+            potential = self._candidate_potential_score_for_stream(sid)
+            arrival_t = float(self.stream_arrival_times.get(sid, 0.0))
+            age = now - arrival_t
+            scored.append((sid, potential, age))
+
+        scored.sort(
+            key=lambda x: (
+                -float(x[1]),  # best candidate potential first
+                -float(x[2]),  # older first
+                int(x[0]),
+            )
+        )
+
+        selected = [sid for sid, _, _ in scored]
+
+        # Append remaining active streams by age, so focus list is complete
+        selected_set = set(selected)
+        remaining = [
+            sid for sid, _ in age_sorted
+            if sid not in selected_set
+        ]
+
+        return selected + remaining
+
+ 
     def _advance_stream_focus(self) -> None:
         if not self.decision_stream_order:
             self.focus = StreamDecisionFocus(stream_id=0)
@@ -463,6 +847,18 @@ class TSNCandidatePathEnv(gym.Env):
             per_port_vals.append(float(frss_count))
 
         return float(np.mean(per_port_vals)) if per_port_vals else 0.0
+    
+    def _fragmentation_rss2(self) -> float:
+        per_port_vals: List[float] = []
+        for pidx in range(self.n_ports):
+            gaps = self._port_gaps(pidx)
+            free_sum = float(sum(gaps))
+            if free_sum <= 0.0:
+                per_port_vals.append(0.0)
+                continue
+            rss_e = float(np.sqrt(np.sum(np.square(np.asarray(gaps, dtype=np.float64)))) / free_sum)
+            per_port_vals.append(rss_e)
+        return float(np.mean(per_port_vals)) if per_port_vals else 0.0
 
     def _fragmentation_entropy(self) -> float:
         per_port_vals: List[float] = []
@@ -510,7 +906,7 @@ class TSNCandidatePathEnv(gym.Env):
             "total_gap_count": float(total_gap_count),
             "mean_utilization": float(np.clip(mean_util, 0.0, 1.0)),
             "acceptance_count": float(acceptance_count),
-            "frss": float(self._fragmentation_rss()),
+            "frss": float(self._fragmentation_rss2()),
             "fse": float(self._fragmentation_entropy()),
         }
 
@@ -588,37 +984,68 @@ class TSNCandidatePathEnv(gym.Env):
         return int(np.ceil(dur))
 
     def _candidate_start_set_for_stream_hop(self, stream_id: int, hop_index: int, min_start_ns: int) -> List[int]:
+        """
+        Generate diverse candidate starts for one stream hop.
+
+        Instead of only taking the earliest starts in each free gap, sample:
+        - left edge
+        - right edge
+        - middle
+        - current offset, if feasible
+        - evenly spaced internal points if per_hop_candidate_limit allows
+
+        This avoids the old left-biased behavior where almost all candidates
+        were near 0 in large empty gaps.
+        """
         path = self._stream_path(stream_id)
         if hop_index < 0 or hop_index >= len(path):
             return []
 
         port_id = int(path[hop_index])
         dur = int(self._stream_hop_duration_ns(stream_id, hop_index))
+        min_start_ns = max(0, int(min_start_ns))
+
         current_offsets = self._stream_current_offset_vector(stream_id)
         cur = int(current_offsets[hop_index]) if hop_index < len(current_offsets) else 0
 
         if dur <= 0:
-            return [max(0, int(min_start_ns))]
+            return [min_start_ns]
 
         free_gaps = self._free_gaps_on_port_excluding_stream(port_id, stream_id)
-        starts = set()
-        for gap_start, gap_end in free_gaps:
-            start = max(int(gap_start), int(min_start_ns))
-            if start + dur > int(gap_end):
-                continue
-            starts.add(start)
-            cursor = start + dur
-            added = 1
-            while cursor + dur <= int(gap_end) and added < self.per_hop_candidate_limit:
-                starts.add(int(cursor))
-                cursor += dur
-                added += 1
 
-        if self.include_current_offset_candidate and cur >= int(min_start_ns):
-            starts.add(cur)
-        if not starts and cur >= int(min_start_ns):
-            starts.add(cur)
+        starts = set()
+
+        for gap_start, gap_end in free_gaps:
+            lo = max(int(gap_start), min_start_ns)
+            hi = int(gap_end) - dur
+
+            if hi < lo:
+                continue
+
+            # Always include left, middle, and right of the feasible region.
+            starts.add(int(lo))
+            starts.add(int((lo + hi) // 2))
+            starts.add(int(hi))
+
+            # Add extra evenly spaced points if requested.
+            # Example with extra=2: add approx 1/3 and 2/3 positions.
+            extra = max(0, int(self.per_hop_candidate_limit) - 3)
+            for i in range(1, extra + 1):
+                s = lo + int(round(i * (hi - lo) / (extra + 1)))
+                starts.add(int(s))
+
+        # Include current offset if it is feasible after excluding this stream.
+        if self.include_current_offset_candidate and cur >= min_start_ns:
+            for gap_start, gap_end in free_gaps:
+                lo = max(int(gap_start), min_start_ns)
+                hi = int(gap_end) - dur
+                if lo <= cur <= hi:
+                    starts.add(int(cur))
+                    break
+
+        # Sort left-to-right for now. Later candidate-level semantic ordering will decide.
         return sorted(starts)
+
 
     def _score_partial_offsets(self, stream_id: int, offsets: List[int]) -> Tuple[int, float]:
         cuts = self._stream_cut_count(stream_id, offsets=offsets)
@@ -651,49 +1078,130 @@ class TSNCandidatePathEnv(gym.Env):
         return {"frss_after": float(g["frss"]), "fse_after": float(g["fse"])}
 
     def _candidate_list_for_stream(self, stream_id: int) -> List[StreamMoveCandidate]:
+        """
+        Generate final DRL candidates for one active stream.
+
+        Improvements over old version:
+        - Generates candidates with richer hop starts from _candidate_start_set_for_stream_hop().
+        - Keeps the current/no-move candidate as the first candidate when available.
+            This gives action 1 a stable meaning:
+                action 0 = STOP
+                action 1 = current/no-move candidate
+        - Selects diverse remaining candidates, so we avoid exposing five very
+            similar left-biased candidates.
+        """
+        stream_id = int(stream_id)
+
         path = self._stream_path(stream_id)
         if not path:
             return []
 
-        hop_delays = list(self.stream_info[int(stream_id)]["hop_delays"])
+        hop_delays = list(self.stream_info[stream_id]["hop_delays"])
         current_offsets = self._stream_current_offset_vector(stream_id)
+
+        # ------------------------------------------------------------
+        # Build full-path candidate offset vectors hop by hop
+        # ------------------------------------------------------------
         partials: List[List[int]] = [[]]
 
         for hop_idx in range(len(path)):
             next_partials: List[List[int]] = []
+
             for partial in partials:
-                min_start_ns = 0 if hop_idx == 0 else int(round(int(partial[hop_idx - 1]) + float(hop_delays[hop_idx - 1])))
-                hop_candidates = self._candidate_start_set_for_stream_hop(stream_id, hop_idx, min_start_ns)
+                if hop_idx == 0:
+                    min_start_ns = 0
+                else:
+                    prev_start = int(partial[hop_idx - 1])
+                    prev_delay = float(hop_delays[hop_idx - 1])
+                    min_start_ns = int(round(prev_start + prev_delay))
+
+                hop_candidates = self._candidate_start_set_for_stream_hop(
+                    stream_id,
+                    hop_idx,
+                    min_start_ns,
+                )
+
+                # Keep a bounded number per hop, but these are now more diverse
+                # because _candidate_start_set_for_stream_hop samples left/mid/right.
                 hop_candidates = hop_candidates[: self.per_hop_candidate_limit]
+
                 for st in hop_candidates:
                     next_partials.append(partial + [int(st)])
 
             if not next_partials:
+                # Fallback to current offsets if possible.
                 if current_offsets and len(current_offsets) == len(path):
                     next_partials = [list(current_offsets)]
                 else:
                     return []
 
-            next_partials = sorted(next_partials, key=lambda vec: self._score_partial_offsets(stream_id, vec))[: self.beam_width]
+            # Beam pruning. Prefer fewer cuts, then shorter path span.
+            next_partials = self.select_diverse_offset_vectors(
+                vectors=next_partials,
+                limit=self.beam_width,
+                current_offsets=current_offsets,
+            )
+
             partials = next_partials
 
+        # ------------------------------------------------------------
+        # Always include current/no-move offset vector if available
+        # ------------------------------------------------------------
         if self.include_current_offset_candidate and current_offsets and len(current_offsets) == len(path):
             partials.append(list(current_offsets))
+        right_fit_offsets = self._right_fit_offsets_for_stream(stream_id)
 
+        if right_fit_offsets is not None and len(right_fit_offsets) == len(path):
+            partials.append(list(right_fit_offsets))
+
+        # ------------------------------------------------------------
+        # Remove duplicate offset vectors
+        # ------------------------------------------------------------
         unique_vecs: List[List[int]] = []
         seen = set()
+
         for vec in partials:
             key = tuple(int(x) for x in vec)
+
             if key not in seen:
                 seen.add(key)
                 unique_vecs.append([int(x) for x in vec])
 
+        # ------------------------------------------------------------
+        # Evaluate candidates and keep only globally valid moves
+        # ------------------------------------------------------------
         candidates: List[StreamMoveCandidate] = []
+
+        current_key = (
+            tuple(int(x) for x in current_offsets)
+            if current_offsets and len(current_offsets) == len(path)
+            else None
+        )
+
+        right_fit_key = (
+            tuple(int(x) for x in right_fit_offsets)
+            if right_fit_offsets is not None and len(right_fit_offsets) == len(path)
+            else None
+        )
+
         for vec in unique_vecs:
+
             eval_metrics = self._evaluate_candidate_metrics(stream_id, vec)
+
             if eval_metrics is None:
                 continue
+
             cuts = self._stream_cut_count(stream_id, offsets=vec)
+
+            vec_key = tuple(int(x) for x in vec)
+
+            if current_key is not None and vec_key == current_key:
+                source = "current"
+            elif right_fit_key is not None and vec_key == right_fit_key:
+                source = "right_fit"
+            else:
+                source = "generated"
+
             candidates.append(
                 StreamMoveCandidate(
                     stream_id=int(stream_id),
@@ -701,14 +1209,86 @@ class TSNCandidatePathEnv(gym.Env):
                     cuts=int(cuts),
                     frss_after=float(eval_metrics["frss_after"]),
                     fse_after=float(eval_metrics["fse_after"]),
-                    source="generated",
+                    source=source,
                 )
             )
 
-        candidates.sort(
-            key=lambda c: (-float(c.frss_after), float(c.fse_after), int(c.cuts), tuple(c.offsets))
+        if not candidates:
+            return []
+
+        # ------------------------------------------------------------
+        # Split current/no-move from other candidates
+        # ------------------------------------------------------------
+        current_candidates: List[StreamMoveCandidate] = []
+        right_fit_candidates: List[StreamMoveCandidate] = []
+        other_candidates: List[StreamMoveCandidate] = []
+
+        for c in candidates:
+            if c.source == "current":
+                current_candidates.append(c)
+            elif c.source == "right_fit":
+                right_fit_candidates.append(c)
+            else:
+                other_candidates.append(c)
+
+        # Best current candidate first, if present.
+        # Usually there is only one.
+        current_candidates.sort(
+            key=lambda c: (
+                -float(c.frss_after),
+                float(c.fse_after),
+                int(c.cuts),
+                tuple(int(x) for x in c.offsets),
+            )
         )
-        return candidates[: self.max_candidates]
+
+        right_fit_candidates.sort(
+            key=lambda c: (
+                -float(c.frss_after),
+                float(c.fse_after),
+                int(c.cuts),
+                tuple(int(x) for x in c.offsets),
+            )
+        )
+
+        # Sort others before diversity selection, so the first occurrence of each
+        # unique candidate is already good.
+        other_candidates.sort(
+            key=lambda c: (
+                -float(c.frss_after),
+                float(c.fse_after),
+                int(c.cuts),
+                tuple(int(x) for x in c.offsets),
+            )
+        )
+
+        final_candidates: List[StreamMoveCandidate] = []
+
+        # Stable semantic:
+        # action 0 = STOP
+        # action 1 = current/no-move candidate, when available
+        # action 2 = right-fit candidate, when available
+        if current_candidates:
+            final_candidates.append(current_candidates[0])
+
+        if right_fit_candidates:
+            rk = tuple(int(x) for x in right_fit_candidates[0].offsets)
+            existing = {tuple(int(x) for x in c.offsets) for c in final_candidates}
+            if rk not in existing:
+                final_candidates.append(right_fit_candidates[0])
+
+        remaining_slots = self.max_candidates - len(final_candidates)
+
+        if remaining_slots > 0:
+            final_candidates.extend(
+                self.select_diverse_candidates(
+                    other_candidates,
+                    remaining_slots,
+                )
+            )
+
+        return final_candidates[: self.max_candidates]
+    
 
     def _sync_evaluator_with_schedule_durations(self) -> None:
         self.sched_eval.windLengths[:, :] = 0.0
@@ -842,13 +1422,27 @@ class TSNCandidatePathEnv(gym.Env):
                 self.blocked_requests += 1
                 continue
 
-            result = sched.place_stream_first_fit_fast(
-                stream=stream,
+            # New-stream placement using preserve-ID existing-stream placement.
+            # This replaces sched.place_stream_first_fit_fast(...).
+            self.usecase.streams.append(copy.deepcopy(stream))
+            self.problem.usecase = self.usecase
+            self.problem.build_metadata()
+
+            result = sched.place_existing_stream_first_fit_fast(
+                stream_id=stream_id,
                 usecase=self.usecase,
                 problem=self.problem,
+                queue_id=5,
                 port_intervals=self.port_intervals,
-                max_candidates_per_hop=1,
+                max_candidates_per_hop=2,
+                beam_width=2,
             )
+
+            if not result.get("accepted"):
+                # Roll back stream definition if placement failed.
+                self.usecase.streams.pop()
+                self.problem.usecase = self.usecase
+                self.problem.build_metadata()
 
             self._rebuild_runtime_metadata()
 
@@ -898,7 +1492,7 @@ class TSNCandidatePathEnv(gym.Env):
         return False
     
     def _begin_decision_point(self) -> bool:
-        self.decision_stream_order = self._ordered_streams_by_age()
+        self.decision_stream_order = self._ordered_streams_by_candidate_potential()
         self.decision_pointer = 0
         self.in_defrag_cycle = False
 
@@ -1053,14 +1647,40 @@ class TSNCandidatePathEnv(gym.Env):
         if action > 0:
             cand_idx = action - 1
             if cand_idx < 0 or cand_idx >= len(self.current_candidates):
-                action = 0
-                forced_to_stop = True
+                invalid = True
+                self.episode_invalid_moves += 1
+                reward = -float(self.invalid_penalty)
+                
+                terminated = False
+                truncated = bool(self.step_count >= self.max_steps)
+
+                info = {
+                    "stop_action": False,
+                    "forced_to_stop": False,
+                    "invalid_move": True,
+                    "invalid_reason": "padded_action",
+                    "stream_id": current_stream_id,
+                    "chosen_offsets": None,
+                    "candidate_count": int(len(self.current_candidates)),
+                    "sbr": float(self._current_sbr()),
+                    "frss_before": float(before_metrics["frss"]),
+                    "frss_after": float(before_metrics["frss"]),
+                    "fse_before": float(before_metrics["fse"]),
+                    "fse_after": float(before_metrics["fse"]),
+                    "in_defrag_cycle_before": in_defrag_cycle_before,
+                    "in_defrag_cycle_after": bool(self.in_defrag_cycle),
+                    "step_count": int(self.step_count),
+                }
+
+                if truncated:
+                    info.update(self._terminal_info())
+
+                return self._get_obs(), float(reward), terminated, truncated, info
 
         if action == 0:
             stop_action = True
             terminated, truncated = self._finish_decision_point_and_continue()
-            reward = -2
-            #reward = 0.0
+            reward = 0.1 - self._current_sbr()
             info = {
                 "stop_action": True,
                 "forced_to_stop": bool(forced_to_stop),
@@ -1108,16 +1728,20 @@ class TSNCandidatePathEnv(gym.Env):
             else:
                 self._backup_current_as_last_valid()
                 after_metrics = self._global_metrics()
-                delta_accept = after_metrics["acceptance_count"] - before_metrics["acceptance_count"]
-                delta_useless = (before_metrics["total_useless_gaps"] - after_metrics["total_useless_gaps"]) / 3
-                delta_hole = (after_metrics["largest_hole_ns"] - before_metrics["largest_hole_ns"]) / max(1.0, self.cycle_ns)
                 delta_frss = after_metrics["frss"] - before_metrics["frss"]
-                reward = np.clip(-5 * delta_frss, -1.0, 1.0) - self.reallocation_penalty
-                #reward = 2 * delta_hole - 2 * delta_useless
+                frss_improvement = max(0.0, float(delta_frss))
+
+                frag_reward = math.log10(1.0 + 100.0 * frss_improvement) / 2.0
+                reward = frag_reward
+                reward -= float(self.reallocation_penalty)
+
                 if not self.in_defrag_cycle:
                     self.in_defrag_cycle = True
                     self.episode_defrag_cycles += 1
-                    reward -= float(self.defrag_cycle_penalty)
+                    if self._current_sbr() == 0.0:
+                        reward = 1.0 - float(self.defrag_cycle_penalty)
+                    else:
+                        reward = -math.log10(self._current_sbr())/3.0 - float(self.reallocation_penalty) - float(self.defrag_cycle_penalty)
 
         terminated = False
         truncated = bool(self.step_count >= self.max_steps)

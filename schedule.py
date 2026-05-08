@@ -282,7 +282,7 @@ class Schedule(list):
             if port_intervals is not None:
                 current_intervals = list(port_intervals.get(pid, []))
             else:
-                current_intervals = self._occupied_intervals_on_port(pid, period)
+                current_intervals = self._occupied_intervals_on_port(pid, self.cycle_ns)
 
             for s in accepted_slots:
                 if int(s.port_id) == int(pid):
@@ -384,67 +384,45 @@ class Schedule(list):
         self.update_graph(usecase.graph, port_id_to_name)
 
         return moved_any
-    
-    def place_stream_first_fit_beam(
+     
+    def banana(self):
+        print("banana")
+
+
+    def place_existing_stream_right_fit_backward(
         self,
-        stream,
+        stream_id,
         usecase,
         problem,
         queue_id=5,
         port_intervals=None,
-        beam_width=1,
-        per_hop_candidate_limit=1,
+        max_candidates_per_hop=3,
+        beam_width=5,
     ):
         """
-        Place one fully specified stream dict into the current schedule using a tiny
-        beam search over hop-by-hop first-fit candidates.
+        True right-fit placement for an existing stream, preserving stream_id.
 
-        Idea
-        ----
-        - For each hop, generate a few earliest feasible candidate starts.
-        - Keep only the best `beam_width` partial paths.
-        - Validate only the final complete candidates with the evaluator.
-        - Accept the first valid complete candidate.
+        Unlike left-to-right placement, this builds the path backwards:
+        - place last hop as late as possible
+        - then place previous hops as late as possible while preserving causality
 
-        This is intended to be:
-        - faster than validating every hop candidate with the evaluator,
-        - less greedy than pure first-fit,
-        - sensitive to fragmentation / contiguous free space.
-
-        Parameters
-        ----------
-        stream : dict
-            New stream definition. Must already contain at least:
-            - interval
-            - pathLists
-            - tlkrPssblPlcmnt
-            - lstnsrPssblPlcmnt
-            - maxFrameSize
-            - maxLatency
-            - jitter
-        usecase : Usecase
-        problem : TSNScheduling
-        queue_id : int
-        port_intervals : dict or None
-            Cached {port_id: [(start,end), ...]} intervals if available.
-        beam_width : int
-            Number of partial candidates kept after each hop.
-        per_hop_candidate_limit : int
-            Number of earliest candidate starts tried per hop for each beam state.
-
-        Returns
-        -------
-        dict
-            {"accepted": [stream_id], "rejected": []} on success
-            {"accepted": [], "rejected": [stream_id]} on failure
+        Assumes the stream's old slots have already been removed.
         """
-        import copy
-        import math
         import numpy as np
         from evaluator import TSNConstraintEvaluator, ScheduleEncodingType
 
+        max_candidates_per_hop = max(1, int(max_candidates_per_hop))
         beam_width = max(1, int(beam_width))
-        per_hop_candidate_limit = max(1, int(per_hop_candidate_limit))
+
+        stream_id = int(stream_id)
+
+        if not (0 <= stream_id < len(usecase.streams)):
+            return {"accepted": [], "rejected": [stream_id]}
+
+        stream = usecase.streams[stream_id]
+
+        if "pathLists" not in stream or not stream["pathLists"]:
+            return {"accepted": [], "rejected": [stream_id]}
 
         def merge_intervals(intervals, period_ns):
             cleaned = []
@@ -459,132 +437,89 @@ class Schedule(list):
 
             cleaned.sort()
             merged = [cleaned[0]]
+
             for a, b in cleaned[1:]:
                 la, lb = merged[-1]
                 if a <= lb:
                     merged[-1] = (la, max(lb, b))
                 else:
                     merged.append((a, b))
+
             return merged
 
         def fits_interval(start, duration, intervals, period_ns):
             start = int(start)
             end = int(start + duration)
+
             if start < 0 or end > int(period_ns):
                 return False
+
             for a, b in intervals:
-                if start < b and end > a:
+                if start < int(b) and end > int(a):
                     return False
+
             return True
 
-        def candidate_starts(intervals, min_start, duration, period_ns, limit):
+        def right_candidates_with_latest_end(
+            intervals,
+            latest_end,
+            duration,
+            period_ns,
+            limit,
+        ):
             """
-            Return up to `limit` earliest feasible starts using only meaningful boundaries:
-            - min_start
-            - ends of occupied intervals
+            Return valid starts from right to left, with start+duration <= latest_end.
             """
-            min_start = max(0, int(min_start))
+            latest_end = min(int(latest_end), int(period_ns))
             duration = int(duration)
             period_ns = int(period_ns)
-            limit = max(1, int(limit))
+
+            if duration <= 0:
+                return [0]
 
             merged = merge_intervals(intervals, period_ns)
 
-            candidates = {min_start}
-            for _, end in merged:
-                if end >= min_start:
-                    candidates.add(int(end))
+            candidates = set()
+
+            # Latest possible start before latest_end
+            candidates.add(latest_end - duration)
+
+            # Just before occupied intervals
+            for a, _ in merged:
+                candidates.add(int(a) - duration)
 
             valid = []
-            for s in sorted(candidates):
+
+            for s in sorted(candidates, reverse=True):
+                if s < 0:
+                    continue
+                if s + duration > latest_end:
+                    continue
+
                 if fits_interval(s, duration, merged, period_ns):
                     valid.append(int(s))
-                    if len(valid) >= limit:
-                        break
+
+                if len(valid) >= int(limit):
+                    break
+
             return valid
 
-        def intervals_with_partial(port_id, partial_slots, period_ns):
-            if port_intervals is not None:
-                base = list(port_intervals.get(int(port_id), []))
-            else:
-                base = self._occupied_intervals_on_port(int(port_id), int(period_ns))
-
-            for sl in partial_slots:
-                if int(sl.port_id) == int(port_id):
-                    base.append((int(sl.start_ns), int(sl.end_ns)))
-
-            return merge_intervals(base, period_ns)
-
-        def port_gap_stats(intervals, period_ns):
-            """Cheap fragmentation proxy from occupied intervals."""
-            intervals = merge_intervals(intervals, period_ns)
-            if not intervals:
-                return {
-                    "largest_gap": int(period_ns),
-                    "gap_count": 1,
-                    "usable_space": int(period_ns),
-                }
-
-            gaps = []
-            cur = 0
-            for a, b in intervals:
-                if a > cur:
-                    gaps.append(int(a - cur))
-                cur = max(cur, b)
-            if cur < period_ns:
-                gaps.append(int(period_ns - cur))
-
-            if not gaps:
-                return {"largest_gap": 0, "gap_count": 0, "usable_space": 0}
-
-            return {
-                "largest_gap": int(max(gaps)),
-                "gap_count": int(len(gaps)),
-                "usable_space": int(sum(gaps)),
-            }
-
-        def partial_score(partial_slots, hop_starts, touched_port_intervals, hop_idx):
+        def score_backward(starts_by_hop):
             """
-            Cheap ranking for partial beam states.
             Lower is better.
-
-            Preferences:
-            - earlier first hop
-            - earlier cumulative starts
-            - fewer/smaller cuts on touched ports
-            - larger remaining max gaps on touched ports
+            Prefer larger starts, especially first-hop offset.
             """
-            first_start = int(hop_starts[0]) if hop_starts else 10**12
-            sum_starts = int(sum(hop_starts)) if hop_starts else 10**12
+            starts = [starts_by_hop[i] for i in sorted(starts_by_hop.keys())]
+            first_start = starts[0]
+            total = sum(starts)
+            span = starts[-1] - starts[0]
+            return -10 * first_start - total + span
 
-            total_gap_count = 0
-            total_largest_gap_bonus = 0
-            for pid, intervals in touched_port_intervals.items():
-                stats = port_gap_stats(intervals, period)
-                total_gap_count += int(stats["gap_count"])
-                total_largest_gap_bonus += int(stats["largest_gap"])
-
-            # Lower better:
-            # - prioritize early starts strongly
-            # - penalize too many gaps
-            # - reward large remaining gaps
-            score = (
-                1000 * first_start
-                + 10 * sum_starts
-                + 100 * total_gap_count
-                - total_largest_gap_bonus
-                + hop_idx
-            )
-            return float(score)
-
-        stream_id = len(usecase.streams)
-
-        # Append once so problem/evaluator dimensions include the new stream
-        usecase.streams.append(copy.deepcopy(stream))
         problem.usecase = usecase
         problem.build_metadata()
 
         port_name_to_id, _ = usecase.port_name_id_mapping
+
         evaluator = TSNConstraintEvaluator(
             problem,
             check_routing=False,
@@ -594,231 +529,250 @@ class Schedule(list):
 
         path = stream["pathLists"][0]
         period = int(stream["interval"])
-        hop_port_names = path[:-1]   # transmitting hops only
+
+        hop_port_names = path[:-1]
         hop_port_ids = [int(port_name_to_id[p]) for p in hop_port_names]
 
-        # Nothing to place
         if not hop_port_ids:
-            usecase.streams.pop()
-            problem.usecase = usecase
-            problem.build_metadata()
             return {"accepted": [], "rejected": [stream_id]}
 
-        # Reuse base schedule slots for final complete candidate checks
-        base_schedule_slots = list(self)
+        n_hops = len(hop_port_ids)
 
         # Beam state:
-        # {
-        #   "slots": [Slot, ...],
-        #   "hop_starts": [int, ...],
-        #   "score": float,
-        #   "touched_port_intervals": {pid: merged_intervals}
-        # }
-        beam = [{
-            "slots": [],
-            "hop_starts": [],
-            "score": 0.0,
-            "touched_port_intervals": {},
-        }]
+        #   starts_by_hop: dict hop_idx -> start
+        #   slots_by_hop: dict hop_idx -> Slot
+        #   score
+        beam = [({}, {}, 0.0)]
 
-        for hop_idx, pid in enumerate(hop_port_ids):
-            occupied_ns = int(max(1, round(evaluator.occupiedLengths[pid - 1, stream_id])))
+        # Build from last hop to first hop
+        for hop_idx in reversed(range(n_hops)):
+            pid = hop_port_ids[hop_idx]
+            duration = int(max(1, round(evaluator.occupiedLengths[pid - 1, stream_id])))
 
-            expanded = []
+            new_beam = []
 
-            for state in beam:
-                partial_slots = state["slots"]
-                hop_starts_so_far = state["hop_starts"]
-
-                if hop_idx == 0:
-                    min_start = 0
+            for starts_by_hop, slots_by_hop, _ in beam:
+                # For the last hop, latest end is the period end.
+                # For earlier hops, it must finish early enough before next hop.
+                if hop_idx == n_hops - 1:
+                    latest_end = period
                 else:
-                    prev_pid = hop_port_ids[hop_idx - 1]
-                    prev_start = hop_starts_so_far[-1]
-                    min_start = prev_start + int(round(evaluator.all_hops_costs[prev_pid - 1, stream_id]))
+                    next_pid = hop_port_ids[hop_idx]
+                    next_start = starts_by_hop[hop_idx + 1]
 
-                cur_intervals = intervals_with_partial(
-                    port_id=pid,
-                    partial_slots=partial_slots,
+                    # Same relation used forward:
+                    # next_start >= this_start + all_hops_costs[this_pid-1, stream_id]
+                    # therefore this_start <= next_start - cost
+                    cost_to_next = int(
+                        round(evaluator.all_hops_costs[pid - 1, stream_id])
+                    )
+                    latest_start = int(next_start - cost_to_next)
+                    latest_end = latest_start + duration
+
+                if latest_end <= 0:
+                    continue
+
+                if port_intervals is not None:
+                    current_intervals = list(port_intervals.get(pid, []))
+                else:
+                    current_intervals = self._occupied_intervals_on_port(pid, self.cycle_ns)
+
+                # Same-stream slots already selected in this backward candidate
+                for s in slots_by_hop.values():
+                    if int(s.port_id) == int(pid):
+                        current_intervals.append((int(s.start_ns), int(s.end_ns)))
+
+                starts = right_candidates_with_latest_end(
+                    intervals=current_intervals,
+                    latest_end=latest_end,
+                    duration=duration,
                     period_ns=period,
+                    limit=max_candidates_per_hop,
                 )
 
-                starts_to_try = candidate_starts(
-                    intervals=cur_intervals,
-                    min_start=min_start,
-                    duration=occupied_ns,
-                    period_ns=period,
-                    limit=per_hop_candidate_limit,
-                )
-
-                for cand_start in starts_to_try:
-                    new_slot = Slot(
-                        start_ns=int(cand_start),
-                        end_ns=int(cand_start + occupied_ns),
+                for st in starts:
+                    slot = Slot(
+                        start_ns=int(st),
+                        end_ns=int(st + duration),
                         period_ns=int(period),
                         stream_id=int(stream_id),
                         port_id=int(pid),
                         queue_id=queue_id,
                     )
 
-                    new_slots = partial_slots + [new_slot]
-                    new_hop_starts = hop_starts_so_far + [int(cand_start)]
+                    new_starts = dict(starts_by_hop)
+                    new_slots = dict(slots_by_hop)
 
-                    touched = dict(state["touched_port_intervals"])
-                    touched[int(pid)] = intervals_with_partial(
-                        port_id=pid,
-                        partial_slots=new_slots,
-                        period_ns=period,
-                    )
+                    new_starts[hop_idx] = int(st)
+                    new_slots[hop_idx] = slot
 
-                    score = partial_score(
-                        partial_slots=new_slots,
-                        hop_starts=new_hop_starts,
-                        touched_port_intervals=touched,
-                        hop_idx=hop_idx,
-                    )
+                    # Optional local ordering check for already known next hop
+                    if hop_idx < n_hops - 1:
+                        cost_to_next = int(
+                            round(evaluator.all_hops_costs[pid - 1, stream_id])
+                        )
+                        if new_starts[hop_idx] + cost_to_next > new_starts[hop_idx + 1]:
+                            continue
 
-                    expanded.append({
-                        "slots": new_slots,
-                        "hop_starts": new_hop_starts,
-                        "score": score,
-                        "touched_port_intervals": touched,
-                    })
+                    sc = score_backward(new_starts)
+                    new_beam.append((new_starts, new_slots, sc))
 
-            if not expanded:
-                usecase.streams.pop()
-                problem.usecase = usecase
-                problem.build_metadata()
+            if not new_beam:
                 return {"accepted": [], "rejected": [stream_id]}
 
-            # Keep best beam_width partial states
-            expanded.sort(key=lambda st: st["score"])
-            beam = expanded[:beam_width]
+            new_beam.sort(key=lambda x: x[2])
+            beam = new_beam[:beam_width]
 
-        # Final complete-candidate validation
-        # Validate beam states in score order and accept first valid one
+        base_slots = list(self)
+
         accepted_slots = None
-        accepted_hop_starts = None
+        accepted_starts = None
 
-        for state in beam:
-            candidate_slots = state["slots"]
+        for starts_by_hop, slots_by_hop, _ in beam:
+            partial_slots = [
+                slots_by_hop[i]
+                for i in range(n_hops)
+            ]
+
+            hop_starts = [
+                starts_by_hop[i]
+                for i in range(n_hops)
+            ]
 
             tmp_schedule = Schedule(
                 cycle_ns=self.cycle_ns,
                 basetime=self.basetime,
-                iterable=base_schedule_slots + candidate_slots,
+                iterable=base_slots + list(partial_slots),
             )
 
             try:
-                compact = tmp_schedule.to_compact_encoding(problem.n_ports, problem.n_streams)
+                compact = tmp_schedule.to_compact_encoding(
+                    problem.n_ports,
+                    problem.n_streams,
+                )
             except ValueError:
                 continue
 
             violations = evaluator.per_stream_all_violations(compact)
-            stream_v = violations[:, int(stream_id)]
+            stream_v = violations[:, stream_id]
 
             if np.all(stream_v == 0):
-                accepted_slots = candidate_slots
-                accepted_hop_starts = state["hop_starts"]
+                accepted_slots = partial_slots
+                accepted_starts = hop_starts
                 break
 
         if accepted_slots is None:
-            usecase.streams.pop()
-            problem.usecase = usecase
-            problem.build_metadata()
             return {"accepted": [], "rejected": [stream_id]}
 
-        # Commit accepted slots
         for slot in accepted_slots:
             self.append(slot)
+
         self.sort()
 
-        usecase.streams[stream_id]["offset"] = int(accepted_hop_starts[0])
+        usecase.streams[stream_id]["offset"] = int(accepted_starts[0])
 
         if port_intervals is not None:
             affected_ports = sorted({
-                int(slot.port_id) for slot in accepted_slots
+                int(slot.port_id)
+                for slot in accepted_slots
                 if slot.port_id is not None
             })
-            for pid in affected_ports:
-                port_intervals[pid] = self._occupied_intervals_on_port(pid, self.cycle_ns)
 
-        # update graph schedules only; do not rebuild pathLists/listeners during experiments
+            for pid in affected_ports:
+                port_intervals[pid] = self._occupied_intervals_on_port(
+                    pid,
+                    self.cycle_ns,
+                )
+
         usecase.removeSchedule()
         _, port_id_to_name = usecase.port_name_id_mapping
         usecase.schedule = self
         self.update_graph(usecase.graph, port_id_to_name)
 
-        return {"accepted": [stream_id], "rejected": []}
+        return {
+            "accepted": [stream_id],
+            "rejected": [],
+            "starts": accepted_starts,
+        }
+
     
-    
-    def place_stream_first_fit_fast(
+    def place_existing_stream_first_fit_fast(
         self,
-        stream,
+        stream_id,
         usecase,
         problem,
         queue_id=5,
         port_intervals=None,
-        max_candidates_per_hop=1,
+        max_candidates_per_hop=3,
+        beam_width=5,
     ):
         """
-        Fast arrival placement for new streams.
+        Place an already existing stream definition into the current schedule
+        while preserving its original stream_id.
 
-        Strategy
-        --------
-        - Build the path hop-by-hop.
-        - For each hop, try up to `max_candidates_per_hop` earliest non-overlapping
-        starts on that port, beginning from the sequencing lower bound.
-        - Keep only one partial path at a time (no beam, no per-hop evaluator calls).
-        - Run the evaluator once at the end on the complete candidate.
-
-        This is intended to be:
-        - much faster than per-hop validated placement,
-        - slightly less brittle than strict single-start greedy,
-        - sensitive enough to fragmentation to reveal differences between
-        no-defrag / OF-FF / DRL.
-
-        Parameters
-        ----------
-        stream : dict
-            New stream definition.
-        usecase : Usecase
-        problem : TSNScheduling
-        queue_id : int
-        port_intervals : dict or None
-            Cached {port_id: [(start,end), ...]} intervals if available.
-        max_candidates_per_hop : int
-            Number of earliest starts to try per hop before giving up.
-            Use 1 for the closest behavior to the old greedy version.
-            Use 2 or 3 for a slightly stronger but still fast version.
+        This is the preserve-ID version of place_stream_first_fit_fast().
+        It assumes the stream's old slots have already been removed from the schedule.
 
         Returns
         -------
         dict
-            {"accepted": [stream_id], "rejected": []} on success
+            {"accepted": [stream_id], "rejected": [], "starts": [...]} on success
             {"accepted": [], "rejected": [stream_id]} on failure
         """
-        import copy
         import numpy as np
         from evaluator import TSNConstraintEvaluator, ScheduleEncodingType
 
         max_candidates_per_hop = max(1, int(max_candidates_per_hop))
+        beam_width = max(1, int(beam_width))
 
-        def next_start_after(intervals, current_start, duration, period_ns):
-            """
-            Return the next first-fit start strictly after current_start.
-            """
-            return self._first_non_overlapping_start(
+        if not (0 <= int(stream_id) < len(usecase.streams)):
+            return {"accepted": [], "rejected": [int(stream_id)]}
+
+        stream_id = int(stream_id)
+        stream = usecase.streams[stream_id]
+
+        if "pathLists" not in stream or not stream["pathLists"]:
+            return {"accepted": [], "rejected": [stream_id]}
+
+        def candidate_starts_for_hop(intervals, min_start, duration, period_ns, limit):
+            """Return first `limit` non-overlapping starts >= min_start."""
+            starts = []
+
+            cand = self._first_non_overlapping_start(
                 intervals=intervals,
-                min_start=int(current_start) + 1,
+                min_start=int(min_start),
                 duration=int(duration),
                 period_ns=int(period_ns),
             )
 
-        stream_id = len(usecase.streams)
+            while cand is not None and len(starts) < limit:
+                starts.append(int(cand))
 
-        # Append once so problem/evaluator dimensions include the new stream
-        usecase.streams.append(copy.deepcopy(stream))
+                cand = self._first_non_overlapping_start(
+                    intervals=intervals,
+                    min_start=int(cand) + 1,
+                    duration=int(duration),
+                    period_ns=int(period_ns),
+                )
+
+            return starts
+
+        def score_partial(slots, starts):
+            """
+            Lower is better.
+            Prefer left compaction and avoid unnecessarily spread paths.
+            """
+            if not starts:
+                return 10**18
+
+            first_start = int(starts[0])
+            last_start = int(starts[-1])
+            span = last_start - first_start
+
+            return 10 * first_start + sum(starts) + span
+
+        # Important: DO NOT append to usecase.streams.
+        # This function preserves the existing stream_id.
         problem.usecase = usecase
         problem.build_metadata()
 
@@ -833,306 +787,150 @@ class Schedule(list):
 
         path = stream["pathLists"][0]
         period = int(stream["interval"])
-        hop_port_names = path[:-1]   # transmitting hops only
-        hop_port_ids = [int(port_name_to_id[p]) for p in hop_port_names]
 
-        partial_slots = []
-        hop_starts = []
-
-        for hop_idx, pid in enumerate(hop_port_ids):
-            occupied_ns = int(max(1, round(evaluator.occupiedLengths[pid - 1, stream_id])))
-
-            if hop_idx == 0:
-                min_start = 0
-            else:
-                prev_pid = hop_port_ids[hop_idx - 1]
-                prev_start = hop_starts[-1]
-                min_start = prev_start + int(round(evaluator.all_hops_costs[prev_pid - 1, stream_id]))
-
-            if port_intervals is not None:
-                current_intervals = list(port_intervals.get(pid, []))
-            else:
-                current_intervals = self._occupied_intervals_on_port(pid, period)
-
-            # add already chosen same-stream slots on the same port if any
-            for s in partial_slots:
-                if int(s.port_id) == int(pid):
-                    current_intervals.append((int(s.start_ns), int(s.end_ns)))
-            current_intervals.sort()
-
-            chosen_start = None
-            cand_start = self._first_non_overlapping_start(
-                current_intervals,
-                min_start,
-                occupied_ns,
-                period,
-            )
-
-            tries = 0
-            while cand_start is not None and tries < max_candidates_per_hop:
-                chosen_start = int(cand_start)
-                break
-
-            # If the very first candidate is all we allow, this stays extremely fast.
-            # For >1, try the next earliest starts only if needed by your policy.
-            # Since this function does only final validation, we simply keep the first
-            # feasible timing candidate found for this hop.
-            #
-            # So max_candidates_per_hop mainly exists to let you later extend or debug,
-            # but with this lightweight version the hop selection is intentionally greedy.
-
-            if chosen_start is None:
-                usecase.streams.pop()
-                problem.usecase = usecase
-                problem.build_metadata()
-                return {"accepted": [], "rejected": [stream_id]}
-
-            candidate_slot = Slot(
-                start_ns=int(chosen_start),
-                end_ns=int(chosen_start + occupied_ns),
-                period_ns=int(period),
-                stream_id=int(stream_id),
-                port_id=int(pid),
-                queue_id=queue_id,
-            )
-
-            partial_slots.append(candidate_slot)
-            hop_starts.append(int(chosen_start))
-
-        # Final one-shot evaluator validation
-        tmp_schedule = Schedule(
-            cycle_ns=self.cycle_ns,
-            basetime=self.basetime,
-            iterable=list(self) + list(partial_slots),
-        )
-
-        try:
-            compact = tmp_schedule.to_compact_encoding(problem.n_ports, problem.n_streams)
-        except ValueError:
-            usecase.streams.pop()
-            problem.usecase = usecase
-            problem.build_metadata()
-            return {"accepted": [], "rejected": [stream_id]}
-
-        violations = evaluator.per_stream_all_violations(compact)
-        stream_v = violations[:, int(stream_id)]
-
-        if not np.all(stream_v == 0):
-            usecase.streams.pop()
-            problem.usecase = usecase
-            problem.build_metadata()
-            return {"accepted": [], "rejected": [stream_id]}
-
-        # Commit accepted slots
-        for slot in partial_slots:
-            self.append(slot)
-        self.sort()
-
-        usecase.streams[stream_id]["offset"] = int(hop_starts[0])
-
-        if port_intervals is not None:
-            affected_ports = sorted({
-                int(slot.port_id) for slot in partial_slots
-                if slot.port_id is not None
-            })
-            for pid in affected_ports:
-                port_intervals[pid] = self._occupied_intervals_on_port(pid, self.cycle_ns)
-
-        usecase.removeSchedule()
-        _, port_id_to_name = usecase.port_name_id_mapping
-        usecase.schedule = self
-        self.update_graph(usecase.graph, port_id_to_name)
-
-        return {"accepted": [stream_id], "rejected": []}
-    
-    def place_stream_first_fit(
-        self,
-        stream,
-        usecase,
-        problem,
-        queue_id=5,
-        port_intervals=None,
-        max_candidates_per_hop=1,
-    ):
-        """
-        Place one fully specified stream dict into the current schedule using
-        sequential hop-by-hop first-fit with bounded immediate validation.
-
-        For each hop:
-        - generate earliest-first candidate starts
-        - test at most max_candidates_per_hop of them
-        - accept the first valid one
-        - if none is valid, reject the whole stream
-        """
-        import numpy as np
-        import copy
-        from evaluator import TSNConstraintEvaluator, ScheduleEncodingType
-
-        def merge_intervals(intervals, period_ns):
-            cleaned = []
-            for a, b in intervals:
-                a = max(0, int(a))
-                b = min(int(period_ns), int(b))
-                if b > a:
-                    cleaned.append((a, b))
-
-            if not cleaned:
-                return []
-
-            cleaned.sort()
-            merged = [cleaned[0]]
-            for a, b in cleaned[1:]:
-                la, lb = merged[-1]
-                if a <= lb:
-                    merged[-1] = (la, max(lb, b))
-                else:
-                    merged.append((a, b))
-            return merged
-
-        def fits_interval(start, duration, intervals, period_ns):
-            start = int(start)
-            end = int(start + duration)
-            if start < 0 or end > int(period_ns):
-                return False
-            for a, b in intervals:
-                if start < b and end > a:
-                    return False
-            return True
-
-        def candidate_starts(intervals, min_start, duration, period_ns):
-            min_start = max(0, int(min_start))
-            duration = int(duration)
-            period_ns = int(period_ns)
-
-            if duration <= 0:
-                return [min_start]
-
-            merged = merge_intervals(intervals, period_ns)
-
-            cands = {min_start}
-            for _, end in merged:
-                if end >= min_start:
-                    cands.add(int(end))
-
-            valid = []
-            for s in sorted(cands):
-                if fits_interval(s, duration, merged, period_ns):
-                    valid.append(int(s))
-
-            return valid
-
-        stream_id = len(usecase.streams)
-
-        usecase.streams.append(copy.deepcopy(stream))
-        problem.usecase = usecase
-        problem.build_metadata()
-
-        port_name_to_id, _ = usecase.port_name_id_mapping
-        evaluator = TSNConstraintEvaluator(
-            problem,
-            check_routing=False,
-            check_task_placement=False,
-            scheduling_type=ScheduleEncodingType.START_TIME,
-        )
-
-        path = stream["pathLists"][0]
-        period = int(stream["interval"])
         hop_port_names = path[:-1]
         hop_port_ids = [int(port_name_to_id[p]) for p in hop_port_names]
 
-        accepted_slots = []
-        hop_starts = []
-        base_schedule_slots = list(self)
+        if not hop_port_ids:
+            return {"accepted": [], "rejected": [stream_id]}
+
+        # Beam state: (partial_slots, hop_starts, score)
+        beam = [([], [], 0.0)]
 
         for hop_idx, pid in enumerate(hop_port_ids):
             occupied_ns = int(max(1, round(evaluator.occupiedLengths[pid - 1, stream_id])))
 
-            if hop_idx == 0:
-                min_start = 0
-            else:
-                prev_pid = hop_port_ids[hop_idx - 1]
-                prev_start = hop_starts[-1]
-                min_start = prev_start + int(round(evaluator.all_hops_costs[prev_pid - 1, stream_id]))
+            new_beam = []
 
-            if port_intervals is not None:
-                current_intervals = list(port_intervals.get(pid, []))
-            else:
-                current_intervals = self._occupied_intervals_on_port(pid, period)
+            for partial_slots, hop_starts, _ in beam:
+                if hop_idx == 0:
+                    min_start = 0
+                else:
+                    prev_pid = hop_port_ids[hop_idx - 1]
+                    prev_start = hop_starts[-1]
+                    min_start = prev_start + int(
+                        round(evaluator.all_hops_costs[prev_pid - 1, stream_id])
+                    )
 
-            for s in accepted_slots:
-                if int(s.port_id) == int(pid):
-                    current_intervals.append((int(s.start_ns), int(s.end_ns)))
+                if port_intervals is not None:
+                    current_intervals = list(port_intervals.get(pid, []))
+                else:
+                    current_intervals = self._occupied_intervals_on_port(pid, self.cycle_ns)
 
-            current_intervals = merge_intervals(current_intervals, period)
+                # Same stream slots already selected in this candidate
+                for s in partial_slots:
+                    if int(s.port_id) == int(pid):
+                        s_start = int(s.start_ns)
+                        s_duration = int(s.end_ns) - int(s.start_ns)
+                        s_period = int(s.period_ns)
 
-            starts_to_try = candidate_starts(
-                intervals=current_intervals,
-                min_start=min_start,
-                duration=occupied_ns,
-                period_ns=period,
-            )
+                        k = 0
+                        while s_start + k * s_period < int(self.cycle_ns):
+                            occ_start = s_start + k * s_period
+                            occ_end = occ_start + s_duration
 
-            if max_candidates_per_hop is not None:
-                starts_to_try = starts_to_try[:max(1, int(max_candidates_per_hop))]
+                            if occ_end <= int(self.cycle_ns):
+                                current_intervals.append((occ_start, occ_end))
 
-            chosen_slot = None
+                            k += 1
 
-            for cand_start in starts_to_try:
-                trial_slot = Slot(
-                    start_ns=int(cand_start),
-                    end_ns=int(cand_start + occupied_ns),
-                    period_ns=int(period),
-                    stream_id=int(stream_id),
-                    port_id=int(pid),
-                    queue_id=queue_id,
+                current_intervals.sort()
+
+                starts = candidate_starts_for_hop(
+                    intervals=current_intervals,
+                    min_start=min_start,
+                    duration=occupied_ns,
+                    period_ns=period,
+                    limit=max_candidates_per_hop,
                 )
 
-                tmp_schedule = Schedule(
-                    cycle_ns=self.cycle_ns,
-                    basetime=self.basetime,
-                    iterable=base_schedule_slots + accepted_slots + [trial_slot],
-                )
+                for st in starts:
+                    slot = Slot(
+                        start_ns=int(st),
+                        end_ns=int(st + occupied_ns),
+                        period_ns=int(period),
+                        stream_id=int(stream_id),
+                        port_id=int(pid),
+                        queue_id=queue_id,
+                    )
 
-                try:
-                    compact = tmp_schedule.to_compact_encoding(problem.n_ports, problem.n_streams)
-                    violations = evaluator.per_stream_all_violations(compact)
-                    stream_v = violations[:, int(stream_id)]
-                    if np.all(stream_v == 0):
-                        chosen_slot = trial_slot
-                        break
-                except ValueError:
-                    continue
+                    new_slots = partial_slots + [slot]
+                    new_starts = hop_starts + [int(st)]
+                    sc = score_partial(new_slots, new_starts)
 
-            if chosen_slot is None:
-                usecase.streams.pop()
-                problem.usecase = usecase
-                problem.build_metadata()
+                    new_beam.append((new_slots, new_starts, sc))
+
+            if not new_beam:
                 return {"accepted": [], "rejected": [stream_id]}
 
-            accepted_slots.append(chosen_slot)
-            hop_starts.append(int(chosen_slot.start_ns))
+            new_beam.sort(key=lambda x: x[2])
+            beam = new_beam[:beam_width]
 
+        # Final validation only on complete candidates
+        base_slots = list(self)
+
+        accepted_slots = None
+        accepted_starts = None
+
+        for partial_slots, hop_starts, _ in beam:
+            tmp_schedule = Schedule(
+                cycle_ns=self.cycle_ns,
+                basetime=self.basetime,
+                iterable=base_slots + list(partial_slots),
+            )
+
+            try:
+                compact = tmp_schedule.to_compact_encoding(
+                    problem.n_ports,
+                    problem.n_streams,
+                )
+            except ValueError:
+                continue
+
+            violations = evaluator.per_stream_all_violations(compact)
+            stream_v = violations[:, stream_id]
+
+            if np.all(stream_v == 0):
+                accepted_slots = partial_slots
+                accepted_starts = hop_starts
+                break
+
+        if accepted_slots is None:
+            return {"accepted": [], "rejected": [stream_id]}
+
+        # Commit
         for slot in accepted_slots:
             self.append(slot)
+
         self.sort()
 
-        usecase.streams[stream_id]["offset"] = int(hop_starts[0])
+        usecase.streams[stream_id]["offset"] = int(accepted_starts[0])
 
         if port_intervals is not None:
             affected_ports = sorted({
-                int(slot.port_id) for slot in accepted_slots
+                int(slot.port_id)
+                for slot in accepted_slots
                 if slot.port_id is not None
             })
+
             for pid in affected_ports:
-                port_intervals[pid] = self._occupied_intervals_on_port(pid, self.cycle_ns)
+                port_intervals[pid] = self._occupied_intervals_on_port(
+                    pid,
+                    self.cycle_ns,
+                )
 
         usecase.removeSchedule()
         _, port_id_to_name = usecase.port_name_id_mapping
         usecase.schedule = self
         self.update_graph(usecase.graph, port_id_to_name)
 
-        return {"accepted": [stream_id], "rejected": []}
+        return {
+            "accepted": [stream_id],
+            "rejected": [],
+            "starts": accepted_starts,
+        }
 
+ 
     def oldest_first_first_fit_defrag(
         self,
         usecase,
@@ -1236,134 +1034,6 @@ class Schedule(list):
             "replaced_count": replaced_count,
         }
 
-    def place_existing_stream_first_fit(
-        self,
-        stream_id,
-        usecase,
-        problem,
-        queue_id=5,
-        port_intervals=None,
-    ):
-        """
-        Reinsert an already existing stream definition (same stream_id) into the schedule
-        using sequential hop-by-hop first-fit, then validate once with the evaluator.
-
-        Returns
-        -------
-        bool
-            True if successfully placed, False otherwise.
-        """
-        import numpy as np
-        from evaluator import TSNConstraintEvaluator, ScheduleEncodingType
-
-        if not (0 <= stream_id < len(usecase.streams)):
-            return False
-
-        stream = usecase.streams[stream_id]
-
-        if "pathLists" not in stream or not stream["pathLists"]:
-            return False
-
-        path = stream["pathLists"][0]
-        period = int(stream["interval"])
-
-        port_name_to_id, _ = usecase.port_name_id_mapping
-
-        # rebuild metadata/evaluator once for current usecase
-        problem.usecase = usecase
-        problem.build_metadata()
-
-        evaluator = TSNConstraintEvaluator(
-            problem,
-            check_routing=False,
-            check_task_placement=False,
-            scheduling_type=ScheduleEncodingType.START_TIME,
-        )
-
-        hop_port_names = path[:-1]   # transmitting hops only
-        hop_port_ids = [port_name_to_id[p] for p in hop_port_names]
-
-        partial_slots = []
-        hop_starts = []
-
-        for hop_idx, pid in enumerate(hop_port_ids):
-            occupied_ns = int(max(1, round(evaluator.occupiedLengths[pid - 1, stream_id])))
-
-            if hop_idx == 0:
-                min_start = 0
-            else:
-                prev_pid = hop_port_ids[hop_idx - 1]
-                prev_start = hop_starts[-1]
-                min_start = prev_start + int(round(evaluator.all_hops_costs[prev_pid - 1, stream_id]))
-
-            if port_intervals is not None:
-                current_intervals = list(port_intervals.get(pid, []))
-            else:
-                current_intervals = self._occupied_intervals_on_port(pid, period)
-
-            # add same-stream candidate slots already chosen in earlier hops if any
-            for s in partial_slots:
-                if s.port_id == pid:
-                    current_intervals.append((int(s.start_ns), int(s.end_ns)))
-            current_intervals.sort()
-
-            start_ns = self._first_non_overlapping_start(
-                current_intervals,
-                min_start,
-                occupied_ns,
-                period,
-            )
-
-            if start_ns is None:
-                return False
-
-            candidate_slot = Slot(
-                start_ns=int(start_ns),
-                end_ns=int(start_ns + occupied_ns),
-                period_ns=int(period),
-                stream_id=stream_id,
-                port_id=pid,
-                queue_id=queue_id,
-            )
-
-            partial_slots.append(candidate_slot)
-            hop_starts.append(int(start_ns))
-
-        # final one-shot evaluator validation
-        tmp_schedule = Schedule(
-            cycle_ns=self.cycle_ns,
-            basetime=self.basetime,
-            iterable=list(self) + list(partial_slots),
-        )
-
-        try:
-            compact = tmp_schedule.to_compact_encoding(problem.n_ports, problem.n_streams)
-        except ValueError:
-            return False
-
-        violations = evaluator.per_stream_all_violations(compact)
-        stream_v = violations[:, stream_id]
-
-        if not np.all(stream_v == 0):
-            return False
-
-        # commit
-        for slot in partial_slots:
-            self.append(slot)
-
-        # update cached intervals
-        if port_intervals is not None:
-            for slot in partial_slots:
-                pid = slot.port_id
-                port_intervals.setdefault(pid, [])
-                port_intervals[pid].append((int(slot.start_ns), int(slot.end_ns)))
-                port_intervals[pid].sort()
-
-        # update schedule-derived fields on the stream
-        usecase.streams[stream_id]["offset"] = int(hop_starts[0])
-
-        return True
-    
     def delete_streams(
         self,
         n_remove,
@@ -1376,7 +1046,7 @@ class Schedule(list):
         stream_arrival_times=None,
     ):
         """
-        remove n_remove oldest streams from the currently scheduled streams.
+        Remove n_remove random streams from the currently scheduled streams.
 
         Parameters
         ----------
@@ -1391,10 +1061,12 @@ class Schedule(list):
             Output folder passed to usecase.to_file().
         ucFileName : str, optional
             Output file name passed to usecase.to_file().
-        rng : random.Random, optional
+        rng : random.Random or numpy.random.Generator, optional
             Random generator for reproducibility.
         port_intervals : dict, optional
             Cached {port_id: [(start,end), ...]} intervals to update incrementally.
+        stream_arrival_times : dict, optional
+            Kept for backward compatibility. Not used in random deletion.
 
         Returns
         -------
@@ -1405,14 +1077,17 @@ class Schedule(list):
             }
         """
         import random
+        import numpy as np
 
-        rng = random.Random() if rng is None else rng
+        if rng is None:
+            rng = random.Random()
 
         if not isinstance(n_remove, int) or n_remove < 0:
             raise ValueError("n_remove must be a non-negative integer")
 
         scheduled_stream_ids = sorted({
-            slot.stream_id for slot in self
+            int(slot.stream_id)
+            for slot in self
             if slot.stream_id is not None
         })
 
@@ -1422,48 +1097,53 @@ class Schedule(list):
                 f"but only {len(scheduled_stream_ids)} scheduled streams exist."
             )
 
-        # Build per-stream earliest offset directly from current schedule
-        stream_first_offset = {}
-        for sid in scheduled_stream_ids:
-            starts = [
-                int(slot.start_ns)
-                for slot in self
-                if slot.stream_id is not None and int(slot.stream_id) == int(sid)
-            ]
-            stream_first_offset[sid] = min(starts) if starts else float("inf")
+        if n_remove == 0:
+            return {
+                "removed_stream_ids": [],
+                "removed_slot_count": 0,
+            }
 
-        # Oldest running first:
-        #   1) smallest arrival time
-        #   2) smallest offset
-        #   3) smallest stream id
-        if stream_arrival_times is None:
-            stream_arrival_times = {}
+        # Randomly choose distinct active/scheduled streams.
+        # Supports both Python random.Random and numpy Generator/RandomState.
+        if hasattr(rng, "sample"):
+            selected_stream_ids = rng.sample(scheduled_stream_ids, n_remove)
+        elif hasattr(rng, "choice"):
+            selected_stream_ids = rng.choice(
+                scheduled_stream_ids,
+                size=n_remove,
+                replace=False,
+            ).tolist()
+        else:
+            raise TypeError(
+                "rng must be either random.Random-like with .sample() "
+                "or numpy Generator/RandomState-like with .choice()."
+            )
 
-        ordered_stream_ids = sorted(
-            scheduled_stream_ids,
-            key=lambda sid: (
-                float(stream_arrival_times.get(int(sid), float("inf"))),
-                float(stream_first_offset.get(int(sid), float("inf"))),
-                int(sid),
-            ),
-        )
+        stream_ids = set(int(sid) for sid in selected_stream_ids)
 
-        stream_ids = set(ordered_stream_ids[:n_remove])
-
-        # ports affected before removal
+        # Ports affected before removal
         affected_ports = sorted({
-            slot.port_id for slot in self
-            if slot.stream_id in stream_ids and slot.port_id is not None
+            int(slot.port_id)
+            for slot in self
+            if slot.stream_id is not None
+            and int(slot.stream_id) in stream_ids
+            and slot.port_id is not None
         })
 
         before = len(self)
-        self[:] = [slot for slot in self if slot.stream_id not in stream_ids]
+        self[:] = [
+            slot for slot in self
+            if slot.stream_id is None or int(slot.stream_id) not in stream_ids
+        ]
         removed_slots = before - len(self)
 
-        # refresh cached intervals only on affected ports
+        # Refresh cached intervals only on affected ports
         if port_intervals is not None:
             for pid in affected_ports:
-                port_intervals[pid] = self._occupied_intervals_on_port(pid, self.cycle_ns)
+                port_intervals[pid] = self._occupied_intervals_on_port(
+                    pid,
+                    self.cycle_ns,
+                )
 
         if usecase is None and not save_json:
             return {
@@ -1477,11 +1157,11 @@ class Schedule(list):
         if usecase is not None:
             usecase.removeSchedule()
 
-            # clear schedule-derived fields only for removed streams
-            # keep stream definitions to preserve stable stream IDs
+            # Clear schedule-derived fields only for removed streams.
+            # Keep stream definitions to preserve stable stream IDs.
             for sid in stream_ids:
-                if 0 <= sid < len(usecase.streams):
-                    stream = usecase.streams[sid]
+                if 0 <= int(sid) < len(usecase.streams):
+                    stream = usecase.streams[int(sid)]
                     for key in ("offset", "accLatency", "pathLists"):
                         if key in stream:
                             del stream[key]
@@ -1498,39 +1178,112 @@ class Schedule(list):
             "removed_slot_count": removed_slots,
         }
 
-    def _occupied_intervals_on_port(self, port_id, period_ns):
+
+    def _occupied_intervals_on_port(self, port_id, span_ns = None):
         """
         Return sorted occupied intervals [start, end) on a port within one cycle.
         """
+        if span_ns is None:
+            span_ns = self.cycle_ns
+        span_ns = int(span_ns)
         intervals = []
         for slot in self:
             if slot.port_id != port_id:
                 continue
             # current use case is one-cycle scheduling, but keep this safe
-            for occ in slot.all_occurrences(period_ns):
+            for occ in slot.all_occurrences(span_ns):
                 s = int(occ.start_ns)
                 e = int(occ.end_ns)
-                if s < period_ns and e > 0:
-                    intervals.append((max(0, s), min(period_ns, e)))
+                if s < span_ns and e > 0:
+                    intervals.append((max(0, s), min(span_ns, e)))
         intervals.sort()
         return intervals
 
     def _first_non_overlapping_start(self, intervals, min_start, duration, period_ns):
         """
-        Return earliest start >= min_start such that [start, start+duration) does not
-        overlap existing intervals on this port. Jump over conflicts instead of scanning
-        every integer.
+        Return earliest start >= min_start such that all periodic occurrences of
+        [start, start+duration) within the schedule macrocycle do not overlap
+        existing intervals on this port.
+
+        Example:
+        cycle_ns = 300k, period_ns = 100k
+        candidate start = 10k, duration = 5k
+
+        We check:
+            [10k, 15k)
+            [110k, 115k)
+            [210k, 215k)
+
+        The returned start is an offset within one period, so:
+        0 <= start and start + duration <= period_ns
         """
         start = int(min_start)
-        while start + duration <= period_ns:
+        duration = int(duration)
+        period_ns = int(period_ns)
+        cycle_ns = int(self.cycle_ns)
+
+        if duration <= 0 or period_ns <= 0 or cycle_ns <= 0:
+            return None
+
+        # Start must fit inside one period.
+        latest_start = period_ns - duration
+        if latest_start < 0:
+            return None
+
+        start = max(0, start)
+
+        # Normalize intervals and keep only valid ones.
+        intervals = sorted(
+            (int(a), int(b))
+            for a, b in intervals
+            if int(b) > int(a)
+        )
+
+        def occurrences_for_start(st):
+            occ = []
+            k = 0
+            while st + k * period_ns < cycle_ns:
+                a = st + k * period_ns
+                b = a + duration
+
+                # Candidate occurrence must stay inside macrocycle.
+                if b > cycle_ns:
+                    return None
+
+                occ.append((a, b))
+                k += 1
+
+            return occ
+
+        while start <= latest_start:
+            occs = occurrences_for_start(start)
+            if occs is None:
+                return None
+
             jumped = False
-            for a, b in intervals:
-                if start < b and (start + duration) > a:
-                    start = int(b)   # jump to end of conflicting interval
-                    jumped = True
+
+            for ca, cb in occs:
+                for a, b in intervals:
+                    if ca < b and cb > a:
+                        # Conflict for occurrence ca = start + k*period.
+                        # Move base start so this occurrence begins at b.
+                        k = (ca - start) // period_ns
+                        new_start = int(b) - int(k) * period_ns
+
+                        # Ensure progress.
+                        if new_start <= start:
+                            new_start = start + 1
+
+                        start = new_start
+                        jumped = True
+                        break
+
+                if jumped:
                     break
+
             if not jumped:
-                return start
+                return int(start)
+
         return None
         
     def generate_and_place_line_streams_first_fit(
@@ -1649,7 +1402,7 @@ class Schedule(list):
                 if port_intervals is not None:
                     current_intervals = list(port_intervals.get(pid, []))
                 else:
-                    current_intervals = self._occupied_intervals_on_port(pid, period)
+                    current_intervals = self._occupied_intervals_on_port(pid, self.cycle_ns)
 
                 # add any already chosen candidate slots on the same port
                 for s in partial_slots:

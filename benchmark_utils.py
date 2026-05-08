@@ -55,9 +55,9 @@ def generate_one_arrival_stream(
     """
     if ed_ed_settings is None:
         ed_ed_settings = {
-            "packet_sizes": [1024],
-            "periods": [100000],
-            "latency_factors": [0.6, 0.8],
+            "packet_sizes": [256],
+            "periods": [150000, 300000],
+            "latency_factors": [0.7, 0.8, 0.9, 1.0],
             "priorities": [1],
             "gammas": [1.0],
             "jitter_factors": [0.0],

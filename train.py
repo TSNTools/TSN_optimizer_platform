@@ -61,7 +61,13 @@ class StopAfterNEpisodesCallback(BaseCallback):
             ep_len = ep.get("l", None)
 
             ep_sbr = info.get("episode_sbr", None)
+            ep_acc = info.get("episode_acceptance", None)
+            ep_arr = info.get("episode_arrivals", None)
+            ep_rej = info.get("episode_rejections", None)
             ep_invalid = info.get("episode_invalid_moves", None)
+            ep_viol = info.get("episode_violation_sum", None)
+            ep_realloc = info.get("episode_reallocations", None)
+            ep_cycles = info.get("episode_defrag_cycles", None)
             ep_dp = info.get("episode_decision_points", None)
 
             if self.verbose:
@@ -72,11 +78,23 @@ class StopAfterNEpisodesCallback(BaseCallback):
                     msg += f" | len={ep_len}"
                 if ep_sbr is not None:
                     msg += f" | sbr={ep_sbr:.4f}"
+                if ep_acc is not None:
+                    msg += f" | acc={ep_acc:.4f}"
+                if ep_arr is not None:
+                    msg += f" | arr={ep_arr}"
+                if ep_rej is not None:
+                    msg += f" | rej={ep_rej}"
                 if ep_invalid is not None:
                     msg += f" | invalid={ep_invalid}"
+                if ep_viol is not None:
+                    msg += f" | viol={ep_viol}"
+                if ep_realloc is not None:
+                    msg += f" | realloc={ep_realloc}"
+                if ep_cycles is not None:
+                    msg += f" | cycles={ep_cycles}"
                 if ep_dp is not None:
                     msg += f" | dp={ep_dp}"
-                print(msg)
+                print(msg, flush=True)
 
             if self.episode_count >= self.max_episodes:
                 return False
@@ -107,6 +125,7 @@ def make_env(args):
         mu_departure=args.mu_departure,
         dt=args.dt,
         decision_points_per_episode=args.decision_points_per_episode,
+        top_k_oldest_random=args.top_k_oldest_random,
         seed=args.seed,
     )
 
@@ -133,6 +152,7 @@ def make_env(args):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
+    parser.add_argument("--top-k-oldest-random", type=int, default=10)
     parser.add_argument("--instance", required=True)
     parser.add_argument("--out-dir", required=True)
 
