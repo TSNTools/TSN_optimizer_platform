@@ -1,0 +1,181 @@
+[
+    {
+    "module": "utils.py",
+    "purpose": "Provides utility functions for generating and manipulating synthetic network topologies, including Fat-Tree, line, and random graphs. It also includes helper functions for enforcing graph constraints and modifying node degrees, as well as a decorator for runtime attribute validation.",
+    "functions": [
+        "requires_attribute",
+        "k_ary_fat_tree",
+        "makeLineGraph",
+        "makeRandomGraph",
+        "changeDegree"
+    ],
+    "dependencies": {
+        "internal": [
+        "usecase_config (indirect via config access in makeLineGraph and makeRandomGraph)"
+        ],
+        "external": [
+        "networkx",
+        "random",
+        "math",
+        "itertools",
+        "ast",
+        "functools.wraps"
+        ]
+    },
+    "used_by_modules": [
+        "topology_handler.py"
+    ]
+    },
+    {
+    "function": "requires_attribute",
+    "type": "decorator",
+    "signature": "requires_attribute(attr, msg=None)",
+    "purpose": "Decorator that enforces the existence of a required attribute on an instance before executing a method. It is used for runtime validation of object state, ensuring that dependent computations are only executed when prerequisite attributes are initialized.",
+    "called_by": [
+        "Stream.distance_to_hosts"
+    ],
+    "dependencies": [
+        "functools.wraps"
+    ],
+    "preconditions": [
+        "Wrapped method belongs to a class instance",
+        "Attribute name provided exists or is expected to exist on instance"
+    ],
+    "postconditions": [
+        "Raises ValueError if required attribute is missing or None",
+        "Otherwise executes original function unchanged"
+    ],
+    "returns": {
+        "type": "function",
+        "description": "Wrapped function with runtime attribute validation"
+    },
+    "example_usage": {
+        "setup": "from utils import requires_attribute",
+        "code": "@requires_attribute('customGraph')\ndef my_method(self):\n    return self.customGraph"
+    }
+    },
+    {
+    "function": "k_ary_fat_tree",
+    "type": "function",
+    "signature": "k_ary_fat_tree(k, directed=True)",
+    "purpose": "Generates a k-ary Fat-Tree network topology using NetworkX. The topology consists of core, aggregation, edge switches, and hosts, with hierarchical structured connectivity suitable for data center network modeling.",
+    "called_by": [
+        "TopologyHandler.makeTopology"
+    ],
+    "dependencies": [
+        "networkx",
+        "itertools.product",
+        "math.ceil"
+    ],
+    "preconditions": [
+        "k must be a positive integer"
+    ],
+    "postconditions": [
+        "Returns a graph with Fat-Tree structure",
+        "Nodes include switches (core, aggregation, edge) and hosts",
+        "Edges represent hierarchical connectivity"
+    ],
+    "returns": {
+        "type": "networkx.Graph | networkx.DiGraph",
+        "description": "Fat-tree topology graph (directed or undirected depending on flag)"
+    },
+    "example_usage": {
+        "setup": "from utils import k_ary_fat_tree",
+        "code": "G = k_ary_fat_tree(4, directed=True)"
+    }
+    },
+    {
+    "function": "makeLineGraph",
+    "type": "function",
+    "signature": "makeLineGraph(config, directed=True)",
+    "purpose": "Creates a linear chain topology of switches and attaches hosts to random or boundary switches. Used for simple pipeline-like network structures.",
+    "called_by": [
+        "TopologyHandler.makeTopology"
+    ],
+    "dependencies": [
+        "networkx",
+        "random"
+    ],
+    "preconditions": [
+        "config must contain numhosts and numswitchs fields"
+    ],
+    "postconditions": [
+        "Returns a line topology graph",
+        "All switches are connected in a chain",
+        "Hosts are attached to switches"
+    ],
+    "returns": {
+        "type": "networkx.Graph | networkx.DiGraph",
+        "description": "Line topology graph with host attachments"
+    },
+    "example_usage": {
+        "setup": "from utils import makeLineGraph\nfrom usecase_config import UsecaseConfig",
+        "code": "G = makeLineGraph(config, directed=True)"
+    }
+    },
+    {
+    "function": "makeRandomGraph",
+    "type": "function",
+    "signature": "makeRandomGraph(config, directed=True)",
+    "purpose": "Generates a random network topology using graph models such as Waxman, Barabási–Albert, or Erdős–Rényi. Ensures minimum node degree constraints and attaches host nodes to switches.",
+    "called_by": [
+        "TopologyHandler.makeTopology"
+    ],
+    "dependencies": [
+        "networkx",
+        "random",
+        "ast",
+        "changeDegree"
+    ],
+    "preconditions": [
+        "config must contain topology_config with graph parameters",
+        "numSwitchs > 0"
+    ],
+    "postconditions": [
+        "Returns a connected directed graph",
+        "Switch nodes are renamed consistently",
+        "Hosts are attached to switches",
+        "Minimum degree constraints are enforced"
+    ],
+    "returns": {
+        "type": "networkx.Graph | networkx.DiGraph",
+        "description": "Randomly generated network topology"
+    },
+    "example_usage": {
+        "setup": "from utils import makeRandomGraph\nfrom usecase_config import UsecaseConfig",
+        "code": "G = makeRandomGraph(config, directed=True)"
+    }
+    },
+    {
+    "function": "changeDegree",
+    "type": "function",
+    "signature": "changeDegree(node, graph, newDegree)",
+    "purpose": "Adjusts the degree of a node in the graph by either adding or removing edges to meet a required target degree. Used to enforce topology constraints in random graph generation.",
+    "called_by": [
+        "makeRandomGraph"
+    ],
+    "dependencies": [
+        "networkx",
+        "random"
+    ],
+    "preconditions": [
+        "node exists in graph",
+        "newDegree is non-negative"
+    ],
+    "postconditions": [
+        "Node degree is adjusted toward newDegree",
+        "Graph structure is modified in-place"
+    ],
+    "returns": {
+        "type": "None",
+        "description": "Modifies graph in-place"
+    },
+    "side_effects": [
+        "Adds or removes edges in graph"
+    ],
+    "example_usage": {
+        "setup": "from utils import changeDegree",
+        "code": "changeDegree('switch-1', G, 4)"
+    }
+    }
+]

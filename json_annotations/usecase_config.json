@@ -1,0 +1,173 @@
+[
+  {
+    "module": "usecase_config.py",
+    "purpose": "Defines a configuration data model for TSN usecase generation, including topology parameters, stream generation constraints, placement strategies, routing modes, and dataset-driven configuration loading. It is the central configuration source for topology creation, stream generation, and scheduling behavior.",
+    "classes": [
+      "UsecaseConfig"
+    ],
+    "dependencies": {
+      "internal": [],
+      "external": [
+        "configparser",
+        "ast",
+        "csv",
+        "dataclasses",
+        "dataclasses_json",
+        "pathlib"
+      ]
+    },
+    "uses_modules": [],
+    "used_by_modules": [
+      "usecase.py",
+      "topology_handler.py",
+      "stream.py",
+      "traffic_handler.py"
+    ]
+  },
+  {
+    "class": "UsecaseConfig",
+    "type": "dataclass",
+    "inherits": [
+      "DataClassJsonMixin"
+    ],
+    "purpose": "Holds all configuration parameters required to generate a TSN experiment, including topology structure, link characteristics, stream generation constraints, placement policies, routing behavior, and dataset-based experiment definitions.",
+    "responsibilities": [
+      "Store topology generation parameters (graph type, hosts, switches, link properties)",
+      "Store stream generation constraints (period, payload, frames, latency)",
+      "Control placement strategies (stride, staggered, hotspot)",
+      "Define routing behavior (fixed path vs shortest path)",
+      "Support loading from config files and CSV datasets",
+      "Serialize and deserialize configuration to/from INI format"
+    ],
+    "data_sections": {
+      "topology_config": "Defines network structure including number of hosts/switches, port speed, propagation/processing delay, link bandwidth, queueing, and graph generation type (fat-tree, random, line)",
+      "streams_config": "Defines stream generation constraints such as number of streams, period range, frame size range, payload size range, and latency constraints",
+      "routing": "Controls routing behavior including fixed-path mode and shortest-path preference",
+      "placement_strategies": {
+        "stride": "Selects hosts using a fixed step pattern in index space, optionally increasing selection spacing to spread load deterministically",
+        "staggered": "Biases placement toward structured locality (edge/pod-based grouping) to cluster traffic near network regions",
+        "hotspot": "Increases probability of reusing previously selected or popular hosts to simulate hotspot traffic concentration"
+      },
+      "expiration": "Defines whether streams are finite in duration and their lifecycle bounds in cycles",
+      "generation": "Controls whether stream generation is incremental or batch-based"
+    },
+    "dependencies": {
+      "internal": [],
+      "external": [
+        "configparser",
+        "ast",
+        "csv",
+        "pathlib"
+      ]
+    }
+  },
+  {
+    "function": "UsecaseConfig.from_configparser",
+    "type": "classmethod",
+    "signature": "from_configparser(cls, cfg: configparser.RawConfigParser)",
+    "purpose": "Builds a UsecaseConfig instance from an INI-style configuration file parsed via ConfigParser, mapping topology and stream parameters into structured dataclass fields.",
+    "responsibilities": [
+      "Parse topology configuration section",
+      "Parse stream configuration section",
+      "Convert string-encoded dictionaries using ast.literal_eval",
+      "Handle flexible formats for max latency range (scalar or list)"
+    ],
+    "returns": {
+      "type": "UsecaseConfig",
+      "description": "Fully populated configuration object"
+    },
+    "example_usage": {
+      "setup": "import configparser\nfrom usecase_config import UsecaseConfig\ncfg = configparser.RawConfigParser()\ncfg.read('uc_config.ini')",
+      "code": "config = UsecaseConfig.from_configparser(cfg)"
+    }
+  },
+  {
+    "function": "UsecaseConfig.to_configparser",
+    "type": "instance_method",
+    "signature": "to_configparser(self)",
+    "purpose": "Converts a UsecaseConfig instance back into an INI-style ConfigParser object for persistence or export.",
+    "responsibilities": [
+      "Serialize topology configuration fields into INI format",
+      "Serialize stream configuration fields into INI format",
+      "Handle list vs scalar encoding for max latency range",
+      "Preserve dictionary-based configuration structures as strings"
+    ],
+    "returns": {
+      "type": "configparser.RawConfigParser",
+      "description": "INI-compatible configuration representation"
+    },
+    "example_usage": {
+      "setup": "cfg = UsecaseConfig.from_file('uc_config.ini')",
+      "code": "parser = cfg.to_configparser()"
+    }
+  },
+  {
+    "function": "UsecaseConfig.from_dataset_csv",
+    "type": "classmethod",
+    "signature": "from_dataset_csv(cls, csv_file: str, output_dir: str = 'generated_configs_v2')",
+    "purpose": "Generates multiple UsecaseConfig instances from a CSV dataset, mapping each row into a full experiment configuration with topology, stream, routing, and placement settings.",
+    "responsibilities": [
+      "Parse experiment rows from CSV",
+      "Map topology types to graph configurations",
+      "Convert experiment parameters into stream constraints",
+      "Configure placement strategies (stride, staggered, hotspot)",
+      "Set routing and GA mode behavior",
+      "Return a list of independent configuration objects"
+    ],
+    "dataset_fields": [
+      "experiment_id",
+      "N_streams",
+      "k",
+      "topology_type",
+      "max_latency",
+      "payload",
+      "period",
+      "placement_strategy",
+      "ga_mode"
+    ],
+    "returns": {
+      "type": "List[UsecaseConfig]",
+      "description": "List of generated configuration objects for experiments"
+    },
+    "example_usage": {
+      "setup": "from usecase_config import UsecaseConfig",
+      "code": "configs = UsecaseConfig.from_dataset_csv('dataset.csv')"
+    }
+  },
+  {
+    "function": "UsecaseConfig.from_file",
+    "type": "classmethod",
+    "signature": "from_file(cls, file_path: str)",
+    "purpose": "Loads a UsecaseConfig from an INI configuration file stored on disk.",
+    "responsibilities": [
+      "Read configuration file from filesystem",
+      "Parse INI structure using ConfigParser",
+      "Convert into UsecaseConfig instance"
+    ],
+    "returns": {
+      "type": "UsecaseConfig",
+      "description": "Configuration object loaded from file"
+    },
+    "example_usage": {
+      "code": "config = UsecaseConfig.from_file('uc_config.ini')"
+    }
+  },
+  {
+    "function": "UsecaseConfig.to_file",
+    "type": "instance_method",
+    "signature": "to_file(self, file_path: str)",
+    "purpose": "Writes the UsecaseConfig instance to an INI file for persistence and reuse.",
+    "responsibilities": [
+      "Convert dataclass into ConfigParser representation",
+      "Write INI file to disk",
+      "Ensure configuration persistence across runs"
+    ],
+    "returns": {
+      "type": "str",
+      "description": "Path to the written configuration file"
+    },
+    "example_usage": {
+      "code": "config.to_file('output.ini')"
+    }
+  }
+]

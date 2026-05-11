@@ -1,0 +1,314 @@
+[
+    {
+    "module": "topology_handler.py",
+    "purpose": "Provides utilities to construct, modify, encode, and decode a network topology represented as a NetworkX directed graph. It supports TSN-style port-aware graphs where nodes have ingress/egress ports and edges carry link metadata such as propagation delay and bandwidth.",
+    "classes": [
+        "TopologyHandler"
+    ],
+    "dependencies": {
+        "internal": [
+        "UsecaseConfig",
+        "utils.makeRandomGraph",
+        "utils.k_ary_fat_tree",
+        "utils.makeLineGraph"
+        ],
+        "external": [
+        "networkx"
+        ]
+    },
+    "uses_modules": [
+        "usecase_config.py",
+        "utils.py"
+    ],
+    "used_by_modules": [
+        "usecase.py",
+        "stream.py"
+    ]
+    },
+    {
+    "class": "TopologyHandler",
+    "type": "utility_class",
+    "inherits": [],
+    "purpose": "Provides a set of static and class methods for generating, modifying, and serializing TSN-style network topologies using NetworkX. It acts as the central interface between configuration-driven topology generation, runtime graph manipulation, and JSON encoding/decoding of port-aware graphs.",
+    "responsibilities": [
+        "Generate synthetic network topologies (fat-tree, line, random)",
+        "Attach TSN port metadata to nodes and edges",
+        "Maintain ingress/egress port consistency across links",
+        "Modify topology dynamically by adding/removing links",
+        "Compute port-level concurrency constraints for stream placement",
+        "Serialize graph into JSON-compatible structure",
+        "Reconstruct graph from serialized representation"
+    ],
+    "data_model": "Operates on a NetworkX DiGraph where nodes represent hosts or switches and edges represent directed links annotated with port-level metadata (sourcePort, destPort, propagation delay, bandwidth). Each node maintains ingress_ports and egress_ports dictionaries.",
+    "dependencies": {
+        "internal": [
+        "UsecaseConfig",
+        "utils.makeRandomGraph",
+        "utils.k_ary_fat_tree",
+        "utils.makeLineGraph",
+        "TopologyHandler.set_link_data",
+        "TopologyHandler.get_concurrent_ports"
+        ],
+        "external": [
+        "networkx",
+        "random",
+        "math",
+        "itertools"
+        ]
+    },
+    "related_classes": [
+        "Stream",
+        "Usecase"
+    ],
+    "used_by": [
+        "Stream.build_stream_graph",
+        "Usecase",
+        "TrafficHandler"
+    ]
+    },
+    {
+    "function": "TopologyHandler.makeTopology",
+    "type": "classmethod",
+    "signature": "makeTopology(cls, config: UsecaseConfig)",
+    "purpose": "Generates a complete TSN network topology based on the configuration. It selects a topology type (fat-tree, line, or random graph), constructs the base NetworkX graph, and enriches it with TSN-specific metadata such as node roles (host/switch), port structures, link bandwidth, propagation delay, and processing delay.",
+    "preconditions": [
+        "config.graph_config must define a valid topology type",
+        "config must include link and port parameters (port speed, bandwidth, delays)"
+    ],
+    "postconditions": [
+        "Returns a fully initialized NetworkX graph",
+        "All nodes are annotated with type (host/switch)",
+        "All edges contain TSN link metadata",
+        "All nodes have ingress_ports and egress_ports initialized"
+    ],
+    "returns": {
+        "type": "nx.DiGraph",
+        "description": "A directed TSN-aware topology graph with port-level annotations"
+    },
+    "generation_modes": {
+        "ft": "Constructs a k-ary fat-tree topology using utils.k_ary_fat_tree",
+        "line": "Constructs a linear topology using utils.makeLineGraph",
+        "default": "Constructs a random topology using utils.makeRandomGraph"
+    },
+    "example_usage": {
+        "setup": "from usecase_config import UsecaseConfig\nconfig = UsecaseConfig.from_file('uc_config.ini')",
+        "code": "graph = TopologyHandler.makeTopology(config)"
+    }
+    },
+    {
+    "function": "TopologyHandler.set_link_data",
+    "type": "classmethod",
+    "signature": "set_link_data(cls, graph, node, dst, propDelay, linkBw, portSpeed, queueCountPerPort)",
+    "purpose": "Creates or reuses port-level connectivity between two nodes and attaches TSN link metadata. It ensures consistent ingress/egress port creation on both endpoints and updates both node port dictionaries and the NetworkX adjacency structure with link attributes such as propagation delay, bandwidth, and port identifiers.",
+    "responsibilities": [
+        "Create new egress/ingress ports if they do not exist, this is needed to translate nx link representation to port-level metadata as networkx doesn't have a built-in concept of ports",
+        "Reuse existing port identifiers when available",
+        "Maintain bidirectional port consistency between connected nodes. A link has two ports (source and destination) at both ends not more and they should be consistent in terms of identifiers",
+        "Attach TSN link metadata to graph edges",
+        "Ensure duplex state consistency (tx, rx, full). a port is used for one direction (tx or rx) and if the reverse direction exists, it should use the same port identifier but in the opposite role"
+    ],
+    "data_effects": [
+        "Updates graph.nodes[node]['egress_ports']",
+        "Updates graph.nodes[dst]['ingress_ports']",
+        "Updates graph._adj edge attributes for (node -> dst)"
+    ],
+    "preconditions": [
+        "graph is a valid NetworkX graph",
+        "node and dst exist in graph",
+        "Port dictionaries exist or can be initialized"
+    ],
+    "postconditions": [
+        "Both nodes have consistent port mappings",
+        "Edge contains sourcePort and destPort metadata",
+        "Link contains propDelay and linkBw attributes"
+    ],
+    "returns": {
+        "type": "None",
+        "description": "Modifies the graph in-place"
+    },
+    "example_usage": {
+        "setup": "graph = TopologyHandler.makeTopology(config)",
+        "code": "TopologyHandler.set_link_data(graph, 'host-1', 'switch-0', 100, 1000, 1000, 8)"
+    }
+    },
+    {
+    "function": "TopologyHandler.remove_link",
+    "type": "classmethod",
+    "signature": "remove_link(cls, graph, streams, src, dst)",
+    "purpose": "Removes a directed link from the topology and performs consistent cleanup across the graph structure, port metadata, and all streams that reference the removed link.",
+    "responsibilities": [
+        "Remove the edge (src → dst) from the NetworkX graph",
+        "Delete associated ingress and egress ports on both endpoints",
+        "Clean up stream path definitions that include the removed port",
+        "Maintain consistency between topology and active stream routes"
+    ],
+    "data_effects": [
+        "Modifies graph structure by removing an edge",
+        "Removes entries from graph.nodes[src]['egress_ports']",
+        "Removes entries from graph.nodes[dst]['ingress_ports']",
+        "Mutates stream.pathLists for all streams"
+    ],
+    "stream_interaction": "If streams contain pathLists, any occurrence of the removed source port is removed from all stored paths",
+    "preconditions": [
+        "graph may or may not contain the edge (src, dst)",
+        "streams is a list of Stream objects"
+    ],
+    "postconditions": [
+        "Edge is removed if it exists",
+        "Port metadata is cleaned up if present",
+        "Streams are updated to remain consistent with topology"
+    ],
+    "returns": {
+        "type": "None",
+        "description": "In-place modification of graph and streams"
+    },
+    "example_usage": {
+        "setup": "graph = TopologyHandler.makeTopology(config)\nstreams = uc.streams",
+        "code": "TopologyHandler.remove_link(graph, streams, 'host-1', 'switch-0')"
+    }
+    },
+    {
+    "function": "TopologyHandler.add_link",
+    "type": "classmethod",
+    "signature": "add_link(cls, graph, config, src, dst)",
+    "purpose": "Adds a directed link between two nodes in the topology and initializes all required TSN port and link metadata using configuration parameters.",
+    "responsibilities": [
+        "Create a new directed edge (src → dst)",
+        "Initialize port structures on both nodes if needed",
+        "Attach TSN link metadata using configuration values",
+        "Ensure consistency with existing port numbering and naming rules"
+    ],
+    "data_effects": [
+        "Modifies graph structure by adding an edge",
+        "Updates node ingress/egress port dictionaries via set_link_data",
+        "Adds propagation delay, bandwidth, and port metadata to edge"
+    ],
+    "preconditions": [
+        "src and dst exist in the graph",
+        "config contains valid link parameters (prop_delay, link_bw, port_speed, queue_count_per_port)"
+    ],
+    "postconditions": [
+        "New edge exists in graph",
+        "Ports are created or reused consistently",
+        "Edge is fully annotated with TSN metadata"
+    ],
+    "returns": {
+        "type": "None",
+        "description": "In-place modification of the graph"
+    },
+    "example_usage": {
+        "setup": "graph = TopologyHandler.makeTopology(config)",
+        "code": "TopologyHandler.add_link(graph, config, 'host-0', 'switch-1')"
+    }
+    },
+    {
+    "function": "TopologyHandler.get_concurrent_ports",
+    "type": "classmethod",
+    "signature": "get_concurrent_ports(cls, graph: nx.DiGraph, egports: list[str], typ: str = None)",
+    "purpose": "Computes a set of topology edges that are considered concurrent (i.e., potentially conflicting in scheduling or resource usage) with a given set of ports. The definition of concurrency depends on the port role (switch, talker, listener) and is used to support stream placement and contention-aware optimization.",
+    "responsibilities": [
+        "Identify nodes associated with the given ports",
+        "Determine concurrency scope based on port type",
+        "Return edges that may interfere with given ports during scheduling",
+        "Support TSN-aware conflict analysis for stream placement"
+    ],
+    "concurrency_rules": {
+        "switch": "Returns all outgoing edges from the same switch excluding the given egress ports",
+        "talker": "Returns all outgoing edges from other host nodes (potential competing transmissions)",
+        "listener": "Returns all incoming edges to other host nodes (potential competing receptions)"
+    },
+    "preconditions": [
+        "graph is a valid nx.DiGraph with TSN annotations",
+        "egports contains valid port identifiers formatted as node.port"
+    ],
+    "postconditions": [
+        "Returns a list of edge tuples (u, v, data)",
+        "Only edges matching concurrency definition are included"
+    ],
+    "returns": {
+        "type": "List[tuple]",
+        "description": "List of concurrent edges that may interfere with the provided ports depending on role-based rules"
+    },
+    "validation": {
+        "error_case": "Raises ValueError if typ is not one of: switch, talker, listener"
+    },
+    "example_usage": {
+        "setup": "graph = uc.graph\nports = list(uc.ports.keys())[:3]",
+        "code": "edges = TopologyHandler.get_concurrent_ports(graph, ports, typ='switch')"
+    }
+    },
+    {
+    "function": "TopologyHandler.graph_encoder",
+    "type": "staticmethod",
+    "signature": "graph_encoder(graph: nx.DiGraph, source='sourcePort', target='destPort', name='name', linkSym='links', nodeSym='nodes')",
+    "purpose": "Serializes a TSN-aware NetworkX graph into a JSON-compatible dictionary format. It preserves node identity, node type, and reconstructs a compact representation of ports by merging ingress and egress information while stripping redundant internal fields.",
+    "responsibilities": [
+        "Convert graph nodes into JSON-serializable objects",
+        "Encode node metadata including type and processing delay",
+        "Reconstruct port-level representation from ingress/egress dictionaries",
+        "Serialize edges as link metadata entries",
+        "Ensure output is compatible with JSON export pipelines"
+    ],
+    "data_model": "Transforms a NetworkX DiGraph with TSN port annotations into a structured dictionary with node and link arrays",
+    "port_handling": {
+        "logic": "Ports are reconstructed by intersecting ingress_ports and egress_ports, using egress as the base representation and removing internal routing fields",
+        "duplex_rule": "RX-only ports remove speed field, full ports retain all attributes"
+    },
+    "preconditions": [
+        "graph nodes must contain ingress_ports and egress_ports dictionaries"
+    ],
+    "postconditions": [
+        "Returns a JSON-serializable dictionary",
+        "All nodes include ports array",
+        "All edges include link metadata"
+    ],
+    "returns": {
+        "type": "dict",
+        "description": "Dictionary with keys nodeSym and linkSym representing the full serialized topology"
+    },
+    "example_usage": {
+        "setup": "graph = uc.graph",
+        "code": "data = TopologyHandler.graph_encoder(graph)"
+    }
+    },
+    {
+    "function": "TopologyHandler.graph_decoder",
+    "type": "staticmethod",
+    "signature": "graph_decoder(impUC: dict) -> nx.DiGraph",
+    "purpose": "Reconstructs a TSN-aware NetworkX directed graph from a serialized JSON-like dictionary, restoring node structures, ingress/egress ports, and edge metadata into a fully functional topology graph.",
+    "responsibilities": [
+        "Recreate NetworkX DiGraph from serialized data",
+        "Restore node attributes including type and processing delay",
+        "Rebuild ingress_ports and egress_ports dictionaries",
+        "Reconstruct edges with full TSN link metadata",
+        "Reconnect port-level relationships between nodes and edges"
+    ],
+    "data_model": "Input dictionary with 'nodes' and 'links' is transformed into a NetworkX DiGraph with full TSN port-aware structure",
+    "port_reconstruction": {
+        "logic": "Each serialized port entry is mapped back into ingress_ports or egress_ports based on its duplex field",
+        "duplex_rules": {
+        "rx": "Inserted only into ingress_ports",
+        "tx": "Inserted only into egress_ports with speed and queueCount restored",
+        "full": "Inserted into both ingress_ports and egress_ports"
+        }
+    },
+    "edge_reconstruction": "Edges are recreated using sourceNode and destNode, and port-level metadata is reattached to egress_ports for consistency",
+    "preconditions": [
+        "Input dictionary must contain 'nodes' and 'links' keys",
+        "Each node must contain a 'ports' field in expected format"
+    ],
+    "postconditions": [
+        "Returns a fully reconstructed nx.DiGraph",
+        "All TSN port structures restored",
+        "All edge metadata restored"
+    ],
+    "returns": {
+        "type": "nx.DiGraph",
+        "description": "A fully reconstructed TSN-aware topology graph"
+    },
+    "example_usage": {
+        "setup": "import json\nfrom topology_handler import TopologyHandler\n\nwith open('topology.json') as f:\n    data = json.load(f)",
+        "code": "graph = TopologyHandler.graph_decoder(data)"
+    }
+    }
+]

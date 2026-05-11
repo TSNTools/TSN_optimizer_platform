@@ -1,0 +1,430 @@
+[
+    {
+    "module": "usecase.py",
+    "purpose": "Represents a full TSN usecase instance combining topology, streams, and configuration (i.e. scheduling). It acts as the central orchestration object connecting setup (UsecaseConfig), network topology (NetworkX graph via TopologyHandler), traffic streams (Stream), and scheduling (Schedule).",
+    "classes": [
+        "Usecase"
+    ],
+    "dependencies": {
+        "internal": [
+        "UsecaseConfig",
+        "TopologyHandler",
+        "TrafficHandler",
+        "Stream",
+        "Schedule"
+        ],
+        "external": [
+        "networkx",
+        "math",
+        "dataclasses",
+        "dataclasses_json",
+        "typing"
+        ]
+    },
+    "data_model": {
+        "Usecase": "Core container object holding a network graph, stream set, and configuration state. Encodes full simulation or optimization instance.",
+        "graph": "NetworkX directed graph with TSN port-aware metadata (ingress/egress ports per node).",
+        "streams": "List of Stream objects representing traffic flows embedded into the topology.",
+        "specification": "UsecaseConfig defining topology and traffic generation parameters.",
+        "configuration": "Schedule, offset, and latency information for each stream."
+    },
+    "responsibilities": [
+        "Initialize TSN instance from config file",
+        "Generate or load network topology",
+        "Generate traffic streams and embed them into topology",
+        "Expose derived network properties (ports, hosts, switches, links)",
+        "Compute macro-cycle based on stream periods",
+        "Interface with scheduling system (Schedule)",
+        "Apply and remove schedules from graph and streams",
+        "Serialize and deserialize full usecase state",
+        "Provide utility mappings between port names and IDs"
+    ],
+    "graph_model": {
+        "type": "NetworkX DiGraph",
+        "node_structure": [
+        "ingress_ports",
+        "egress_ports"
+        ],
+        "edge_structure": [
+        "sourcePort",
+        "destPort",
+        "propagation delay",
+        "bandwidth"
+        ]
+    },
+    "uses_modules": [
+        "usecase_config.py",
+        "topology_handler.py",
+        "stream.py",
+        "traffic_handler.py",
+        "schedule.py"
+    ],
+    "used_by_modules": []
+    },
+    {
+    "class": "Usecase",
+    "type": "dataclass",
+    "inherits": [
+        "DataClassJsonMixin"
+    ],
+    "purpose": "Core orchestration class that binds together TSN topology, traffic streams, and scheduling. It manages full lifecycle of a TSN scenario including generation, modification, scheduling, serialization, and analysis.",
+    "responsibilities": [
+        "Load or generate UsecaseConfig from file",
+        "Construct TSN topology graph via TopologyHandler",
+        "Generate and embed Stream objects into topology",
+        "Maintain global stream list and graph consistency",
+        "Provide derived views of topology (ports, hosts, switches, links)",
+        "Compute macro-cycle from stream intervals",
+        "Expose port mapping utilities for scheduling",
+        "Generate and remove schedules from graph and streams",
+        "Update graph with scheduling information",
+        "Propagate schedule results back into streams",
+        "Compute utilization metrics per port and globally",
+        "Support stream addition and removal",
+        "Support link addition and removal in topology",
+        "Serialize full usecase state to JSON",
+        "Deserialize usecase from JSON while restoring graph-stream binding"
+    ],
+    "dependencies": {
+        "internal": [
+            "UsecaseConfig",
+            "TopologyHandler",
+            "Stream",
+            "Schedule",
+            "TrafficHandler"
+        ],
+        "external": [
+            "networkx",
+            "math",
+            "dataclasses_json"
+        ]
+    },
+    "related_classes": [
+    "Stream",
+    "Schedule",
+    "TopologyHandler",
+    "UsecaseConfig",
+    "TrafficHandler"
+    ],
+    "attributes": {
+        "index": {
+        "type": "int",
+        "purpose": "Unique identifier for each Usecase instance"
+        },
+        "specsFile": {
+        "type": "str",
+        "purpose": "Path to specification file used for usecase initialization"
+        },
+        "specification": {
+        "type": "Optional[UsecaseConfig]",
+        "purpose": "Specification object defining topology and traffic generation parameters"
+        },
+        "graph": {
+        "type": "nx.DiGraph",
+        "purpose": "Network topology graph with TSN port-aware metadata"
+        },
+        "streams": {
+        "type": "List[Stream]",
+        "purpose": "List of traffic streams embedded into the topology"
+        }
+    },
+    "properties": {
+        "n_streams": {
+        "type": "int",
+        "purpose": "Number of streams in the usecase"
+        },
+        "n_ports": {
+        "type": "int",
+        "purpose": "Number of ports in the topology"
+        },
+        "hosts": {
+        "type": "List[str]",
+        "purpose": "List of host nodes in the graph"
+        },
+        "switches": {
+        "type": "List[str]",
+        "purpose": "List of switch nodes in the graph"
+        },
+        "links": {
+        "type": "List[Dict]",
+        "purpose": "List of links in the topology graph with metadata"
+        },
+        "macro_cycle": {
+        "type": "int",
+        "unit": "ns",
+        "purpose": "Least common multiple of all stream intervals defining global repetition cycle"
+        },
+        "ports": {
+        "type": "Dict[str, Dict]",
+        "purpose": "Derived mapping of all ingress and egress ports with metadata"
+        },
+        "port_name_id_mapping": {
+        "type": "Tuple[Dict[str, int], Dict[int, str]]",
+        "purpose": "Bidirectional mapping between port names and port integer IDs"
+        },
+        "streams_by_source_port": {
+        "type": "Dict[str, List[Stream]]",
+        "purpose": "Grouping of streams by their talker/source port"
+        },
+        "task": {
+        "type": "Tuple[bool, bool]",
+        "purpose": "Derived flags controlling routing and scheduling modes. First bool indicates whether routing is needed, second bool indicates whether task (talker/listener) placement is needed"
+        },
+        "schedule": {
+        "type": "Schedule",
+        "purpose": "Generated schedule from current streams and topology"
+        },
+        "utilization": {
+        "type": "Tuple[float, Dict[int, float]]",
+        "purpose": "Global and per-port utilization of scheduled transmission windows"
+        },
+        "distance_to_hosts": {
+        "type": "Dict[str, Dict[str, float]]",
+        "purpose": "Shortest distances from each host to all reachable nodes"
+        }
+    },
+    "functions": [
+        "__post_init__",
+        "add_stream",
+        "remove_streams",
+        "add_link",
+        "remove_link",
+        "addSchedule",
+        "removeSchedule",
+        "to_file",
+        "from_json"
+    ],
+    "used_by": [
+        "Stream",
+        "TrafficHandler",
+        "Schedule",
+        "TopologyHandler"
+    ]
+    },
+    {
+    "name": "__post_init__",
+    "type": "lifecycle_hook",
+    "purpose": "Initializes the Usecase after dataclass construction by loading specifications, building the topology graph, and optionally generating streams if none are provided.",
+    "responsibilities": [
+        "Load UsecaseConfig from file if specification is not provided",
+        "Construct NetworkX topology graph via TopologyHandler",
+        "Auto-generate streams based on specifications",
+        "Ensure Usecase is fully initialized and runnable immediately after instantiation"
+    ],
+    "logic_flow": [
+        "If specification is None → load from specsFile",
+        "If graph is missing → build topology using TopologyHandler.makeTopology",
+        "If streams list is empty → generate streams using add_stream()"
+    ],
+    "side_effects": [
+        "Creates graph structure",
+        "Creates Stream objects",
+        "Mutates Usecase state after construction"
+    ],
+    "depends_on": [
+        "UsecaseConfig.from_file",
+        "TopologyHandler.makeTopology",
+        "Usecase.add_stream",
+        "Stream.generate"
+    ]
+    },
+    {
+    "name": "add_stream",
+    "type": "method",
+    "purpose": "Generates a new Stream and embeds it into the topology graph while maintaining consistency with current network load.",
+    "responsibilities": [
+        "Generate a new Stream using Stream.generate based on the specification",
+        "Embed the stream into the topology using TrafficHandler.embed_to_topology",
+        "Append the resulting Stream to the Usecase.streams list",
+        "Ensure stream placement respects current network load"
+    ],
+    "execution_flow": [
+        "Generate raw Stream from specification",
+        "Call TrafficHandler.embed_to_topology with graph and current streams",
+        "Append embedded stream to streams list"
+    ],
+    "depends_on": [
+        "Stream.generate",
+        "TrafficHandler.embed_to_topology",
+        "specification",
+        "graph",
+        "streams"
+    ],
+    "side_effects": [
+        "Mutates streams list",
+        "Updates stream embedding in topology context"
+    ]
+    },
+    {
+    "name": "remove_streams",
+    "type": "method",
+    "purpose": "Removes selected streams from the Usecase by their indices in the streams list.",
+    "responsibilities": [
+        "Delete streams at specified indices from the streams list",
+        "Maintain list integrity after removal"
+    ],
+    "execution_flow": [
+        "Sort stream_ids in descending order",
+        "Delete each stream at the given index from self.streams"
+    ],
+    "side_effects": [
+        "Mutates the streams list",
+        "Changes stream ordering implicitly due to index shifts"
+    ],
+    "depends_on": [
+        "streams"
+    ]
+    },
+    {
+    "name": "add_link",
+    "type": "method",
+    "purpose": "Adds a new link between two nodes in the topology graph while respecting the current Usecase specification.",
+    "responsibilities": [
+        "Insert a new edge into the NetworkX topology graph",
+        "Ensure link creation follows rules defined in TopologyHandler",
+        "Update topology structure based on specification constraints"
+    ],
+    "execution_flow": [
+        "Call TopologyHandler.add_link with graph, specification, src, dst"
+    ],
+    "side_effects": [
+        "Mutates the topology graph by adding an edge"
+    ],
+    "depends_on": [
+        "TopologyHandler.add_link",
+        "graph",
+        "specification"
+    ]
+    },
+    {
+    "name": "remove_link",
+    "type": "method",
+    "purpose": "Removes a link (edge) from the topology graph and updates stream routing consistency accordingly.",
+    "responsibilities": [
+        "Remove an edge from the NetworkX topology graph",
+        "Ensure stream-level consistency after topology modification",
+        "Delegate removal logic to TopologyHandler"
+    ],
+    "execution_flow": [
+        "Call TopologyHandler.remove_link with graph, streams, src, dst",
+        "TopologyHandler handles graph update and stream consistency updates"
+    ],
+    "side_effects": [
+        "Mutates topology graph",
+        "Potentially affects stream routing feasibility"
+    ],
+    "depends_on": [
+        "TopologyHandler.remove_link",
+        "graph",
+        "streams",
+        "specification"
+    ]
+    },
+    {
+    "name": "addSchedule",
+    "type": "method",
+    "purpose": "Applies a computed schedule to the Usecase by updating both the topology graph and stream metadata.",
+    "responsibilities": [
+        "Clear any existing schedule before applying a new one",
+        "Update graph with scheduling information",
+        "Update streams with schedule results (offsets, latencies, assignments)",
+        "Maintain consistency between graph, ports, and streams"
+    ],
+    "execution_flow": [
+        "Call removeSchedule() to clear existing scheduling state",
+        "Retrieve port_id_to_name mapping",
+        "Apply schedule to graph via schedule.update_graph",
+        "Apply schedule to streams via schedule.update_streams"
+    ],
+    "side_effects": [
+        "Mutates graph by adding scheduling metadata",
+        "Mutates streams (offset, latency, assignments)"
+    ],
+    "depends_on": [
+        "removeSchedule",
+        "Schedule.update_graph",
+        "Schedule.update_streams",
+        "port_name_id_mapping",
+        "graph",
+        "streams"
+    ]
+    },
+    {
+    "name": "removeSchedule",
+    "type": "method",
+    "purpose": "Removes all scheduling-related information from the topology graph and resets stream scheduling state.",
+    "responsibilities": [
+        "Clear scheduling metadata from all egress ports in the graph",
+        "Reset stream-level scheduling fields (offset, accumulated latency)",
+        "Restore Usecase to an unscheduled state"
+    ],
+    "execution_flow": [
+        "Iterate over all graph nodes",
+        "For each egress port, remove schedule-related fields",
+        "Iterate over all streams",
+        "Reset offset and accLatency to None"
+    ],
+    "side_effects": [
+        "Mutates graph by removing schedule metadata",
+        "Resets stream scheduling state"
+    ],
+    "depends_on": [
+        "graph",
+        "streams"
+    ]
+    },
+    {
+    "name": "to_file",
+    "type": "method",
+    "purpose": "Serializes the entire Usecase object into JSON format and writes it to a file.",
+    "responsibilities": [
+        "Generate JSON representation of the Usecase using dataclass serialization",
+        "Determine output filename if not provided",
+        "Write serialized data to disk"
+    ],
+    "execution_flow": [
+        "If ucFileName is None → derive filename from specification.graph_config",
+        "Call self.to_json() to serialize object",
+        "Write JSON string to file at jsnPath",
+        "Return filename used"
+    ],
+    "side_effects": [
+        "Writes file to disk"
+    ],
+    "depends_on": [
+        "to_json",
+        "specification",
+        "graph_config"
+    ]
+    },
+    {
+    "name": "from_json",
+    "type": "classmethod",
+    "purpose": "Reconstructs a Usecase instance from a serialized JSON dictionary, restoring topology, streams, and graph-stream consistency.",
+    "responsibilities": [
+        "Decode the NetworkX graph from serialized format",
+        "Reconstruct Stream objects from dictionaries",
+        "Create a new Usecase instance with restored streams and index",
+        "Replace post_init-generated graph with deserialized graph",
+        "Restore stream-to-graph binding for streams missing customGraph"
+    ],
+    "execution_flow": [
+        "Decode graph using TopologyHandler.graph_decoder",
+        "Convert stream dictionaries into Stream objects",
+        "Instantiate Usecase with specsFile, index, and streams",
+        "Overwrite generated graph with decoded graph",
+        "Ensure each stream has correct customGraph reference"
+    ],
+    "side_effects": [
+        "Reconstructs full object state from external data",
+        "Mutates streams to bind them to restored graph"
+    ],
+    "depends_on": [
+        "TopologyHandler.graph_decoder",
+        "Stream.from_dict",
+        "Usecase constructor",
+        "graph",
+        "streams"
+    ]
+    }
+]

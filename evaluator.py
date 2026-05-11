@@ -1,10 +1,14 @@
+import numpy as np
 from enum import Enum
+from scipy.sparse import csr_matrix
+
+MBPS_2_BPNS = 0.001
+
 class ScheduleEncodingType(Enum):
     PRIORITY = 1
     START_TIME = 2
     #QUEUING_DELAY = 3
 
-from scipy.sparse import csr_matrix
 class TSNConstraintEvaluator:
     def __init__(self, problem, weights=None, check_routing=True, check_task_placement=True, 
                  scheduling_type: ScheduleEncodingType = ScheduleEncodingType.PRIORITY):
@@ -49,9 +53,15 @@ class TSNConstraintEvaluator:
             ])
 
         if check_routing:
+            if self.scheduling_type.value == ScheduleEncodingType.START_TIME.value:
+                causality = self._per_stream_flow_causality_violations
+            else:
+                causality = self._per_stream_flow_continuity_violations
+            
+            
             self.active_checks.extend([
                 self._per_stream_flow_conservation_violations,
-                self._per_stream_flow_continuity_violations
+                causality
             ])
             relevant_weight_keys.update([
                 "backwarding",
@@ -78,11 +88,11 @@ class TSNConstraintEvaluator:
                 self._per_stream_latency_violations_start_time
             ])
             relevant_weight_keys.update([
-                "maxlatency_violations",
-                "stream_window_sequence",
+                # "stream_window_sequence",
                 "interleaving",
                 "macrocycle_overlap",
-                "talker_offset"
+                "talker_offset",
+                "maxlatency_violations"
             ])
 
         # Keep only relevant weights
@@ -138,13 +148,13 @@ class TSNConstraintEvaluator:
 
         self.stream_potential = stream_potential
         self.stream_intervals = np.asarray(stream_intervals, dtype=int)
-        streams_pairwise_gcl = np.gcd(self.stream_intervals[:, None], self.stream_intervals[None, :])
-        streams_pairwise_gcl[streams_pairwise_gcl == 0] = 1   # safety
-        self.streams_pairwise_gcl = streams_pairwise_gcl # (S,S)
-        self.streams_pairwise_gcl_inv = 1.0 / self.streams_pairwise_gcl[None, None, :, :]
+        streams_pairwise_gcd = np.gcd(self.stream_intervals[:, None], self.stream_intervals[None, :])
+        streams_pairwise_gcd[streams_pairwise_gcd == 0] = 1   # safety
+        self.streams_pairwise_gcd = streams_pairwise_gcd # (S,S)
+        self.streams_pairwise_gcd_inv = 1.0 / self.streams_pairwise_gcd[None, None, :, :]
 
-        stream_pairwise_windowSum = (self.windLengths[:, :, None] + self.windLengths[:, None, :]) # (P,S,S)
-        self.stream_pairwise_windowSum = stream_pairwise_windowSum
+        stream_pairwise_windowMin = np.minimum(self.windLengths[:, :, None], self.windLengths[:, None, :]) # (P,S,S)
+        self.stream_pairwise_windowMin = stream_pairwise_windowMin
         # used to filter self-comparison for stream overlap
         self.pair_mask = ~np.eye(n_streams, dtype=bool)
 
@@ -198,8 +208,8 @@ class TSNConstraintEvaluator:
 
         self.next_hop_matrix = next_hop_matrix
         ################ CSR connectivity ################
-        self._upstream_ports = np.repeat(np.arange(n_ports), np.diff(next_hop_matrix.indptr))
-        self._downstream_ports = next_hop_matrix.indices
+        self._downstream_ports = next_hop_matrix.indices # the column indices of the nonzero values of the matrix
+        self._upstream_ports = np.repeat(np.arange(n_ports), np.diff(next_hop_matrix.indptr)) # 
         
         ################# streams masks #####################
         talker_mask        = np.zeros((n_ports, n_streams), dtype=int)
@@ -287,6 +297,7 @@ class TSNConstraintEvaluator:
             if rx != ry:
                 self.parent[ry] = rx
 
+###################
     def group_connected_ports(self, chromosome, s_idx):
         """Group connected active ports using the adjacency precomputed in __init__."""
         active_ports = [p + 1 for p in np.nonzero(chromosome[:, s_idx])[0]]
@@ -304,19 +315,45 @@ class TSNConstraintEvaluator:
             groups.setdefault(root, set()).add(int(pid))
         return list(groups.values())
 
+    def group_connections(self, active_connections, downstream_ports, upstream_ports, s_idx):
+        stream_active_conns = np.where(active_connections[:, s_idx])[0]
+        uf = self.UnionFind(stream_active_conns)
+        for c1 in stream_active_conns:
+            d1 = downstream_ports[c1]
+            for c2 in stream_active_conns:
+                if upstream_ports[c2] == d1:
+                    uf.union(c1, c2)
+        groups = {}
+        for c in stream_active_conns:
+            root = uf.find(c)
+            # groups.setdefault(root, []).append(c)
+            groups.setdefault(root, set()).add(int(c))
+        return list(groups.values())
+###################
+    
     def talker_listener_groups(self, groups, talker_ids, listener_ids):
         """True if any group contains at least one talker port and one listener port."""
-        talker_group = None
-        listener_group = None
+        talker_groups = []
+        listener_groups = []
+        common_groups = []
         
         for group in groups:
-            if group & set(talker_ids):
-                talker_group = group
-            if group & set(listener_ids):
-                listener_group = group
-        return talker_group, listener_group
-            
-    def group_penalty(self, group, k):
+            has_talker = bool(group & set(talker_ids))
+            has_listener = bool(group & set(listener_ids))
+        
+            if has_talker and has_listener:
+                common_groups.append(group)
+            elif has_talker:
+                talker_groups.append(group)
+            elif has_listener:
+                listener_groups.append(group)
+    
+        return talker_groups, listener_groups, common_groups
+###################
+    def group_penalty(self, group, s_idx):
+        stream_potential = self.stream_potential
+        k = stream_potential[s_idx]
+
         if group is None:
             return k  # completely disconnected group
     
@@ -328,6 +365,86 @@ class TSNConstraintEvaluator:
         raw = k - n_nodes + (n_edges - n_nodes) / 2
         return int(max(0, raw))
 
+    def connection_group_penalty(self, group, con_idxs, updated_cst, s_idx, time_only=False, ov=None):
+        ML = self.stream_maxLatencies[s_idx]
+        k = self.stream_potential[s_idx]
+        
+        if group is None:
+            return k*ML  # completely disconnected group
+    
+        group_idx = [i for i in range(len(con_idxs)) if con_idxs[i] in group]
+    
+        raw =  ML * k - updated_cst[group_idx].sum()
+        if time_only:
+            raw = (ML - updated_cst[group_idx].sum())*100/ML
+        return int(max(0, raw))
+###################
+    def _per_stream_flow_causality_violations(self, chromosome):
+        n = self.n_streams
+        v = np.zeros(n, dtype=int)  # 1D is faster to write into
+        
+        upstream_ports = self._upstream_ports
+        downstream_ports = self._downstream_ports
+        all_hops_costs = self.all_hops_costs
+        stream_talker_ports = self.stream_talker_ports
+        stream_listener_adj_ports = self.stream_listener_adj_ports
+        # functions
+        group_connections = self.group_connections
+        talker_listener_groups = self.talker_listener_groups
+        connection_group_penalty = self.connection_group_penalty
+        
+        upstream_start = chromosome[upstream_ports,:]          # (I, connections, S)
+        downstream_start = chromosome[downstream_ports,:]      # (I, connections, S)
+        enqueuing_start = upstream_start+all_hops_costs[upstream_ports,:]
+        causality_violation = np.maximum(0, enqueuing_start - downstream_start)
+        # Only check connections where stream exists at both ends
+        upstream_active = upstream_start > 0
+        downstream_active = downstream_start > 0
+        active_connections = upstream_active & downstream_active
+        causality_violation *= active_connections
+        
+        for s_idx in range(n):
+            str_con_idxs = active_connections[:, s_idx].nonzero()[0]
+            # grouping
+            talker_conns = [c for c in str_con_idxs if upstream_ports[c]+1 in stream_talker_ports[s_idx]]
+            listener_conns = [c for c in str_con_idxs if downstream_ports[c]+1 in stream_listener_adj_ports[s_idx]]
+            groups = group_connections(active_connections, downstream_ports, upstream_ports, s_idx)
+            talker_groups, listener_groups, common_groups = talker_listener_groups(groups, talker_conns, listener_conns)
+            # calculate costs
+            up = upstream_ports[str_con_idxs]
+            down = downstream_ports[str_con_idxs]
+            cst = all_hops_costs[up,s_idx]
+            ov  = causality_violation[str_con_idxs,s_idx]
+            ### internal function to update cost ###
+            nexts = {i: np.where(up == down[i])[0] for i in range(len(str_con_idxs))}
+            updated_cst= cst.copy()
+            def dfs(i, acc, visited):
+                if i in visited:
+                    return  # already visited in this path, skip to prevent loops
+                visited.add(i)
+                
+                acc += cst[i] if ov[i] == 0 else (cst[i] - ov[i])/2
+                updated_cst[i] = acc
+                for j in nexts[i]:
+                    val = dfs(j, acc, visited.copy())
+            ########################################
+            starts = [i for i in range(len(str_con_idxs)) if str_con_idxs[i] in talker_conns]
+            for i in starts:
+                dfs(i, 0, set()) 
+
+    
+            if common_groups and ov.sum()==0: 
+                continue
+            elif common_groups: 
+                v[s_idx] = sum(connection_group_penalty(group, str_con_idxs, updated_cst, s_idx) for group in common_groups)
+            else:
+                # talker groups penalty
+                talker_penalty = sum(connection_group_penalty(group, str_con_idxs, updated_cst, s_idx) for group in talker_groups)
+                # listener groups penalty
+                listener_penalty = sum(connection_group_penalty(group, str_con_idxs, updated_cst, s_idx) for group in listener_groups)
+                v[s_idx] = (talker_penalty + listener_penalty)
+        return v[np.newaxis, :]
+    
     def _per_stream_flow_continuity_violations(self, chromosome):
         n = self.n_streams
         v = np.zeros(n, dtype=int)  # 1D is faster to write into
@@ -339,22 +456,24 @@ class TSNConstraintEvaluator:
     
         stream_talker_ports = self.stream_talker_ports
         stream_listener_adj_ports = self.stream_listener_adj_ports
-        stream_potential = self.stream_potential
     
         for s_idx in range(n):
             groups = group_connected_ports(chromosome, s_idx)
     
-            talker_group, listener_group = talker_listener_groups(
+            talker_groups, listener_groups, common_groups = talker_listener_groups(
                 groups,
                 stream_talker_ports[s_idx],
                 stream_listener_adj_ports[s_idx],
             )
-    
-            if (talker_group is not None and listener_group is not None and talker_group is listener_group):
+
+            if common_groups: 
                 continue
+            # talker groups penalty
+            talker_penalty = sum(group_penalty(group, s_idx) for group in talker_groups)
+            # listener groups penalty
+            listener_penalty = sum(group_penalty(group, s_idx) for group in listener_groups)
     
-            k = stream_potential[s_idx]
-            v[s_idx] = (group_penalty(talker_group, k) + group_penalty(listener_group, k))
+            v[s_idx] = 100*(talker_penalty + listener_penalty)
     
         return v[np.newaxis, :]
 
@@ -477,9 +596,10 @@ class TSNConstraintEvaluator:
         t_min = start_min.min(axis=0)
         t_max = start_max.max(axis=0)
     
-        # Transmission window (use worst-case hop window)
+        # Transmission window
         # windLengths already = transmission duration per port/stream
-        max_window = np.where(active, self.windLengths, 0).max(axis=0)
+        idx_max = start_max.argmax(axis=0)  # (S,)
+        max_window = self.windLengths[idx_max, np.arange(self.n_streams)]
     
         # Accumulated latency
         latency = (t_max - t_min) + max_window
@@ -517,7 +637,7 @@ class TSNConstraintEvaluator:
         """
         Detect periodic window overlaps over the macro-cycle.
         Implements the periodic-interval collision test: 
-            (phase1 - phase2) mod gcd(interval1, interval2) < window1 + window2; where phase = start % interval
+            (phase1 - phase2) mod gcd(interval1, interval2) < window2 ; where phase = start % interval
         chromosome[p,s] = start time (0 = inactive)
         """
     
@@ -530,17 +650,24 @@ class TSNConstraintEvaluator:
         diff = phase[:, :, None] - phase[:, None, :]
     
         # --- periodic phase difference using precomputed gcd
-        delta = np.mod(diff, self.streams_pairwise_gcl)
-    
+        delta = np.mod(diff, self.streams_pairwise_gcd)
+
         # --- overlap condition
-        overlap = delta < self.stream_pairwise_windowSum
+        d_j = self.windLengths[:, None, :]   # (P,1,S)
+        d_i = self.windLengths[:, :, None]   # (P,S,1)
+
+
+        ov1 = np.maximum(0, d_j - delta)
+        ov2 = np.maximum(0, d_i - (self.streams_pairwise_gcd - delta))
+        # overlap = np.maximum(ov1, ov2)#*100/d_i.max()
+        overlap = 0 < ov1+ov2 
     
         # remove self comparisons
-        overlap &= self.pair_mask
+        overlap *= self.pair_mask
     
         # require both streams active on same port
         both_active = active[:, :, None] & active[:, None, :]
-        overlap &= both_active
+        overlap *= both_active
     
         # --- count violations per stream
         # (sum over ports and partner streams)
@@ -569,8 +696,8 @@ class TSNConstraintEvaluator:
         Prevents one stream stealing another stream’s slot.
         """
         n_ports, n_streams = self.n_ports, self.n_streams
-        upstream_ports = self._upstream_ports
         downstream_ports = self._downstream_ports
+        upstream_ports = self._upstream_ports
     
         if upstream_ports.size == 0:
             return np.zeros((n_streams,), dtype=int)
@@ -588,16 +715,20 @@ class TSNConstraintEvaluator:
         # -------------------------------------------------
         # PART 1 — INTRA-STREAM SEQUENCING
         # -------------------------------------------------
-        connection_violations = valid & (downstream_start < enqueuing_start)
+        seq_violation = np.maximum(0, enqueuing_start - downstream_start)
+        seq_violation *= valid
+        # seq_violation = valid & (downstream_start < enqueuing_start)
+        
         # Accumulate violations at downstream ports
-        violations = np.zeros((n_ports, n_streams), dtype=bool)
-        np.maximum.at(
-            violations,
-            (downstream_ports[:, None], np.arange(n_streams)),
-            connection_violations
-        )
-        # Sum violations per stream
-        seq_v  = violations.sum(axis=0)
+        # violations = np.zeros((n_ports, n_streams), dtype=float)
+        # np.maximum.at(
+        #     violations,
+        #     (downstream_ports[:, None], np.arange(n_streams)),
+        #     seq_violation
+        # )
+        # # Sum violations per stream
+        # seq_v  = violations.sum(axis=0)
+        seq_v = seq_violation.sum(axis=0) # sum of all connections violations
         # -------------------------------------------------
         # PART 2 — INTER-STREAM FIFO (slot stealing)
         # -------------------------------------------------
@@ -612,15 +743,17 @@ class TSNConstraintEvaluator:
 
         arr_diff = eg_queue_arrival[:, :, None] - eg_queue_arrival[:, None, :]
         dep_diff = chromosome[:, :, None] - chromosome[:, None, :]
-        
-        interleave = (arr_diff * dep_diff) < 0
-        interleave &= self.pair_mask
+
+        interleave = np.maximum(0, -(arr_diff * dep_diff))
+        # interleave = (arr_diff * dep_diff) < 0
+        interleave *= self.pair_mask
         both_active = active[:, :, None] & active[:, None, :]
-        interleave &= both_active
+        interleave *= both_active
         
         fifo_v = interleave.sum(axis=(0,2))
 
-        return np.vstack((seq_v[np.newaxis, :], fifo_v[np.newaxis, :]))
+        # return np.vstack((seq_v[np.newaxis, :], fifo_v[np.newaxis, :]))
+        return fifo_v[np.newaxis, :]
 ###################################################################################
     
     def per_stream_all_violations(self, chromosome):
@@ -649,7 +782,20 @@ class TSNConstraintEvaluator:
         return ~infeasible_streams
 
 ###################################################################################
-
+    def structural_distance(self, chromosome1, chromosome2, normalize=True):
+        to_node_mask = self.to_node_mask
+        n_ports, n_streams = self.n_ports, self.n_streams
+        X = chromosome1.reshape(n_ports, n_streams)
+        Y = chromosome2.reshape(n_ports, n_streams)
+        A = (to_node_mask @ ( X > 0)) > 0
+        B = (to_node_mask @ (Y > 0)) > 0
+        # Per-stream distance (S,)
+        per_stream_dist = np.sum(A != B, axis=0) / A.shape[0]
+        # Handle edge case
+        if per_stream_dist.size == 0:
+            return 0.0
+        return per_stream_dist.mean() if normalize else per_stream_dist.sum()
+    
     def compute_metrics(self, chromosome, alpha=0.9, eps=1e-9):
         """Vectorized performance metrics (congestion, imbalance, path length)."""
         key = chromosome.tobytes()
@@ -695,6 +841,8 @@ class TSNConstraintEvaluator:
 ###################################################################################
     
     def suggest_corrections(self, Y):
+
+        Y = Y.reshape(-1,self.n_ports, self.n_streams)
 
         adj_port_mask= self.to_node_mask[None, :, :, None]
         egress_mask = self.egress_mask[None, :, :, None]
@@ -774,9 +922,9 @@ class TSNConstraintEvaluator:
             upstream_ports = self._upstream_ports
             downstream_ports = self._downstream_ports
             all_hops_costs = self.all_hops_costs
+            windLengths = self.windLengths
 
-            stream_pairwise_windowSum = self.stream_pairwise_windowSum[None]
-            streams_pairwise_gcl = self.streams_pairwise_gcl[None, None, :, :]
+            streams_pairwise_gcd = self.streams_pairwise_gcd[None, None, :, :]
             pair_mask = self.pair_mask[None, None]
         
             # Gather per-connection start times
@@ -851,37 +999,48 @@ class TSNConstraintEvaluator:
             # ---  maxlatency bias ---
             t_max = np.where(act, Y, -np.iinfo(Y.dtype).max).max(axis=1, keepdims=True)
             latency_limit = talker_offset + np.asarray(self.stream_maxLatencies)[None,None,:]
-            end_time = Y + self.windLengths[None,:,:]
+            end_time = Y + windLengths[None,:,:]
             is_latest_active = (Y == t_max) & act
             latency_bias = (latency_limit - end_time) * (end_time > latency_limit)  * is_latest_active
 
-            # --- macrocycle_bias overlap bias ---
-            phase = Y % stream_intervals
-            diff = phase[:, :, :, None] - phase[:, :, None, :]
-            delta = diff - np.floor(diff * self.streams_pairwise_gcl_inv) * streams_pairwise_gcl
+            # used later
+            stream_pressure = (sequencing_bias_downstream-sequencing_bias_upstream) + (latency_bias- talker_bias * talker_mask).sum(1)[:,None,:] # define pressure on windows to move in one direction based on stream position
             
-            # diff = Y[:, :, :, None] - Y[:, :, None, :] # (I,P,S,S) # pairwise start differences
-            # delta = diff - streams_pairwise_gcl * np.floor(diff / streams_pairwise_gcl)
-            overlap = delta < stream_pairwise_windowSum # overlap condition
+            # --- macrocycle_bias overlap bias ---
+            diff = (Y[:, :, :, None]% streams_pairwise_gcd - Y[:, :, None, :]% streams_pairwise_gcd)  # returns actual times to the first cycle
+            delta = np.maximum(diff, 0) + (streams_pairwise_gcd+np.minimum(diff, 0)) % streams_pairwise_gcd
+            #window lengths 
+            wl = windLengths[None, :, None, :]   
+            depth = (wl - delta) * (delta>=0)
+            
+            overlap = (0 < depth)
             overlap &= pair_mask                  # remove self comparisons
             overlap &= both_active
-            # signed cyclic direction
-            half_g = streams_pairwise_gcl / 2
-            signed_delta = np.where(delta <= half_g, delta, delta - streams_pairwise_gcl)
-            # overlap magnitude
-            overlap_depth = stream_pairwise_windowSum - delta
-            overlap_depth = np.maximum(overlap_depth, 0)
-            overlap_depth *= overlap
+            repel_depth = depth * overlap # (I, P, Si, Sj) gives how much stream i is entering in stream j (j comes first)
+            ##
+            diff_end = diff+windLengths[None, :, :, None]-windLengths[None, :, None, :]
+            delta_end = np.maximum(diff_end, 0) + (streams_pairwise_gcd+np.minimum(diff_end, 0)) % streams_pairwise_gcd
+            flip_depth = (wl + delta_end) * (delta_end>=0)  * overlap # (I, P, Si, Sj) gives how much stream i is behind stream j (i comes later)
+            
+            ##############
+            # repel_forward=repel_depth.max(-1)
+            # repel_backward=-repel_depth.max(-2)
+            
+            # flip_forward=flip_depth.max(-2)
+            # flip_backward=-flip_depth.max(-1)
             
             gene_value_bias =  np.stack([
-                sequencing_bias_downstream # (sequencing) move forward early downstream windows at switches
+                sequencing_bias_downstream # (sequencing) move forward early downstream windows 
                 , - sequencing_bias_upstream # (sequencing) move backward late upstream windows
-                , - talker_bias  * talker_mask # (talker offset) talker out of 1st period
-                , + (np.sign(signed_delta) * overlap_depth).sum(axis=3) # (macrocycle overlap) overlapping slots repel each other
-                , + np.maximum(upstream_bias, 0) # (interleaving) move forward owner at upstream
-                , + np.minimum(upstream_bias, 0) # (interleaving) move backward thief at uptream 
-                , + np.maximum(downstream_bias, 0) # (interleaving) move forward thief at downstream
-                , + np.minimum(downstream_bias, 0) # (interleaving) move backward owner at downstream
+                , flip_depth.max(-2) # (overlap) flip the victim forward to hide from bully
+                , -flip_depth.max(-1) # (overlap) flip the bully backward to make it oversee the victim
+                , repel_depth.max(-1) # (overlap) repel the bully forward to let the victim alone
+                , - repel_depth.max(-2) # (overlap) repel the victim backward to get away from the bully
+                , - talker_bias * talker_mask #np.ones(talker_mask.shape)# (talker offset) talker out of 1st period
+                , + np.maximum(upstream_bias, 0) * (1-talker_mask) # (interleaving) move forward owner at upstream
+                , + np.minimum(upstream_bias, 0) * (1-talker_mask) # (interleaving) move backward thief at uptream 
+                , + np.maximum(downstream_bias, 0) * (1-talker_mask) # (interleaving) move forward thief at downstream
+                , + np.minimum(downstream_bias, 0) * (1-talker_mask) # (interleaving) move backward owner at downstream
                 , + latency_bias # (maxlatency) move latest window bakward
             ], axis=1).astype(int)
 

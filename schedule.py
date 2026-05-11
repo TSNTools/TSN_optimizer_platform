@@ -11,6 +11,9 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import matplotlib.cm as cm
 
+import plotly.graph_objects as go
+from typing import Optional, List
+
 from dataclasses_json import DataClassJsonMixin
 
 MS_TO_NS = 1_000_000
@@ -35,6 +38,7 @@ class Slot:
     period_ns: float
     stream_id: Optional[int] = None
     port_id: Optional[int] = None
+    port_name: Optional[str] = None
     queue_id: Optional[int] = None
     # unique slot definition id
     index: int = field(default_factory=lambda: next(Slot._counter))
@@ -94,6 +98,7 @@ class Slot:
                     queue_id=self.queue_id,
                     stream_id=self.stream_id,
                     port_id=self.port_id,
+                    port_name=self.port_name
                 )
             )
 
@@ -149,16 +154,20 @@ class Schedule(list):
     @property
     def total_occupied_time(self) -> Dict[int, int]:
         """Return total time occupied by compiled transmission windows for each port_id"""
-        return {
-            port_id: sum(w.duration_ns for w in windows)
-            for port_id, windows in self.compile().items()
-        }
+        port_occ = {}
+
+        for slot in self:
+            occurrences = slot.all_occurrences(self.cycle_ns)        
+            for o in occurrences:
+                port_occ.setdefault(o.port_id, []).append(o.duration_ns)
+            
+        return {port_id: sum(slots)for port_id, slots in port_occ.items()}
 
     @property
     def utilization(self) -> Dict[int, float]:
         """Return fraction of cycle occupied per port_id"""
         # Get the total occupied time for all port_ids
-        occupied_times = self.total_occupied_time()
+        occupied_times = self.total_occupied_time
     
         if not self.cycle_ns:
             # Return 0.0 for each port if cycle_ns is 0 (avoiding division by zero)
@@ -204,7 +213,7 @@ class Schedule(list):
             open_queues = [i for i, ch in enumerate(tw["state"]) if ch == "o"]
             stream_idxs = [int(s) for s in tw["stream_sequence"]]
             for s_idx in stream_idxs:
-                period_ns = usecase.streams[s_idx]['interval'] #* MS_TO_NS
+                period_ns = usecase.streams[s_idx].get("interval") #* MS_TO_NS
                 duration_ns = usecase.window_length(s_idx, port_name)
                 for qid in open_queues:
                     slots.append(
@@ -222,7 +231,7 @@ class Schedule(list):
         all_slots = defaultdict(list)
         cycle_ns = None
         for node, nodeData in usecase.graph.nodes(data=True):
-            for port, portData in nodeData["ports"].items():
+            for port, portData in nodeData['egress_ports'].items():
                 port_name = f"{node}.{port}"
                 port_id = port_name_to_id[port_name]
                 cycle_ns = portData.get("scheduleCycle", cycle_ns)
@@ -234,16 +243,18 @@ class Schedule(list):
                     )
                     for s in slots:
                         s.port_id = port_id
+                        s.port_name = port_name
                         offset = s.start_ns % s.period_ns if s.period_ns else s.start_ns
                         key = (port_id, s.stream_id, s.queue_id, offset)
                         all_slots[key].append(s)
 
-        schedule = cls(cycle_ns)
-        for slots in all_slots.values():
-            base = min(slots, key=lambda s: s.start_ns)
-            schedule.append(base)
-    
-        return schedule
+        if len(all_slots)>0:
+            schedule = cls(cycle_ns)
+            for slots in all_slots.values():
+                base = min(slots, key=lambda s: s.start_ns)
+                schedule.append(base)
+            return schedule
+        return
         
     def update_graph(self, graph, port_id_to_name):
         """
@@ -261,7 +272,7 @@ class Schedule(list):
     
         for occ in occurrences:
             node_name, port = port_id_to_name[occ.port_id].split('.')
-            port_data = graph.nodes[node_name]['ports'][port]
+            port_data = graph.nodes[node_name]['egress_ports'][port]
             queueCount = port_data.get("queueCount", 8)
             windows = compiled[occ.port_id]
     
@@ -310,39 +321,40 @@ class Schedule(list):
         add schedule data to streams
         """        
         for s_idx, stream in enumerate(streams):
-            n_listeners = len(stream['lstnsrPssblPlcmnt'])
+            n_listeners = len(stream.get('lstnsrPssblPlcmnt', []))
             stream_slots = self.slots_by_stream(s_idx)
             stream_slots.sort()
-            # talker data from first slot
-            talker_slot = stream_slots[0]
-            talker_port = port_id_to_name[talker_slot.port_id]
-            talker_node = talker_port.split('.')[0]
-            stream['offset'] = talker_slot.start_ns
-            stream['tlkrPssblPlcmnt'] = [talker_node]
-            stream['accLatency'] = [[] for l_idx in range(n_listeners)]
-            stream['pathLists'] = [[talker_port] for l_idx in range(n_listeners)]
-            
-            for slot in stream_slots[1:]:
-                port = port_id_to_name[slot.port_id]
-                node_name = port.split('.')[0]
+            if stream_slots: # there is slots
+                # talker data from first slot
+                talker_slot = stream_slots[0]
+                talker_port = port_id_to_name[talker_slot.port_id]
+                talker_node = talker_port.split('.')[0]
+                stream.offset = talker_slot.start_ns
+                stream.tlkrPssblPlcmnt = [talker_node]
+                stream.accLatency = [[] for l_idx in range(n_listeners)]
+                stream.pathLists = [[talker_port] for l_idx in range(n_listeners)]
+
+                for slot in stream_slots[1:]:
+                    port = port_id_to_name[slot.port_id]
+                    node_name = port.split('.')[0]
+                    pathLists = stream.get("pathLists")
+                    for l_idx in range(n_listeners):
+                        pathList = pathLists[l_idx]
+                        last = pathList[-1] # assuming talker is already there
+                        if ports[last]['destNode']==node_name:
+                            pathList.append(port)
+                            stream.accLatency[l_idx] = slot.end_ns - stream.offset
+                # use the last slot (forwarding to listener)
                 pathLists = stream.get("pathLists")
                 for l_idx in range(n_listeners):
-                    pathList = pathLists[l_idx]
-                    last = pathList[-1] # assuming talker is already there
-                    if ports[last]['destNode']==node_name:
-                        pathList.append(port)
-                        stream['accLatency'][l_idx] = slot.end_ns - stream['offset']
-            # use the last slot (forwarding to listener)
-            for l_idx in range(n_listeners):
-                last = pathList[-1]
-                stream['lstnsrPssblPlcmnt'][l_idx] = [ports[port]['destNode']]
-    
+                    last = pathLists[l_idx][-1]
+                    stream.lstnsrPssblPlcmnt[l_idx] = [ports[last]['destNode']]
+        
     @classmethod
     def from_compact_encoding(
         cls,
         compact_encoding,
-        windLengths, stream_intervals,
-        cycle_ns: Optional[int] = None,
+        usecase,
         basetime:Optional[int] = 0,
         tt_queue_id = 0
     ):
@@ -359,6 +371,8 @@ class Schedule(list):
             Schedule cycle
         """
         n_ports, n_streams = compact_encoding.shape
+        _, port_id_to_name = usecase.port_name_id_mapping
+        cycle_ns = usecase.macro_cycle
 
         schedule = cls(cycle_ns=cycle_ns, basetime=basetime)
         
@@ -367,15 +381,18 @@ class Schedule(list):
                 value = compact_encoding[port_idx, stream_id]
                 if value != 0:
                     start_time = int(value) - 1
-                    period_ns = stream_intervals[stream_id]
-                    duration_ns = windLengths[port_idx, stream_id]
-    
+
+                    period_ns = usecase.streams[stream_id].get("interval") #* MS_TO_NS
+                    port_name = port_id_to_name[port_idx+1]
+                    duration_ns = usecase.window_length(stream_id, port_name)
+                    
                     slot = Slot(
                         start_ns=start_time,
                         end_ns=int(start_time + duration_ns),
                         period_ns=int(period_ns),
                         stream_id=stream_id,
                         port_id=port_idx+1,
+                        port_name=port_name,
                         queue_id=tt_queue_id
                     )
                     schedule.append(slot)
@@ -557,3 +574,122 @@ class Schedule(list):
         plt.show()
     
         return fig, axs
+
+
+    def dynamic_plot(self,
+                     tick: float = 1.0,
+                     span: Optional[int] = None,
+                     label: bool = False,
+                     port_ids: Optional[List[int]] = None,
+                     stream_ids: Optional[List[int]] = None):
+
+        if span is None:
+            span = self.cycle_ns
+        
+        # Expand occurrences
+        occurrences = []
+        for slot in self:
+            occurrences.extend(slot.all_occurrences(span))
+    
+        # Filter ports
+        if port_ids is not None:
+            occurrences = [o for o in occurrences if o.port_id in port_ids]
+    
+        # Filter streams
+        if stream_ids is not None:
+            stream_ids = set(stream_ids)
+            occurrences = [o for o in occurrences if o.stream_id in stream_ids]
+    
+        if not occurrences:
+            fig = go.Figure()
+            fig.update_layout(title="Empty schedule")
+            fig.show()
+            return fig
+    
+        # Unique ports and streams
+        ports = sorted({o.port_id for o in occurrences if o.port_id is not None})
+        streams = sorted({o.stream_id for o in occurrences if o.stream_id is not None})
+    
+        # Group by port
+        port_occ = {p: [] for p in ports}
+        for o in occurrences:
+            port_occ[o.port_id].append(o)
+    
+        # Color mapping
+        import plotly.express as px
+        colors = px.colors.sequential.Plasma
+        stream_to_color = {
+            sid: colors[i % len(colors)]
+            for i, sid in enumerate(streams)
+        }
+    
+        fig = go.Figure()
+    
+        # Build traces (one per stream)
+        for sid in streams:
+            x = []
+            base = []
+            y = []
+            customdata = []
+            text = []
+    
+            for port in ports:
+                for s in port_occ[port]:
+                    if s.stream_id != sid:
+                        continue
+    
+                    start = s.start_ns / tick
+                    end = s.end_ns / tick
+                    width = end - start
+    
+                    x.append(width)
+                    base.append(start)                    
+                    y.append(f"{s.port_name}({port})") if s.port_name is not None else y.append(f"Port {port}")
+                        
+    
+                    # store end for hover
+                    customdata.append(end)
+    
+                    # stream id for hover
+                    text.append(str(s.stream_id))
+    
+            fig.add_trace(go.Bar(
+                x=x,
+                y=y,
+                base=base,
+                orientation='h',
+                name=f"Stream {sid}",
+                marker=dict(
+                    color=stream_to_color[sid],
+                    line=dict(color="black", width=1)
+                ),
+    
+                # 👇 not shown on bars
+                text=text,
+                textposition="none",
+    
+                customdata=customdata,
+    
+                hovertemplate=(
+                    "Stream: %{text}<br>"
+                    "Start: %{base:.2f}<br>"
+                    "End: %{customdata:.2f}<br>"
+                    "<extra></extra>"
+                )
+            ))
+    
+        fig.update_layout(
+            title=f"Schedule visualization (cycle={self.cycle_ns})",
+            barmode='overlay',
+            xaxis_title=f"Time (tick={tick})",
+            yaxis_title="Ports",
+            xaxis=dict(range=[0, int(span / tick)]),
+            height=max(300, len(ports) * 120),
+            legend_title="Streams",
+            dragmode="zoom"  # nicer default interaction
+        )
+    
+        fig.update_yaxes(type='category')
+    
+        fig.show()
+        return fig

@@ -1,0 +1,7 @@
+experiment_id,N_streams,k,topology_type,max_latency,payload,period,placement_strategy,ga_mode,stagnation_threshold
+0,5,4,fat-tree,10,64,250,random,joint,150
+1,30,4,fat-tree,10,64,250,random,joint,150
+2,60,4,fat-tree,10,64,250,random,joint,150
+3,100,4,fat-tree,10,64,250,random,joint,150
+4,200,4,fat-tree,10,64,250,random,joint,150
+5,300,4,fat-tree,10,64,250,random,joint,150

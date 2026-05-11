@@ -1,0 +1,218 @@
+[
+  {
+    "module": "schedule.py",
+    "purpose": "Implements a cyclic TSN-style scheduling system based on periodic slots. Provides mechanisms to define periodic transmission windows (Slot), expand them into occurrences, validate conflicts, compile schedules into graph annotations, and visualize schedules in static (matplotlib) and interactive (plotly) forms.",
+    "classes": [
+      "Slot",
+      "Schedule",
+      "Schedule.TransmissionWindow"
+    ],
+    "dependencies": {
+      "internal": [
+        "Usecase (via from_usecase, update_streams, window_length, graph structure)",
+        "Stream (via update_streams integration)",
+        "TopologyHandler (indirect via graph structure)"
+      ],
+      "external": [
+        "numpy",
+        "math",
+        "matplotlib",
+        "plotly",
+        "dataclasses",
+        "dataclasses_json",
+        "collections",
+        "itertools"
+      ]
+    },
+    "data_model": {
+      "Slot": "Represents a periodic transmission window for a stream on a specific port and queue. Includes start/end times, period, stream_id, port_id, optional port_name, and queue_id. Supports expansion into cyclic occurrences.",
+      "Schedule": "A list-based container of Slot objects representing a cyclic schedule over a defined cycle_ns. Provides compilation into graph transmission windows and stream-level scheduling metadata.",
+      "TransmissionWindow": "Non-periodic merged representation of slot occurrences per port. Contains start, duration, queue state encoding, and stream sequence metadata."
+    },
+    "responsibilities": [
+      "Define periodic time slots for TSN stream transmissions",
+      "Expand periodic slots into cycle-bound occurrences",
+      "Detect scheduling conflicts across expanded occurrences",
+      "Convert slot schedules into per-port transmission windows",
+      "Write scheduling results back into NetworkX graph (egress_ports)",
+      "Annotate streams with computed offsets, paths, and latency",
+      "Convert between compact encoding matrices and slot-based schedules",
+      "Provide static and interactive visualization of schedules"
+    ],
+    "key_methods": [
+      "Slot.all_occurrences",
+      "Slot.conflicts_with",
+      "Schedule.validate_conflicts",
+      "Schedule.from_usecase",
+      "Schedule.update_graph",
+      "Schedule.update_streams",
+      "Schedule.from_compact_encoding",
+      "Schedule.to_compact_encoding",
+      "Schedule.slots_by_port",
+      "Schedule.slots_by_stream",
+      "Schedule.plot",
+      "Schedule.dynamic_plot"
+    ],
+    "graph_interaction_model": {
+      "input": "NetworkX DiGraph with nodes containing egress_ports metadata including schedule and scheduleCycle",
+      "output": "Graph annotated with TransmissionWindow objects per port",
+      "side_effects": [
+        "Updates egress_ports['schedule']",
+        "Sets basetime and scheduleCycle per port",
+        "Mutates stream objects with offset, pathLists, accLatency, and listener placements"
+      ]
+    },
+    "encoding_formats": {
+      "compact_encoding": "2D numpy array (ports × streams) storing start times (+1 offset encoding)",
+      "TransmissionWindow": "Merged non-periodic representation of overlapping slot occurrences per port",
+      "schedule_cycle": "Global cycle duration (cycle_ns) governing periodic expansion"
+    },
+    "visualization_modes": [
+      "matplotlib static Gantt-style per-port schedule plot",
+      "plotly interactive timeline with stream-based grouping and hover metadata"
+    ],
+    "algorithmic_characteristics": [
+      "Periodic time expansion with modular arithmetic",
+      "Greedy merging of overlapping transmission windows",
+      "Per-port state encoding for queue-level scheduling",
+      "Stream-path reconstruction from slot adjacency",
+      "Cycle-based utilization computation"
+    ],
+    "related_classes": [
+      "Usecase",
+      "Stream",
+      "TrafficHandler"
+    ],
+    "used_by": [
+      "Usecase.schedule property",
+      "Usecase.addSchedule",
+      "Stream scheduling pipeline",
+      "optimization / GA scheduling modules (external context)"
+    ]
+  },
+  {
+    "function": "Slot.__lt__",
+    "purpose": "Defines ordering between slots based on time boundaries for sorting in scheduling operations.",
+    "inputs": ["self", "other: Slot"],
+    "outputs": "bool",
+    "behavior": "Returns True if self.end_ns <= other.start_ns"
+  },
+  {
+    "function": "Slot.conflicts_with",
+    "purpose": "Checks whether two slot intervals overlap in time, optionally allowing touching boundaries.",
+    "inputs": ["self", "other: Slot", "touching_allowed: bool"],
+    "outputs": "bool",
+    "behavior": "Returns True if slots overlap depending on boundary rules"
+  },
+  {
+    "function": "Slot.all_occurrences",
+    "purpose": "Expands a periodic slot into all occurrences within a schedule cycle.",
+    "inputs": ["self", "span_ns: int"],
+    "outputs": "List[Slot]",
+    "behavior": "Generates shifted copies of the slot based on period_ns until span limit"
+  },
+
+  {
+    "function": "Schedule.__init__",
+    "purpose": "Initializes a schedule container with cycle configuration and optional slot list.",
+    "inputs": ["cycle_ns", "basetime", "capacity", "iterable"],
+    "outputs": "Schedule instance",
+    "behavior": "Initializes list-based schedule with metadata"
+  },
+
+  {
+    "function": "Schedule.total_occupied_time",
+    "purpose": "Computes total transmission time per port across all expanded slot occurrences.",
+    "inputs": ["self"],
+    "outputs": "Dict[int, int]",
+    "behavior": "Aggregates duration of all occurrences grouped by port_id"
+  },
+
+  {
+    "function": "Schedule.utilization",
+    "purpose": "Computes per-port utilization as fraction of cycle time.",
+    "inputs": ["self"],
+    "outputs": "Dict[int, float]",
+    "behavior": "Divides occupied time by cycle_ns per port"
+  },
+
+  {
+    "function": "Schedule.validate_conflicts",
+    "purpose": "Detects overlapping slot occurrences within each port.",
+    "inputs": ["self", "touching_allowed: bool"],
+    "outputs": "List[tuple]",
+    "behavior": "Expands slots, sorts them, and checks pairwise conflicts"
+  },
+
+  {
+    "function": "Schedule.from_usecase",
+    "purpose": "Builds a Schedule object from a Usecase graph-based schedule representation.",
+    "inputs": ["usecase", "port_name_to_id"],
+    "outputs": "Schedule | None",
+    "behavior": "Converts transmission windows from graph into Slot objects grouped by stream/queue/offset"
+  },
+
+  {
+    "function": "Schedule.update_graph",
+    "purpose": "Expands periodic slots into transmission windows and writes them into the NetworkX graph.",
+    "inputs": ["self", "graph", "port_id_to_name"],
+    "outputs": "None",
+    "behavior": "Merges occurrences into TransmissionWindow objects and updates graph egress_ports schedule"
+  },
+
+  {
+    "function": "Schedule.update_streams",
+    "purpose": "Annotates stream objects with computed scheduling results (paths, offsets, latency).",
+    "inputs": ["self", "streams", "ports", "port_id_to_name"],
+    "outputs": "None",
+    "behavior": "Back-propagates schedule info into stream metadata"
+  },
+
+  {
+    "function": "Schedule.from_compact_encoding",
+    "purpose": "Creates a Schedule from a compact matrix representation of stream start times per port.",
+    "inputs": ["compact_encoding", "usecase", "basetime", "tt_queue_id"],
+    "outputs": "Schedule",
+    "behavior": "Converts matrix entries into Slot objects using stream timing metadata"
+  },
+
+  {
+    "function": "Schedule.to_compact_encoding",
+    "purpose": "Converts schedule into a compact matrix representation (ports × streams).",
+    "inputs": ["self", "n_ports", "n_streams"],
+    "outputs": "np.ndarray",
+    "behavior": "Encodes slot start times into matrix, enforcing single-slot constraint"
+  },
+
+  {
+    "function": "Schedule.slots_by_port",
+    "purpose": "Retrieves all slots assigned to a given port.",
+    "inputs": ["self", "port_id"],
+    "outputs": "List[Slot]",
+    "behavior": "Filters slots by port_id"
+  },
+
+  {
+    "function": "Schedule.slots_by_stream",
+    "purpose": "Retrieves all slots assigned to a given stream.",
+    "inputs": ["self", "stream_id"],
+    "outputs": "List[Slot]",
+    "behavior": "Filters slots by stream_id"
+  },
+
+  {
+    "function": "Schedule.plot",
+    "purpose": "Static visualization of schedule using matplotlib.",
+    "inputs": ["tick", "span", "label", "port_ids", "stream_ids"],
+    "outputs": "Figure, Axes",
+    "behavior": "Renders per-port Gantt-style schedule visualization"
+  },
+
+  {
+    "function": "Schedule.dynamic_plot",
+    "purpose": "Interactive visualization of schedule using Plotly.",
+    "inputs": ["tick", "span", "label", "port_ids", "stream_ids"],
+    "outputs": "plotly.graph_objects.Figure",
+    "behavior": "Renders interactive timeline grouped by streams and ports with hover info"
+  }
+]

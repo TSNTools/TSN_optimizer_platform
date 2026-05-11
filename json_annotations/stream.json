@@ -1,0 +1,582 @@
+[
+{
+  "module": "stream.py",
+  "purpose": "Defines a data model for a tsn Stream and a utilities called TrafficHandler used for talker/listener embedding to a host, routing and path validation, and stream-specific graph pruning to remove all non valid links for a given stream.",
+  "classes": [
+    "Stream",
+    "TrafficHandler"
+  ],
+  "constants": {
+    "MBPS_TO_BPNS": {
+      "value": 0.001,
+      "purpose": "Converts Mbps to bits/ns"
+    },
+    "BYTE_2_BIT": {
+      "value": 8,
+      "purpose": "Converts bytes to bits"
+    }
+  },
+  "dependencies": {
+    "internal": [
+      "UsecaseConfig",
+      "TopologyHandler.get_concurrent_ports"
+    ],
+    "external": [
+      "networkx",
+      "numpy",
+      "random",
+      "itertools",
+      "dataclasses_json"
+    ]
+  },
+  "uses_modules": [
+    "topology_handler.py",
+    "usecase_config.py",
+    "utils.py"
+  ],
+  
+  "used_by_modules": [
+    "usecase.py"
+  ]
+},
+{
+  "class": "Stream",
+  "type": "dataclass",
+  "inherits": [
+    "DataClassJsonMixin"
+  ],
+  "purpose": "Represents a TSN traffic stream including its properties, timing constraints, routing information, endpoint placements, scheduling metadata, and helper methods for stream-specific computations.",
+  "responsibilities": [
+    "Store stream configuration and runtime state",
+    "Serialize stream objects to JSON-compatible dictionaries",
+    "Compute frame transmission properties",
+    "Build stream-specific pruned graphs",
+    "Compute distances to hosts inside the stream graph",
+    "Generate randomized streams from configuration ranges"
+  ],
+  "dependencies": {
+    "internal": [
+      "TopologyHandler.get_concurrent_ports"
+    ],
+    "external": [
+      "networkx"
+    ]
+  },
+  "related_classes": [
+    "TrafficHandler",
+    "UsecaseConfig"
+  ],
+  "attributes": {
+    "name": {
+      "type": "str",
+      "purpose": "Unique stream identifier"
+    },
+    "type": {
+      "type": "str",
+      "purpose": "Traffic type"
+    },
+    "interval": {
+      "type": "int",
+      "unit": "ns",
+      "purpose": "Transmission interval, can also be called period or cycle. Defines the frequency of frame transmission from the talker. unit is in nanoseconds"
+    },
+    "maxFramesPerInterval": {
+      "type": "int",
+      "purpose": "Maximum number of frames sent within an interval. Used to compute the window length together with frame size"
+    },
+    "maxFrameSize": {
+      "type": "int",
+      "unit": "bytes",
+      "purpose": "Maximum frame size. unit in in bytes. Used to compute transmission time on links and check against MTU constraints"
+    },
+    "maxLatency": {
+      "type": "int",
+      "unit": "ns",
+      "purpose": "Maximum end-to-end latency between the talker and listener. unit is in nanoseconds. Used as a constraint for path validation. this is a hard constraint that must be met for a path to be valid for this stream"
+    },
+    "tlkrPssblPlcmnt": {
+      "type": "List[str]",
+      "purpose": "Possible talker host placements. These are the hosts that can potentially act as talkers for this stream. The actual talker will be selected from this list during stream generation and embedding. if there is only one possible talker, then that host will be selected as the talker for this stream and talker placement is not considered for optimization"
+    },
+    "lstnsrPssblPlcmnt": {
+      "type": "List[List[str]]",
+      "purpose": "Possible listener host placements. each outer list a a single listener, and the inner list is the possible placements for that listener. in case of unicast stream the outer list will have only one element, and in case of multicast stream the outer list will have multiple elements. The inner lists can have different lengths, meaning that different listeners can have different numbers of possible placements. The actual listeners will be selected from these lists during stream generation and embedding. if a listener has only one possible placement, then that host will be selected as the listener for that listener and listener placement is not considered for optimization"
+    },
+    "pathLists": {
+      "type": "Optional[List[List[str]]]",
+      "purpose": "Port-level routing paths. Each inner list is a path represented as a list of egress-port identifiers. This is the output of the routing algorithm and is used for path validation and graph pruning. It is optional because it may not be set until after routing is performed. if set, it must be consistent with the talker and listener placements and the topology graph and it means that routing is not considered for optimization. if not set, it indicates that routing has not been performed yet for this stream. the nuber of outer list must match the number of listeners, and each path must start with a port connected to the talker and end with a port connected to the corresponding listener"
+    },
+    "customGraph": {
+      "type": "Optional[nx.DiGraph]",
+      "purpose": "Pruned graph specific to this stream. Contains only the links that can be used for optimization. This is derived from the original topology graph. It is optional because it may not be set until after graph pruning is performed. if set, it must be consistent with the topology graph and the stream's talker and listener placements and constraints"
+    },
+    "offset": {
+      "type": "Optional[int]",
+      "purpose": "Assigned transmission offset. This is the time delay from the start of the cycle to the transmission of the first frame. unit is in nanoseconds. It is optional because it may not be set until after scheduling is performed. if set, it must be less than the interval."
+    },
+    "accLatency": {
+      "type": "Optional[int]",
+      "purpose": "Accumulated latency after scheduling. This is the actual end-to-end latency of the stream based on the assigned path and offset. unit is in nanoseconds. It is optional because it may not be set until after scheduling is performed. if set, it must be less than or equal to maxLatency"
+    },
+    "lifespanCycles": {
+      "type": "Optional[int]",
+      "purpose": "Lifetime duration in cycles. This is the number of cycles that the stream is active for. It is used for dynamic scenarios where streams can start and stop at different times. It is optional because it may not be set if the stream is static. if set, it must be a positive integer"
+    }
+  },
+  "functions": [
+    "Stream.to_dict",
+    "Stream.frame_size_bits",
+    "Stream.window_length",
+    "Stream.is_routed",
+    "Stream.build_stream_graph",
+    "Stream.distance_to_hosts",
+    "Stream.generate"
+  ],
+  "used_by": [
+    "TrafficHandler",
+    "Usecase"
+  ]
+},
+{
+  "function": "Stream.to_dict",
+  "type": "instance_method",
+  "signature": "to_dict(self)",
+  "purpose": "Serializes the Stream object into a dictionary while removing attributes with None values for cleaner JSON output.",
+  "called_by": [
+    "DataClassJsonMixin.to_json",
+    "Usecase.to_dict"
+  ],
+  "dependencies": [
+    "DataClassJsonMixin.to_dict"
+  ],
+  "preconditions": [
+    "Stream object initialized"
+  ],
+  "postconditions": [
+    "Returns dictionary representation without None-valued fields"
+  ],
+  "returns": {
+    "type": "dict",
+    "description": "Clean serialized stream dictionary"
+  },
+  "example_usage": {
+    "code": "data = stream.to_dict()"
+  }
+},
+{
+  "function": "Stream.frame_size_bits",
+  "type": "property",
+  "signature": "frame_size_bits(self)",
+  "purpose": "Computes the total frame size in bits including the configured tolerance factor. formula is (maxFramesPerInterval * maxFrameSize * BYTE_2_BIT * tolerance). tolerance represents the additional buffer space needed to account for variations in transmission times. This represents the total amount of data in bits that can be transmitted in one interval, which is used for calculating the transmission window length and checking against bandwidth constraints.",
+  "called_by": [
+    "Stream.window_length"
+  ],
+  "dependencies": [],
+  "preconditions": [
+    "maxFramesPerInterval initialized",
+    "maxFrameSize initialized"
+  ],
+  "postconditions": [
+    "Returns total stream payload size in bits"
+  ],
+  "returns": {
+    "type": "int",
+    "description": "Frame size in bits"
+  },
+  "formula": "(maxFramesPerInterval * maxFrameSize * BYTE_2_BIT * tolerance)",
+  "example_usage": {
+    "code": "bits = stream.frame_size_bits"
+  }
+},
+{
+  "function": "Stream.window_length",
+  "type": "instance_method",
+  "signature": "window_length(self, port_speed_mbps: float, minLength: int = 53)",
+  "purpose": "Computes the transmission window duration required for the stream on a port with a given speed.",
+  "called_by": [
+    "TrafficHandler.validate_path"
+  ],
+  "dependencies": [
+    "Stream.frame_size_bits"
+  ],
+  "preconditions": [
+    "port_speed_mbps > 0"
+  ],
+  "postconditions": [
+    "Returns transmission duration in nanoseconds",
+    "Returned value is never smaller than minLength"
+  ],
+  "returns": {
+    "type": "float",
+    "description": "Required transmission window duration in nanoseconds in a port with the given speed"
+  },
+  "formula": "max(frame_size_bits / port_speed_mbps * MBPS_TO_BPNS, minLength)",
+  "example_usage": {
+    "code": "duration = stream.window_length(1000)"
+  }
+},
+{
+  "function": "Stream.is_routed",
+  "type": "property",
+  "signature": "is_routed(self)",
+  "purpose": "Checks whether routing paths have already been assigned to the stream.",
+  "called_by": [],
+  "dependencies": [],
+  "preconditions": [],
+  "postconditions": [
+    "Returns True if pathLists exists",
+    "Returns False otherwise"
+  ],
+  "returns": {
+    "type": "bool",
+    "description": "Routing state of the stream"
+  },
+  "example_usage": {
+    "code": "if stream.is_routed:\n    print(stream.pathLists)"
+  }
+},
+{
+  "function": "Stream.build_stream_graph",
+  "type": "instance_method",
+  "signature": "build_stream_graph(self, graph: nx.DiGraph)",
+  "purpose": "Builds a stream-specific pruned graph by either keeping only routed path ports or removing concurrent ports based on talker/listener placements. if talker/listener placements or pathLists are not initialized, it returns None indicating that no pruning is needed and the original topology graph can be used for optimization. This method ensures that the resulting graph only contains links that are valid for this stream based on its routing and endpoint constraints, which simplifies the optimization process by reducing the search space to only relevant links.",
+  "called_by": [
+    "TrafficHandler.embed_to_topology"
+  ],
+  "dependencies": [
+    "TopologyHandler.get_concurrent_ports"
+  ],
+  "preconditions": [
+    "graph is a valid nx.DiGraph, representing the network topology",
+    "Edges contain sourcePort metadata"
+  ],
+  "postconditions": [
+    "Returns a pruned directed graph specific to the stream",
+    "Removes isolated nodes from the resulting graph",
+    "Returns None if no pruning is required in free-routing mode"
+  ],
+  "returns": {
+    "type": "nx.DiGraph | None",
+    "description": "Pruned graph containing only valid links for this stream"
+  },
+  "modes": {
+    "strict_mode": {
+      "trigger": "self.pathLists exists",
+      "behavior": [
+        "Keeps only ports included in pathLists",
+        "Removes all unrelated links"
+      ]
+    },
+    "free_routing_mode": {
+      "trigger": "self.pathLists is None",
+      "behavior": [
+        "Removes non valid talkers placements",
+        "Removes non valid listeners placements"
+      ]
+    }
+  },
+  "example_usage": {
+    "code": "stream.customGraph = stream.build_stream_graph(graph)"
+  }
+},
+{
+  "function": "Stream.distance_to_hosts",
+  "type": "property",
+  "signature": "distance_to_hosts(self)",
+  "purpose": "Computes shortest distances between stream hosts and all reachable nodes inside the stream-specific graph.",
+  "called_by": [],
+  "dependencies": [
+    "networkx.single_source_dijkstra_path_length"
+  ],
+  "preconditions": [
+    "customGraph is initialized",
+    "customGraph is a valid nx.DiGraph"
+  ],
+  "postconditions": [
+    "Returns shortest distances from talkers to nodes",
+    "Returns shortest distances from nodes to listeners"
+  ],
+  "returns": {
+    "type": "dict",
+    "description": "Dictionary formatted as {(direction, host): {node: distance}}. Example: {('from', 'host-1'): {'host-1': 0, 'switch-1': 1}, ('to', 'host-5'): {'host-5': 0, 'switch-1': 1}}"
+  },
+  "distance_types": {
+    "from": "Distance from talker host to nodes",
+    "to": "Distance from nodes to listener host"
+  },
+  "weight_metric": "hop_cost",
+  "example_usage": {
+    "code": "distances = stream.distance_to_hosts"
+  }
+},
+{
+  "function": "Stream.generate",
+  "type": "classmethod",
+  "signature": "generate(cls, config: UsecaseConfig)",
+  "purpose": "Generates a random Stream instance using parameter ranges defined in UsecaseConfig.",
+  "called_by": [
+    "Usecase.add_stream"
+  ],
+  "dependencies": [],
+  "preconditions": [
+    "config contains valid numeric ranges for period, frame size, and latency",
+    "config contains expiration settings: is it finite or infinite duration, and if finite, what are the lifespan cycles range"
+  ],
+  "postconditions": [
+    "Returns an initialized Stream object, without talker/listener placements or routing paths. the stream needs to be embedded using TrafficHandler.embed_to_topology to have those attributes initialized",
+    "All timing parameters are sampled randomly within config bounds",
+    "Optional lifespanCycles may be computed"
+  ],
+  "returns": {
+    "type": "Stream",
+    "description": "A newly generated stream with randomized parameters based on configuration ranges"
+  },
+  "generation_logic": {
+    "interval": "Random value from config.period_range converted from μs to ns",
+    "maxFramesPerInterval": "Random value from config.numberframes_range",
+    "maxFrameSize": "Random value from config.datasize_range",
+    "maxLatency": "Random value from config.max_latency_range converted from ms to ns",
+    "lifespanCycles": "Computed if finite_duration is enabled in config.expiration as a random value from config.lifespan_cycles_range"
+  },
+  "example_usage": {
+    "setup": "from usecase import Usecase\nfrom stream import Stream\n\nuc = Usecase()\n\nconfig = uc.configuration",
+    "code": "stream = Stream.generate(config)"
+  }
+},
+{
+  "function": "TrafficHandler.embed_to_topology",
+  "type": "classmethod",
+  "signature": "embed_to_topology(cls, stream: Stream, config: UsecaseConfig, graph: nx.DiGraph, network_load: list[Stream])",
+  "purpose": "Embeds a stream into the network topology by selecting talkers and listeners using TrafficHandler.talkerEmbedding and TrafficHandler.listenerEmbedding, computing routing paths if required, and generating a stream-specific pruned graph.",
+  "called_by": [
+    "Usecase.add_stream"
+  ],
+  "dependencies": [
+    "TrafficHandler.talkerEmbedding",
+    "TrafficHandler.listenerEmbedding",
+    "TrafficHandler.shortestPath",
+    "TrafficHandler.randomPath",
+    "Stream.build_stream_graph"
+  ],
+  "preconditions": [
+    "graph is a valid nx.DiGraph with host nodes",
+    "config.routing is defined",
+    "stream is initialized using Stream.generate but not embedded yet"
+  ],
+  "postconditions": [
+    "stream.tlkrPssblPlcmnt is assigned",
+    "stream.lstnsrPssblPlcmnt is assigned",
+    "stream.pathLists may be computed if routing is enabled",
+    "stream.customGraph is created"
+  ],
+  "side_effects": [
+    "Modifies the input Stream object in-place"
+  ],
+  "returns": {
+    "type": "Stream",
+    "description": "The same stream object enriched with placements, routing paths (if enabled), and a stream-specific pruned graph"
+  },
+  "routing_modes": {
+    "fixPath_true_shortestPath_true": "Uses shortest-path routing per listener",
+    "fixPath_true_shortestPath_false": "Uses randomized valid paths",
+    "fixPath_false": "Only performs placement without path computation"
+  },
+  "example_usage": {
+    "setup": "from usecase import Usecase\nfrom stream import Stream, TrafficHandler\n\nuc = Usecase()\n\nconfig = uc.configuration\ngraph = uc.graph\nnetwork_load = uc.streams\n\nstream = Stream.generate(config)",
+    "code": "stream = TrafficHandler.embed_to_topology(stream, config, graph, network_load)",
+    "explanation": "This example shows how to embed a newly generated Stream into a network topology. The Usecase object provides the configuration (traffic generation rules), the graph (network topology), and existing streams (network load context). A new Stream is first generated from the configuration, then embedded into the topology using TrafficHandler, which assigns talkers, listeners, and optionally computes routing paths."
+  }
+},
+{
+  "function": "TrafficHandler.talkerEmbedding",
+  "type": "classmethod",
+  "signature": "talkerEmbedding(cls, config: UsecaseConfig, graph: nx.Graph, prev_streams: list[Stream])",
+  "purpose": "Selects one or more valid talker host nodes for a stream based on probabilistic policies defined in UsecaseConfig. It supports hotspot biasing, stride-based selection, and staggered placement to influence spatial distribution of traffic in the topology.",
+  "called_by": [
+    "TrafficHandler.embed_to_topology"
+  ],
+  "dependencies": [
+    "numpy.random.choice",
+    "UsecaseConfig.stride",
+    "UsecaseConfig.staggered",
+    "UsecaseConfig.hotspot"
+  ],
+  "preconditions": [
+    "graph contains nodes with attribute type='host'",
+    "config.num_places_talker > 0",
+    "prev_streams is a list of already embedded streams (may be empty). this is used for hotspot biasing to increase the probability of selecting hosts that are already talkers in existing streams for example"
+  ],
+  "postconditions": [
+    "Returns a list of selected host node names",
+    "Selection respects configured probabilistic constraints",
+    "May bias selection based on previous stream placements if hotspot is active"
+  ],
+  "side_effects": [
+    "None (pure selection function)"
+  ],
+  "returns": {
+    "type": "List[str]",
+    "description": "List of selected talker host node names for the stream"
+  },
+  "selection_modes": {
+    "hotspot": "Increases the probability of selecting previously chosen hosts across earlier streams. This creates traffic concentration on certain hosts, simulating hotspot scenarios.",
+    "stride": "Selects additional hosts by stepping through the ordered host list using a fixed stride value. Starting from an initial chosen host index, it repeatedly jumps by a configured step size, producing evenly spaced selections across the topology index space.",
+    "staggered": "Biases selection toward hosts that are topologically or logically close to the initially chosen host. This includes nodes in the same pod as the talker as well as neighboring hosts reachable through edge switches. It models locality-aware traffic by preferring nearby communication endpoints.",
+    "uniform": "Uniform random selection over all hosts"
+  },
+  "example_usage": {
+    "setup": "from usecase import Usecase\nfrom stream import TrafficHandler\n\nuc = Usecase()\nconfig = uc.configuration\ngraph = uc.graph\nnetwork_load = uc.streams",
+    "code": "talkers = TrafficHandler.talkerEmbedding(config, graph, network_load)"
+  }
+},
+{
+  "function": "TrafficHandler.listenerEmbedding",
+  "type": "classmethod",
+  "signature": "listenerEmbedding(cls, config: UsecaseConfig, graph: nx.Graph, prev_streams: list[Stream], talker: str, listeners: list[str] = None)",
+  "purpose": "Selects one or more listener host placements for a stream based on probabilistic and topology-aware policies. It ensures diversity or locality depending on configuration and avoids invalid reuse of hosts when required. The selection is influenced by stride, staggered placement, and hotspot biasing similar to talker selection but additionally constrained by a fixed talker reference node.",
+  "called_by": [
+    "TrafficHandler.embed_to_topology"
+  ],
+  "dependencies": [
+    "numpy.random.choice",
+    "UsecaseConfig.stride",
+    "UsecaseConfig.staggered",
+    "UsecaseConfig.hotspot"
+  ],
+  "preconditions": [
+    "graph contains host nodes with attribute type='host'",
+    "talker is a valid host node in the graph",
+    "config.num_places_listener > 0",
+    "config.num_listeners_per_stream is defined"
+  ],
+  "postconditions": [
+    "Returns a 2D list of listener placements grouped per stream listener group",
+    "Ensures listener selection respects configuration constraints",
+    "May bias selection based on talker proximity or historical usage"
+  ],
+  "side_effects": [
+    "None (pure selection function)"
+  ],
+  "returns": {
+    "type": "List[List[str]]",
+    "description": "Nested list where each inner list represents possible placements for a single listener in the outer list"
+  },
+  "selection_modes": {
+    "hotspot": "Increases probability of hosts that were selected in previous streams as listeners, encouraging reuse of frequently used endpoints.",
+    "stride": "Selects listener hosts at fixed index intervals relative to the talker position, producing evenly spaced listener distributions in host ordering.",
+    "staggered": "Biases selection toward hosts that are close to the talker in the network topology, including same pod and neighboring edge-switch-connected nodes.",
+    "uniform": "Selects listener hosts uniformly at random from all available hosts excluding the talker node."
+  },
+  "example_usage": {
+    "setup": "from usecase import Usecase\nfrom stream import TrafficHandler\n\nuc = Usecase()\nconfig = uc.configuration\ngraph = uc.graph\nnetwork_load = uc.streams\n\n# assume talker already selected\nimport random\nall_hosts = [n for n in graph.nodes if graph.nodes[n].get('type') == 'host']\ntalker = random.choice(all_hosts)",
+    "code": "listeners = TrafficHandler.listenerEmbedding(config, graph, network_load, talker)"
+  }
+},
+{
+  "function": "TrafficHandler.shortestPath",
+  "type": "classmethod",
+  "signature": "shortestPath(cls, stream: Stream, graph: nx.DiGraph, network_load: list[Stream])",
+  "purpose": "Computes shortest-path routing between each talker and listener pair in the stream. Converts node-level paths into port-level paths and validates each path against stream constraints such as latency and bandwidth. The result is stored in stream.pathLists and listener placements are updated to reflect successfully routed endpoints.",
+  "called_by": [
+    "TrafficHandler.embed_to_topology"
+  ],
+  "dependencies": [
+    "networkx.shortest_path",
+    "Stream.window_length",
+    "TrafficHandler.validate_path"
+  ],
+  "preconditions": [
+    "stream.tlkrPssblPlcmnt is initialized",
+    "stream.lstnsrPssblPlcmnt is initialized",
+    "graph is a valid nx.DiGraph with edge attribute sourcePort",
+    "talker placements is fixed to a single host (stream.tlkrPssblPlcmnt has one element)"
+  ],
+  "postconditions": [
+    "stream.pathLists is populated with valid shortest paths (if found)",
+    "stream.lstnsrPssblPlcmnt is updated to only include successfully routed listeners",
+    "Each path is converted from node-level to port-level representation"
+  ],
+  "side_effects": [
+    "Mutates stream.pathLists",
+    "Mutates stream.lstnsrPssblPlcmnt if listeners placements are not fixed"
+  ],
+  "returns": {
+    "type": "Stream",
+    "description": "The same stream object enriched with computed shortest paths"
+  },
+  "routing_logic": "Each talker is paired with each listener (product combination), Uses Dijkstra-based shortest path from networkx, Each node hop is converted into a sourcePort-based representation using edge metadata, Each candidate path is validated using Stream.validate_path before acceptance",
+  "example_usage": {
+    "setup": "from usecase import Usecase\nfrom stream import Stream, TrafficHandler\n\nuc = Usecase()\nconfig = uc.configuration\ngraph = uc.graph\nnetwork_load = uc.streams\n\nstream = Stream.generate(config)\n\ntalker = TrafficHandler.talkerEmbedding(config, graph, network_load)\nlistener = TrafficHandler.listenerEmbedding(config, graph, network_load, talker[0])\n\nstream.tlkrPssblPlcmnt = talker\nstream.lstnsrPssblPlcmnt = listener",
+    "code": "stream = TrafficHandler.shortestPath(stream, graph, network_load=[])"
+  }
+},
+{
+  "function": "TrafficHandler.randomPath",
+  "type": "classmethod",
+  "signature": "randomPath(cls, stream: Stream, graph: nx.DiGraph, network_load: list[Stream])",
+  "purpose": "Computes random valid routing paths between talkers and listeners. Unlike shortestPath, this method explores all simple paths and selects one valid path per listener in a randomized order, subject to validation constraints such as latency and bandwidth. It is used to introduce routing variability and non-deterministic path assignment.",
+  "called_by": [
+    "TrafficHandler.embed_to_topology"
+  ],
+  "dependencies": [
+    "networkx.all_simple_paths",
+    "TrafficHandler.validate_path"
+  ],
+  "preconditions": [
+    "stream.tlkrPssblPlcmnt is initialized",
+    "stream.lstnsrPssblPlcmnt is initialized",
+    "graph is a valid nx.DiGraph",
+    "talker placements is fixed to a single host (stream.tlkrPssblPlcmnt has one element)"
+  ],
+  "postconditions": [
+    "stream.pathLists is populated with randomly selected valid paths",
+    "stream.lstnsrPssblPlcmnt is updated to match successfully routed listeners",
+    "Each selected path satisfies stream constraints"
+  ],
+  "side_effects": [
+    "Mutates stream.pathLists",
+    "Mutates stream.lstnsrPssblPlcmnt if listeners placements are not fixed"
+  ],
+  "returns": {
+    "type": "Stream",
+    "description": "Stream object enriched with randomly selected valid routing paths"
+  },
+  "routing_logic": "Routing generates all simple paths between each talker–listener pair using NetworkX, then randomly shuffles both pairs and candidate paths. For each listener, the first path that passes Stream.validate_path is selected. Validation enforces per-hop bandwidth limits and total end-to-end latency constraints, ensuring only feasible routes are accepted while preserving randomness in selection.",
+  "example_usage": {
+    "setup": "from usecase import Usecase\nfrom stream import Stream, TrafficHandler\n\nuc = Usecase()\nconfig = uc.configuration\ngraph = uc.graph\nnetwork_load = uc.streams\n\nstream = Stream.generate(config)\n\ntalker = TrafficHandler.talkerEmbedding(config, graph, network_load)\nlistener = TrafficHandler.listenerEmbedding(config, graph, network_load, talker[0])\n\nstream.tlkrPssblPlcmnt = talker\nstream.lstnsrPssblPlcmnt = listener",
+    "code": "stream = TrafficHandler.randomPath(stream, graph, network_load=[])"
+  }
+},
+{
+  "function": "Stream.validate_path",
+  "type": "static_method",
+  "signature": "validate_path(path: List[str], graph: nx.DiGraph, stream: Stream, network_load: list[Stream]) -> bool",
+  "purpose": "Validates whether a candidate port-level path is feasible for a given stream by checking per-hop transmission feasibility and end-to-end latency constraints. It ensures that the path can physically carry the stream without exceeding bandwidth or latency limits, considering the previously reserved bandwidth for other streams in the network load.",
+  "called_by": [
+    "TrafficHandler.shortestPath",
+    "TrafficHandler.randomPath"
+  ],
+  "dependencies": [
+    "Stream.window_length",
+    "networkx.DiGraph.get_edge_data"
+  ],
+  "preconditions": [
+    "path is a valid sequence of 'node.port' strings",
+    "graph contains egress_ports with speed metadata",
+    "stream.interval and stream.maxLatency are defined"
+  ],
+  "postconditions": [
+    "Returns True if path satisfies all constraints",
+    "Returns False immediately if any constraint is violated (short-circuit behavior)"
+  ],
+  "returns": {
+    "type": "bool",
+    "description": "True if the path is valid for the stream, otherwise False"
+  },
+  "validation_logic": "For each hop, computes transmission delay using stream.window_length(port_speed). The path is rejected if any hop exceeds stream.interval (bandwidth constraint). It accumulates propagation delay (propDelay), processing delay (procDelay), and transmission delay, and rejects the path if total accumulated latency exceeds stream.maxLatency. The function short-circuits on the first violation to reduce computation.",
+  "example_usage": {
+    "setup": "from stream import Stream\nimport networkx as nx\n\nstream = Stream.generate(config)\nG = uc.graph\npath = ['host-1.p1', 'switch-2.p3', 'host-5.p1']",
+    "code": "is_valid = Stream.validate_path(path, G, stream, network_load=[])"
+  }
+}
+]
