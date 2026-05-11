@@ -2,6 +2,7 @@
 A platform to develop optimization algorithms for TSN networks
 
 # function description (used for selected and composed functions)
+```json
 "name"          : "exact function name as it appears in the context",
 "type"          : "classmethod | staticmethod | instance_method | function | property",
 "module"        : "source filename (e.g. \"usecase_generator_functions.md\")",
@@ -34,3 +35,4 @@ A platform to develop optimization algorithms for TSN networks
 "example_use"  : "short realistic example showing how the function is called",
 "code"         : "complete function code verbatim from context",
 "unit_tests"   : ["Tests functions covering normal cases, edge cases, and errors (inputs, outputs, exceptions)."]
+```
