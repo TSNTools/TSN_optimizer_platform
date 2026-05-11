@@ -79,7 +79,7 @@ These solvers consume the `OptimizationModelHandler` output and produce schedule
 5. The schedule is applied back to the `Usecase`
 
 ---
-
+```
 ## Architecture Overview
 Usecase
 │
@@ -94,7 +94,7 @@ Usecase
 External Solvers
         → operate on optimization model
         → output schedules
-
+```
 
 ---
 
