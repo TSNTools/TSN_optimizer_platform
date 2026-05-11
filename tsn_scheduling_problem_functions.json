@@ -1,0 +1,783 @@
+[
+  {
+    "name": "require_instance",
+    "class_name": null,
+    "signature": "def require_instance(func):",
+    "docstring": "Decorator: call self.no_instance_assigned() if no usecase is active.",
+    "parameters": [
+      {
+        "name": "func",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def require_instance(func):\n    \"\"\"Decorator: call self.no_instance_assigned() if no usecase is active.\"\"\"\n    def wrapper(self, *args, **kwargs):\n        if not getattr(self, \"usecase\", None):\n            return self.no_instance_assigned()\n        return func(self, *args, **kwargs)\n    wrapper.__name__ = func.__name__\n    return wrapper\n"
+  },
+  {
+    "name": "wrapper",
+    "class_name": null,
+    "signature": "def wrapper(self, *args, **kwargs):",
+    "docstring": "Inner wrapper function produced by the require_instance decorator. Calls self.no_instance_assigned() and returns early if self.usecase is not set; otherwise delegates to the decorated function with all original arguments.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "*args",
+        "default": null
+      },
+      {
+        "name": "**kwargs",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def wrapper(self, *args, **kwargs):\n    if not getattr(self, \"usecase\", None):\n        return self.no_instance_assigned()\n    return func(self, *args, **kwargs)\n"
+  },
+  {
+    "name": "__init__",
+    "class_name": "InstanceContext()",
+    "signature": "def __init__(self, parent, instance):",
+    "docstring": "Initialises an InstanceContext with a reference to the parent TSNScheduling object and the instance (Usecase) to be activated within the context.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "parent",
+        "default": null
+      },
+      {
+        "name": "instance",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def __init__(self, parent, instance):\n    self.parent = parent\n    self.instance = instance\n"
+  },
+  {
+    "name": "__enter__",
+    "class_name": "InstanceContext()",
+    "signature": "def __enter__(self):",
+    "docstring": "Sets parent.usecase to the given instance and calls parent.build_metadata() once per unique instance (tracked by object id). Returns the parent object so it can be used in a with-block.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def __enter__(self):\n    self.parent.usecase = self.instance\n\n    # create set to track built usecases (store ids to avoid relying on hashability)\n    if not hasattr(self.parent, \"_metadata_built_for\"):\n        self.parent._metadata_built_for = set()\n\n    uid = id(self.instance)\n    if uid not in self.parent._metadata_built_for:\n        self.parent.build_metadata()\n        self.parent._metadata_built_for.add(uid)\n\n    return self.parent\n"
+  },
+  {
+    "name": "__exit__",
+    "class_name": "InstanceContext()",
+    "signature": "def __exit__(self, exc_type, exc_value, traceback):",
+    "docstring": "Clears parent.usecase to None when exiting the context block. Does not remove the instance from the metadata-built set so that cached metadata is preserved for future use.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "exc_type",
+        "default": null
+      },
+      {
+        "name": "exc_value",
+        "default": null
+      },
+      {
+        "name": "traceback",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def __exit__(self, exc_type, exc_value, traceback):\n    self.parent.usecase = None\n"
+  },
+  {
+    "name": "__init__",
+    "class_name": "TSNScheduling()",
+    "signature": "def __init__(self, problem_definition, ContextHandler=InstanceContext, **kwargs):",
+    "docstring": "Initialises the TSNScheduling problem with a config file path. Creates UsecaseGenerator and InstancesLoader helpers, sets up context handling, and initialises the instance list and config_matrix to None.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "problem_definition",
+        "default": null
+      },
+      {
+        "name": "ContextHandler",
+        "default": "InstanceContext"
+      },
+      {
+        "name": "**kwargs",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def __init__(self, problem_definition, ContextHandler=InstanceContext, **kwargs):\n    # core helpers\n    self.uc_gen = UsecaseGenerator()\n    self.instances_loader = InstancesLoader()\n    self.config_file = problem_definition\n\n    # instance & context\n    self.usecase = None\n    self.ContextHandler = ContextHandler\n    self.instances = []\n\n    # metadata (initialized per-instance in build_metadata)\n    self.config_matrix = None\n"
+  },
+  {
+    "name": "build_metadata",
+    "class_name": "TSNScheduling()",
+    "signature": "def build_metadata(self):",
+    "docstring": "Build config_matrix and attach customGraph to each stream dict.\n- Expects self.usecase to be set.\n- Uses make_default_stream_config(stream) which returns (config_column, custom_graph).",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def build_metadata(self):\n    \"\"\"\n    Build config_matrix and attach customGraph to each stream dict.\n    - Expects self.usecase to be set.\n    - Uses make_default_stream_config(stream) which returns (config_column, custom_graph).\n    \"\"\"\n    if not self.usecase:\n        return self.no_instance_assigned()\n\n    # allocate matrix\n    self.config_matrix = np.zeros((self.n_ports, self.n_streams), dtype=int)\n\n    # iterate streams in the raw usecase (list of dicts)\n    for j, stream in enumerate(self.usecase.streams):\n        config_column, custom_graph = self.make_default_stream_config(stream)\n\n        # sanity check: config_column must match number of ports\n        if len(config_column) != self.n_ports:\n            raise ValueError(\n                f\"config column length ({len(config_column)}) != n_ports ({self.n_ports})\"\n            )\n\n        self.config_matrix[:, j] = config_column\n        # attach custom graph to the stream dict so downstream code can use it\n        stream[\"customGraph\"] = custom_graph\n\n    # After metadata is built, initialize Problem\n    self.initialize_problem()\n"
+  },
+  {
+    "name": "initialize_problem",
+    "class_name": "TSNScheduling()",
+    "signature": "def initialize_problem(self):",
+    "docstring": "Initialises the TSNConstraintEvaluator after metadata has been built. Determines the number of decision variables, checks whether routing and task placement are fixed, and constructs the evaluator accordingly.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def initialize_problem(self):\n    n_var = self.n_ports * self.n_streams\n    fr, ftp = self.get_task()\n    check_routing = not (fr and ftp)\n    self.evaluator = TSNConstraintEvaluator(self, check_routing=check_routing, check_task_placement=not ftp)\n"
+  },
+  {
+    "name": "use_instance",
+    "class_name": "TSNScheduling()",
+    "signature": "def use_instance(self, instance):",
+    "docstring": "Return a context manager that sets .usecase to instance inside a with-block.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "instance",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def use_instance(self, instance):\n    \"\"\"Return a context manager that sets .usecase to instance inside a with-block.\"\"\"\n    return self.ContextHandler(self, instance)\n"
+  },
+  {
+    "name": "no_instance_assigned",
+    "class_name": "TSNScheduling()",
+    "signature": "def no_instance_assigned(self):",
+    "docstring": "Raises a ValueError indicating that no use-case instance is currently active. Should be called (or returned) by any method that requires self.usecase to be set.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def no_instance_assigned(self):\n    raise ValueError(\"No current instance is set! Use a 'with problem.use_instance(instance):' block.\")\n"
+  },
+  {
+    "name": "instantiate",
+    "class_name": "TSNScheduling()",
+    "signature": "def instantiate(self, export=False):",
+    "docstring": "Generates a new scheduling use case from the problem's config file, appends it to self.instances, and returns it. Optionally exports the use case to a JSON file.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "export",
+        "default": false
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def instantiate(self, export=False):\n    usecase = self.generate_scheduling_usecase(self.config_file, export=export)\n    self.instances.append(usecase)\n    return usecase\n"
+  },
+  {
+    "name": "import_scheduling_usecase",
+    "class_name": "TSNScheduling()",
+    "signature": "def import_scheduling_usecase(self, file_path, remove_routing=False, fix_task_placement=False):",
+    "docstring": "Loads a previously exported use case from a JSON file and returns a Usecase object. Optionally removes path routing and fixes talker/listener placements before returning.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "file_path",
+        "default": null
+      },
+      {
+        "name": "remove_routing",
+        "default": false
+      },
+      {
+        "name": "fix_task_placement",
+        "default": false
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def import_scheduling_usecase(self, file_path, remove_routing=False, fix_task_placement=False):\n    imp_uc = json.load(open(file_path))\n    uc = Usecase.from_json(imp_uc)\n    if remove_routing:\n        uc.removeRouting()\n    if fix_task_placement:\n        uc.fixTalkers()\n        uc.fixListeners()\n    return uc\n"
+  },
+  {
+    "name": "generate_scheduling_usecase",
+    "class_name": "TSNScheduling()",
+    "signature": "def generate_scheduling_usecase(self, config_file, export=False, usecases_folder='./problem_instances/'):",
+    "docstring": "Generates a single use case from a config file using UsecaseGenerator.generateUC. Optionally saves the use case to the usecases_folder directory. Returns the Usecase object.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "config_file",
+        "default": null
+      },
+      {
+        "name": "export",
+        "default": false
+      },
+      {
+        "name": "usecases_folder",
+        "default": "./problem_instances/"
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def generate_scheduling_usecase(self, config_file, export=False, usecases_folder='./problem_instances/'):\n    uc = self.uc_gen.generateUC(config_file)\n    if export:\n        uc.to_file(jsnPath=usecases_folder)\n    return uc\n"
+  },
+  {
+    "name": "generate_incremental_usecases",
+    "class_name": "TSNScheduling()",
+    "signature": "def generate_incremental_usecases(self, config_file, export=False, usecases_folder='./problem_instances/'):",
+    "docstring": "Generates a sequence of use cases incrementally (one additional stream at a time) using UsecaseGenerator.ucGenerator. Optionally exports each use case. Returns the list of Usecase objects.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "config_file",
+        "default": null
+      },
+      {
+        "name": "export",
+        "default": false
+      },
+      {
+        "name": "usecases_folder",
+        "default": "./problem_instances/"
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def generate_incremental_usecases(self, config_file, export=False, usecases_folder='./problem_instances/'):\n    ucs = list(self.uc_gen.ucGenerator(config_file))\n    if export:\n        for uc in ucs: \n            uc.to_file(jsnPath=usecases_folder)\n    return ucs\n"
+  },
+  {
+    "name": "get_config",
+    "class_name": "TSNScheduling()",
+    "signature": "def get_config(self):",
+    "docstring": "Returns the configuration string of the currently active use case by delegating to usecase.get_config(). Requires an active instance.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def get_config(self):\n    return self.usecase.get_config()\n"
+  },
+  {
+    "name": "get_task",
+    "class_name": "TSNScheduling()",
+    "signature": "def get_task(self):",
+    "docstring": "Returns a tuple (fixPath, is_fully_fixed) indicating whether routing paths are fixed and whether both talker and listener placements are fully determined (numplacesTalker == numplaceslistener == 1).",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def get_task(self):\n    numplacesTalker = self.usecase.config.getint('streams_config', 'numplacesTalker')\n    numplaceslistener = self.usecase.config.getint('streams_config', 'numplaceslistener')\n    routing = ast.literal_eval(str(self.usecase.config.get('streams_config', 'routing')))\n    return routing['fixPath'], numplacesTalker==numplaceslistener==1\n"
+  },
+  {
+    "name": "n_ports",
+    "class_name": "TSNScheduling()",
+    "signature": "def n_ports(self):",
+    "docstring": "Property returning the total number of ports in the active use case's graph.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def n_ports(self):\n    return len(self.usecase.ports)\n"
+  },
+  {
+    "name": "n_streams",
+    "class_name": "TSNScheduling()",
+    "signature": "def n_streams(self):",
+    "docstring": "Property returning the number of streams in the active use case.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def n_streams(self):\n    return len(self.usecase.streams)\n"
+  },
+  {
+    "name": "port_id_to_name",
+    "class_name": "TSNScheduling()",
+    "signature": "def port_id_to_name(self):",
+    "docstring": "1-based port id -> name mapping. includes 0 -> '' as before.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def port_id_to_name(self):\n    \"\"\"1-based port id -> name mapping. includes 0 -> '' as before.\"\"\"\n    mapping = dict(enumerate(self.usecase.ports.keys(), start=1))\n    mapping[0] = ''\n    return mapping\n"
+  },
+  {
+    "name": "port_name_to_id",
+    "class_name": "TSNScheduling()",
+    "signature": "def port_name_to_id(self):",
+    "docstring": "name -> 1-based port id mapping. includes '' -> 0.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def port_name_to_id(self):\n    \"\"\"name -> 1-based port id mapping. includes '' -> 0.\"\"\"\n    mapping = {key: index for index, key in enumerate(self.usecase.ports.keys(), start=1)}\n    mapping[''] = 0\n    return mapping\n"
+  },
+  {
+    "name": "ports",
+    "class_name": "TSNScheduling()",
+    "signature": "def ports(self):",
+    "docstring": "Return ports as a dict keyed by 1-based port id (value is the port data), \nwith destPort modified using self.port_name_to_id.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def ports(self):\n    \"\"\"Return ports as a dict keyed by 1-based port id (value is the port data), \n       with destPort modified using self.port_name_to_id.\"\"\"\n    return {\n        self.port_name_to_id[key]: {**value, 'destPort': self.port_name_to_id.get(value['destPort'], value['destPort'])}\n        for key, value in self.usecase.ports.items()\n    }\n"
+  },
+  {
+    "name": "port_id_to_node",
+    "class_name": "TSNScheduling()",
+    "signature": "def port_id_to_node(self):",
+    "docstring": "Property returning a dict mapping 1-based port id to the name of the source node that owns that port, plus 0 mapped to an empty string.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def port_id_to_node(self):\n    return {pId: self.ports[pId]['sourceNode'] for pId in self.ports}\n"
+  },
+  {
+    "name": "nodes",
+    "class_name": "TSNScheduling()",
+    "signature": "def nodes(self):",
+    "docstring": "Property returning a dict mapping each node name to a tuple of (index, procDelay) for all nodes in the active use-case graph.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def nodes(self):\n    # return {node:idx for idx, node in enumerate(self.usecase.graph.nodes)}\n    return {node[0]:(idx,node[1].get('procDelay', 0)) \n            for idx, node in enumerate(self.usecase.graph.nodes(data=True))}\n"
+  },
+  {
+    "name": "n_nodes",
+    "class_name": "TSNScheduling()",
+    "signature": "def n_nodes(self):",
+    "docstring": "Property returning the total number of nodes in the active use-case graph.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def n_nodes(self):\n    return len(self.usecase.graph.nodes)\n"
+  },
+  {
+    "name": "node_to_port_id",
+    "class_name": "TSNScheduling()",
+    "signature": "def node_to_port_id(self):",
+    "docstring": "Property returning three dicts: egress_map (node -> list of egress port ids), ingress_map (node -> list of ingress port ids), and adjacent_egress_map (node -> list of egress port ids of incoming neighbours).",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def node_to_port_id(self):\n    egress_map = {}\n    ingress_map = {}\n    adjacent_egress_map = {}\n\n    for src, dest, einfo in self.usecase.graph.edges(data=True):\n        # src = einfo.get('sourceNode')\n        # dest= einfo.get('destNode')\n        srcP = self.port_name_to_id[einfo.get('sourcePort')]\n        destP = self.port_name_to_id[einfo.get('destPort')]\n\n        egress_map.setdefault(src, []).append(srcP)\n        ingress_map.setdefault(dest, []).append(destP)\n        adjacent_egress_map.setdefault(dest, []).append(srcP)\n\n    return egress_map, ingress_map, adjacent_egress_map\n"
+  },
+  {
+    "name": "next_prev_hops",
+    "class_name": "TSNScheduling()",
+    "signature": "def next_prev_hops(self, hop):",
+    "docstring": "hop= the egress port of the current hop",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "hop",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def next_prev_hops(self, hop):\n    \"\"\" hop= the egress port of the current hop\"\"\"\n    hop_src = ports[hop]['sourceNode']\n    hop_dest = ports[hop]['destNode']\n    ports= self.ports\n\n    next_hops = [pid for pid, info in ports.items() if info['sourceNode'] == hop_dest]\n    prev_hops = [pid for pid, info in ports.items() if info['destNode'] == hop_src]\n"
+  },
+  {
+    "name": "macro_cycle",
+    "class_name": "TSNScheduling()",
+    "signature": "def macro_cycle(self):",
+    "docstring": "LCM of stream intervals.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def macro_cycle(self):\n    \"\"\"LCM of stream intervals.\"\"\"\n    macro_cycle = 1\n    for stream in self.usecase.streams:\n        i = int(stream['interval'])\n        macro_cycle = macro_cycle * i // math.gcd(macro_cycle, i)\n    return macro_cycle\n"
+  },
+  {
+    "name": "streams",
+    "class_name": "TSNScheduling()",
+    "signature": "def streams(self):",
+    "docstring": "Return streams enriched with port ids where needed.\nThis property will create a new list each call (shallow copies).",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def streams(self):\n    \"\"\"\n    Return streams enriched with port ids where needed.\n    This property will create a new list each call (shallow copies).\n    \"\"\"\n    streams = []\n    for s in self.usecase.streams:\n        stream = s.copy()\n        # replace talker/listener possible placements with 1-based port ids\n        stream['tlkrPssblPlcmnt'] = [self.port_name_to_id[node + '.Port1'] for node in s['tlkrPssblPlcmnt']]\n        stream['lstnsrPssblPlcmnt'] = [[self.port_name_to_id[node + '.Port1'] for node in nodes] for nodes in s['lstnsrPssblPlcmnt']]\n        if 'pathLists' in stream:\n            # convert hops to port ids but keep the same shape as original (omit last hop if that was a host owner)\n            stream['pathLists'] = [[self.port_name_to_id[hop] for hop in path[:-1]] for path in s['pathLists']]\n        streams.append(stream)\n    return streams\n"
+  },
+  {
+    "name": "links",
+    "class_name": "TSNScheduling()",
+    "signature": "def links(self):",
+    "docstring": "Property returning a list of link dicts for the active use case with sourcePort and destPort values replaced by their 1-based integer port ids.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def links(self):\n    links = []\n    for l in self.usecase.links:\n        link = l.copy()\n        link['sourcePort'] = self.port_name_to_id[l['sourcePort']]\n        link['destPort'] = self.port_name_to_id[l['destPort']]\n        links.append(link)\n    return links\n"
+  },
+  {
+    "name": "_frame_size",
+    "class_name": "TSNScheduling()",
+    "signature": "def _frame_size(cls, stream):",
+    "docstring": "Compute the frame size in bits *with tolerance*.",
+    "parameters": [
+      {
+        "name": "cls",
+        "default": null
+      },
+      {
+        "name": "stream",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def _frame_size(cls, stream):\n    \"\"\"\n    Compute the frame size in bits *with tolerance*.\n    \"\"\"\n    return (\n        stream[\"maxFramesPerInterval\"]\n        * stream[\"maxFrameSize\"]\n        * BYTE_2_BIT\n        * TOL\n    )\n"
+  },
+  {
+    "name": "hops_costs",
+    "class_name": "TSNScheduling()",
+    "signature": "def hops_costs(self, frame_size):",
+    "docstring": "Cost of forwarding a frame from one egress port.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "frame_size",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def hops_costs(self, frame_size):\n    \"\"\"\n    Cost of forwarding a frame from one egress port.\n    \"\"\"\n    hcost = np.zeros(self.n_ports)\n    for pId, egport in self.ports.items():\n        destNode = egport['destNode']\n        sourceNode = egport['sourceNode']\n\n        trans_delay = frame_size / (\n            egport[\"speed\"] * MBPS_2_BPNS\n        )\n        prop_delay = self.usecase.graph[sourceNode][destNode][\"propDelay\"]\n        proc_delay = self.usecase.graph.nodes[destNode].get(\"procDelay\",0)\n\n        hcost[pId-1] = trans_delay + prop_delay + proc_delay\n\n    return hcost\n"
+  },
+  {
+    "name": "network_borders",
+    "class_name": "TSNScheduling()",
+    "signature": "def network_borders(self, graph):",
+    "docstring": "Return egress ports of switches that are connected to listeners (ports on switch->host edges).",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "graph",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def network_borders(self, graph):\n    \"\"\"Return egress ports of switches that are connected to listeners (ports on switch->host edges).\"\"\"\n    return [edge[2]['sourcePort'] for edge in graph.edges(data=True) if 'host' in edge[2]['destPort']]\n"
+  },
+  {
+    "name": "configure_stream_ports",
+    "class_name": "TSNScheduling()",
+    "signature": "def configure_stream_ports(self, ports_in, ports_out):",
+    "docstring": "After instantiating the problem, the streams can be independently configured using this function to force using some ports and excluding some other ports.\n                                ------------------------------     ------------\n                                | customGraph | config_column|      seedGraph\n                     -----------------------------------------     ------------\n                    always on   |    exist    |       1      |        exist\n                     -----------------------------------------     ------------\n                    always off/ |  removed    |              |       exist in        \n                    concurent of|  from the   |       0      |      some seeds            \n                    an always on|   graph     |              |      but not in            \n                     -----------------------------------------      some others\n                    free to use |    exist    |       0      |        seeds\n                    ------------------------------------------     ------------ \n                    \nBuild config_column and a pruned custom_graph for the stream based on ports_in / ports_out.\n- ports_in: dict with keys 'talker','listener','switch' listing egress-port names to force active\n- ports_out: dict with keys 'talker','listener','switch' listing ports to force inactive\nReturns (config_column (np.array len n_ports), custom_graph (networkx DiGraph)).",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "ports_in",
+        "default": null
+      },
+      {
+        "name": "ports_out",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def configure_stream_ports(self, ports_in, ports_out):\n    \"\"\"\n    After instantiating the problem, the streams can be independently configured using this function to force using some ports and excluding some other ports.\n                                    ------------------------------     ------------\n                                    | customGraph | config_column|      seedGraph\n                         -----------------------------------------     ------------\n                        always on   |    exist    |       1      |        exist\n                         -----------------------------------------     ------------\n                        always off/ |  removed    |              |       exist in        \n                        concurent of|  from the   |       0      |      some seeds            \n                        an always on|   graph     |              |      but not in            \n                         -----------------------------------------      some others\n                        free to use |    exist    |       0      |        seeds\n                        ------------------------------------------     ------------ \n\n    Build config_column and a pruned custom_graph for the stream based on ports_in / ports_out.\n    - ports_in: dict with keys 'talker','listener','switch' listing egress-port names to force active\n    - ports_out: dict with keys 'talker','listener','switch' listing ports to force inactive\n    Returns (config_column (np.array len n_ports), custom_graph (networkx DiGraph)).\n    \"\"\"\n    # ----- 1) always-active ports (talker/switch are egress ports; listener requires the incoming sourcePort)\n    always_active_ports = []\n    for typ, plist in ports_in.items():\n        if typ != 'listener':\n            always_active_ports.extend(plist)\n        else:\n            # for each listener egress-port name we need its incoming sourcePort in the global usecase graph\n            for listener_port in plist:\n                node = listener_port.split('.')[0]\n                # take first incoming edge (should exist) and get its sourcePort\n                in_edges = list(self.usecase.graph.in_edges(node, data=True))\n                if in_edges:\n                    src_port = in_edges[0][2]['sourcePort']\n                    always_active_ports.append(src_port)\n                else:\n                    # no incoming edge -> skip (defensive)\n                    continue\n\n    # map to 0-based indices for config matrix\n    always_active_ids = [self.port_name_to_id[p] - 1 for p in always_active_ports if p in self.port_name_to_id]\n    config_column = np.zeros(self.n_ports, dtype=int)\n    if always_active_ids:\n        config_column[always_active_ids] = 1\n\n    # ----- 2) determine edges to remove from the global graph\n    edges_to_remove = []\n\n    # concurrent ports for forced-ins (these are edges to remove because they are \"concurrent\" with forced-ins)\n    for typ, egports in ports_in.items():\n        edges_to_remove.extend(self.get_concurrent_ports(egports, typ=typ))\n\n    # ports explicitly forced out: remove edges touching those ports\n    ports_out_listener = set(ports_out.get('listener', []))\n    ports_out_talker = set(ports_out.get('talker', []))\n    ports_out_switch = set(ports_out.get('switch', []))\n\n    for u, v, data in self.usecase.graph.edges(data=True):\n        if data.get('destPort') in ports_out_listener or data.get('sourcePort') in ports_out_talker or data.get('sourcePort') in ports_out_switch:\n            edges_to_remove.append((u, v, data))\n\n    # ensure we do not remove edges that are needed for always-active ports\n    filtered_edges_to_remove = []\n    for edge in edges_to_remove:\n        src_port = edge[2].get('sourcePort')\n        if src_port is None:\n            continue\n        src_id = self.port_name_to_id.get(src_port, None)\n        if src_id is None:\n            continue\n        if (src_id - 1) in always_active_ids:\n            # keep this edge (do not remove)\n            continue\n        filtered_edges_to_remove.append(edge)\n\n    # ----- 3) build the custom graph (edge-subgraph then copy + prune isolated nodes)\n    # build a set of edge keys (u,v) to keep\n    keep_edges = [(u, v) for u, v, data in self.usecase.graph.edges(data=True) if (u, v, data) not in filtered_edges_to_remove]\n    custom_graph = self.usecase.graph.edge_subgraph(keep_edges).copy()\n\n    # prune isolated nodes\n    isolated_nodes = [n for n, d in custom_graph.degree() if d < 1]\n    if isolated_nodes:\n        custom_graph.remove_nodes_from(isolated_nodes)\n\n    return config_column, custom_graph\n"
+  },
+  {
+    "name": "get_concurrent_ports",
+    "class_name": "TSNScheduling()",
+    "signature": "def get_concurrent_ports(self, egports, typ=None):",
+    "docstring": "Return a list of edges (u,v,data) that are \"concurrent\" with the given egress ports.\n- typ in {'switch','talker','listener'}.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "egports",
+        "default": null
+      },
+      {
+        "name": "typ",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def get_concurrent_ports(self, egports, typ=None):\n    \"\"\"\n    Return a list of edges (u,v,data) that are \"concurrent\" with the given egress ports.\n    - typ in {'switch','talker','listener'}.\n    \"\"\"\n    if not egports:\n        return []\n\n    nodes_names = [p.split('.')[0] for p in egports]\n\n    if typ == 'switch':\n        # other egress ports of the same switch (exclude the provided ones)\n        return [\n            edge for node in nodes_names\n            for edge in self.usecase.graph.out_edges(node, data=True)\n            if edge[2]['sourcePort'] not in egports\n        ]\n    elif typ == 'talker':\n        # all egress ports of other hosts\n        return [\n            edge for node in self.usecase.graph.nodes\n            if node not in nodes_names and node.startswith('host')\n            for edge in self.usecase.graph.out_edges(node, data=True)\n        ]\n    elif typ == 'listener':\n        # all ingress ports of other hosts\n        return [\n            edge for node in self.usecase.graph.nodes\n            if node not in nodes_names and node.startswith('host')\n            for edge in self.usecase.graph.in_edges(node, data=True)\n        ]\n    else:\n        raise ValueError(\"check arguments of get_concurrent_ports(egports, typ)!!\")\n"
+  },
+  {
+    "name": "make_default_stream_config",
+    "class_name": "TSNScheduling()",
+    "signature": "def make_default_stream_config(self, stream):",
+    "docstring": "[generate a subgraph by removing all deactivated nodes and edges (i.e. that are not allowed to be used)]\nBuild default (config_column, custom_graph) for a stream dict.\nstream is a dict with keys like 'tlkrPssblPlcmnt', 'lstnsrPssblPlcmnt', optionally 'pathLists'.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "stream",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def make_default_stream_config(self, stream):\n    \"\"\"\n    [generate a subgraph by removing all deactivated nodes and edges (i.e. that are not allowed to be used)]\n    Build default (config_column, custom_graph) for a stream dict.\n    stream is a dict with keys like 'tlkrPssblPlcmnt', 'lstnsrPssblPlcmnt', optionally 'pathLists'.\n    \"\"\"\n    ports_in = {\n        'talker': [stream['tlkrPssblPlcmnt'][0] + '.Port1'] if len(stream['tlkrPssblPlcmnt'])==1 else [],      # by default, talkers are free to use unless fixed\n        'listener': [listener[0] for listener in stream['lstnsrPssblPlcmnt'] if len(listener) == 1],    # listeners free to use unless fixed\n    }\n\n    ports_out = {\n        'talker': [host + '.Port1' for host in self.usecase.hosts if host not in stream['tlkrPssblPlcmnt']],\n        'listener': [host + '.Port1' for host in self.usecase.hosts if host not in [h for listener in stream['lstnsrPssblPlcmnt'] for h in listener]],\n        'switch': []\n    }\n\n    if 'pathLists' in stream:\n        # all internal switch egress ports in provided paths are forced-in\n        ports_in['switch'] = [egressport for path in stream['pathLists'] for egressport in path[1:-1]]\n        # switches not in the path are out\n        ports_out['switch'] = [port for port in self.usecase.ports if (port not in ports_in['switch']) and ('switch' in port)]\n\n    return self.configure_stream_ports(ports_in, ports_out)\n"
+  },
+  {
+    "name": "make_stream_config",
+    "class_name": "TSNScheduling()",
+    "signature": "def make_stream_config(self, stream, always_in, always_out, overwrite=False, as_idx=True):",
+    "docstring": "Build (config_column, custom_graph) from explicit always_in / always_out lists.\n- always_in/out are either indices (0-based) or port names depending on as_idx flag.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "stream",
+        "default": null
+      },
+      {
+        "name": "always_in",
+        "default": null
+      },
+      {
+        "name": "always_out",
+        "default": null
+      },
+      {
+        "name": "overwrite",
+        "default": false
+      },
+      {
+        "name": "as_idx",
+        "default": true
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def make_stream_config(self, stream, always_in, always_out, overwrite=False, as_idx=True):\n    \"\"\"\n    Build (config_column, custom_graph) from explicit always_in / always_out lists.\n    - always_in/out are either indices (0-based) or port names depending on as_idx flag.\n    \"\"\"\n    if as_idx:\n        # convert 0-based indices to 1-based id->name then to names\n        always_in = [self.port_id_to_name[pidx + 1] for pidx in always_in]\n        always_out = [self.port_id_to_name[pidx + 1] for pidx in always_out]\n\n    ports_in = {\n        'talker': [port for port in always_in if 'host' in port],\n        'listener': [],\n        'switch': [port for port in always_in if 'switch' in port and port not in self.network_borders(self.usecase.graph)]\n    }\n\n    ports_out = {\n        'talker': [port for port in always_out if 'host' in port],\n        'listener': [],\n        'switch': [port for port in always_out if 'switch' in port]\n    }\n\n    if not overwrite:\n        # respect original talker/listener placements from input usecase\n        original_out_talkers = [host + '.Port1' for host in self.usecase.hosts if host not in stream['tlkrPssblPlcmnt']]\n        ports_out['talker'] += original_out_talkers\n        ports_out['listener'] += [host + '.Port1' for host in self.usecase.hosts if host not in [h for listener in stream['lstnsrPssblPlcmnt'] for h in listener]]\n        ports_in['talker'] = [p for p in ports_in['talker'] if p not in original_out_talkers]\n\n    return self.configure_stream_ports(ports_in, ports_out)\n"
+  },
+  {
+    "name": "hop_cost_eg2eg",
+    "class_name": "TSNScheduling()",
+    "signature": "def hop_cost_eg2eg(self, cur_egp, next_egp, frame_size):",
+    "docstring": "Cost of forwarding a frame from one egress port to the egress port at next hop.\n\nParameters\n----------\ncur_egp : str\n    Current egress port name.\nnext_egp : str\n    Next egress port name.\nframe_size : float\n    Frame size in bits (with tolerance applied).\n\nReturns\n-------\nfloat\n    Delay in nanoseconds.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "cur_egp",
+        "default": null
+      },
+      {
+        "name": "next_egp",
+        "default": null
+      },
+      {
+        "name": "frame_size",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def hop_cost_eg2eg(self, cur_egp, next_egp, frame_size):\n    \"\"\"\n    Cost of forwarding a frame from one egress port to the egress port at next hop.\n\n    Parameters\n    ----------\n    cur_egp : str\n        Current egress port name.\n    next_egp : str\n        Next egress port name.\n    frame_size : float\n        Frame size in bits (with tolerance applied).\n\n    Returns\n    -------\n    float\n        Delay in nanoseconds.\n    \"\"\"\n    trans_delay = frame_size / (\n        self.usecase.ports[cur_egp][\"speed\"] * MBPS_2_BPNS\n    )\n    next_node = next_egp.split(\".\")[0]\n    prop_delay = self.usecase.graph[cur_egp.split(\".\")[0]][next_node][\"propDelay\"]\n    proc_delay = self.usecase.graph.nodes[next_node][\"procDelay\"]\n\n    return trans_delay + prop_delay + proc_delay\n"
+  },
+  {
+    "name": "bfs_forward",
+    "class_name": "TSNScheduling()",
+    "signature": "def bfs_forward(self, graph, start_port, stream):",
+    "docstring": "Forward BFS from a talker port to compute minimum delay budgets.\n\nParameters\n----------\ngraph : networkx.DiGraph\n    The usecase graph.\nstart_port : str\n    Egress port name of the talker host.\nstream : dict\n    Stream definition.\n\nReturns\n-------\ndict\n    Mapping of next-egress-port -> {current-egress-port: min_delay}",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "graph",
+        "default": null
+      },
+      {
+        "name": "start_port",
+        "default": null
+      },
+      {
+        "name": "stream",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def bfs_forward(self, graph, start_port, stream):\n    \"\"\"\n    Forward BFS from a talker port to compute minimum delay budgets.\n\n    Parameters\n    ----------\n    graph : networkx.DiGraph\n        The usecase graph.\n    start_port : str\n        Egress port name of the talker host.\n    stream : dict\n        Stream definition.\n\n    Returns\n    -------\n    dict\n        Mapping of next-egress-port -> {current-egress-port: min_delay}\n    \"\"\"\n    frame_size = TSNScheduling._frame_size(stream)\n\n    queue = deque([(start_port, 0)])  # (current egress port, cumulative delay)\n    visited = set()\n    ss_min = {}\n\n    while queue:\n        cep, delay = queue.popleft()\n\n        for _, next_node, data in graph.out_edges(\n            self.usecase.ports[cep][\"destNode\"], data=True\n        ):\n            nip = data[\"destPort\"]\n            nep = data[\"sourcePort\"]\n\n            if nip == cep:  # avoid going back\n                continue\n\n            if (cep, nep) not in visited:\n                visited.add((cep, nep))\n                new_delay = delay + self.hop_cost_eg2eg(cep, nep, frame_size)\n\n                if nep not in ss_min:\n                    ss_min[nep] = {}\n                ss_min[nep][cep] = new_delay\n\n                queue.append((nep, new_delay))\n\n    return ss_min\n"
+  },
+  {
+    "name": "bfs_backward",
+    "class_name": "TSNScheduling()",
+    "signature": "def bfs_backward(self, graph, end_port, stream):",
+    "docstring": "Backward BFS from a listener ingress port to compute maximum\nremaining delay budgets.\n\nParameters\n----------\ngraph : networkx.DiGraph\n    The usecase graph.\nend_port : str\n    Ingress port name of the listener host.\nstream : dict\n    Stream definition.\n\nReturns\n-------\ndict\n    Mapping of current-egress-port -> {previous-egress-port: max_delay}",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "graph",
+        "default": null
+      },
+      {
+        "name": "end_port",
+        "default": null
+      },
+      {
+        "name": "stream",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def bfs_backward(self, graph, end_port, stream):\n    \"\"\"\n    Backward BFS from a listener ingress port to compute maximum\n    remaining delay budgets.\n\n    Parameters\n    ----------\n    graph : networkx.DiGraph\n        The usecase graph.\n    end_port : str\n        Ingress port name of the listener host.\n    stream : dict\n        Stream definition.\n\n    Returns\n    -------\n    dict\n        Mapping of current-egress-port -> {previous-egress-port: max_delay}\n    \"\"\"\n    ml_ns = stream[\"maxLatency\"]\n    frame_size = TSNScheduling._frame_size(stream)\n\n    queue = deque([(end_port, ml_ns)])  # (current egress port, remaining delay)\n    visited = set()\n    ss_max = {}\n\n    while queue:\n        cep, delay = queue.popleft()\n\n        for _, _, data in graph.in_edges(cep.split(\".\")[0], data=True):\n            nip = data[\"destPort\"]\n            nep = data[\"sourcePort\"]\n\n            if nip == cep:  # avoid going back\n                continue\n\n            if (cep, nep) not in visited:\n                visited.add((cep, nep))\n                new_delay = delay - self.hop_cost_eg2eg(nep, cep, frame_size)\n\n                if cep not in ss_max:\n                    ss_max[cep] = {}\n                ss_max[cep][nep] = new_delay\n\n                queue.append((nep, new_delay))\n\n    return ss_max\n"
+  },
+  {
+    "name": "drawFattree",
+    "class_name": "TSNScheduling()",
+    "signature": "def drawFattree(graph, ax=None, node_size=300, font_size=12, **kwds):",
+    "docstring": "Draw a fat-tree style layout for the given graph.\n\nParameters\n----------\ngraph : networkx.Graph\n    The graph to draw.\nax : matplotlib.axes.Axes or None\n    Axis to draw into. If None, a new figure is created.\nnode_size : int\n    Size of nodes.\nfont_size : int\n    Size of labels.\nkwds : dict\n    Extra keyword arguments passed to nx.draw.",
+    "parameters": [
+      {
+        "name": "graph",
+        "default": null
+      },
+      {
+        "name": "ax",
+        "default": null
+      },
+      {
+        "name": "node_size",
+        "default": 300
+      },
+      {
+        "name": "font_size",
+        "default": 12
+      },
+      {
+        "name": "**kwds",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def drawFattree(graph, ax=None, node_size=300, font_size=12, **kwds):\n    \"\"\"\n    Draw a fat-tree style layout for the given graph.\n\n    Parameters\n    ----------\n    graph : networkx.Graph\n        The graph to draw.\n    ax : matplotlib.axes.Axes or None\n        Axis to draw into. If None, a new figure is created.\n    node_size : int\n        Size of nodes.\n    font_size : int\n        Size of labels.\n    kwds : dict\n        Extra keyword arguments passed to nx.draw.\n    \"\"\"\n    if ax is None:\n        _, ax = plt.subplots(figsize=(20, 8), dpi=60)\n\n    positions = {}\n    layers = {'core': 3, 'aggregation': 2, 'edge': 1, 'end': 0}\n    xx = {'core': 115, 'aggregation': 75, 'edge': 75, 'end': 0}\n\n    for node in graph.nodes():\n        if '-c' in node:\n            layer = 'core'\n        elif '-a' in node:\n            layer = 'aggregation'\n        elif '-e' in node:\n            layer = 'edge'\n        else:\n            layer = 'end'\n        graph.nodes[node]['layer'] = layer\n        y = layers[layer]\n        x = xx[layer]\n        xx[layer] += 20\n        positions[node] = (x, y)\n\n    pos = nx.multipartite_layout(graph, subset_key='layer', align='horizontal')\n    nx.draw(graph, pos=positions, ax=ax, node_size=node_size, font_size=font_size, **kwds)\n\n    return ax\n"
+  },
+  {
+    "name": "plot_all_stream_custom_graphs",
+    "class_name": "TSNScheduling()",
+    "signature": "def plot_all_stream_custom_graphs(customGraphs, ncols=3, figsize=(18, 12), **draw_kwds):",
+    "docstring": "Plot all stream custom graphs side by side using the fat-tree layout.\n\nParameters\n----------\nusecase : object\n    Must have `.streams`, where each stream is a dict with \"customGraph\".\nncols : int\n    Number of subplot columns.\nfigsize : tuple\n    Overall figure size.\ndraw_kwds : dict\n    Extra args passed to drawFattree (e.g. node_color, edge_color).",
+    "parameters": [
+      {
+        "name": "customGraphs",
+        "default": null
+      },
+      {
+        "name": "ncols",
+        "default": 3
+      },
+      {
+        "name": "figsize",
+        "default": [
+          18,
+          12
+        ]
+      },
+      {
+        "name": "**draw_kwds",
+        "default": null
+      }
+    ],
+    "module": "tsn_scheduling_problem.py",
+    "code": "def plot_all_stream_custom_graphs(customGraphs, ncols=3, figsize=(18, 12), **draw_kwds):\n    \"\"\"\n    Plot all stream custom graphs side by side using the fat-tree layout.\n\n    Parameters\n    ----------\n    usecase : object\n        Must have `.streams`, where each stream is a dict with \"customGraph\".\n    ncols : int\n        Number of subplot columns.\n    figsize : tuple\n        Overall figure size.\n    draw_kwds : dict\n        Extra args passed to drawFattree (e.g. node_color, edge_color).\n    \"\"\"\n    n_graphs = len(customGraphs)\n    nrows = (n_graphs + ncols - 1) // ncols\n\n    fig, axes = plt.subplots(nrows, ncols, figsize=figsize)\n    axes = axes.flatten()\n\n    for i, graph in enumerate(customGraphs):\n        ax = axes[i]\n        drawFattree(graph, ax=ax, **draw_kwds)\n        ax.axis(\"off\")\n\n    # Hide any extra subplots\n    for j in range(i + 1, len(axes)):\n        axes[j].axis(\"off\")\n\n    plt.tight_layout()\n    return fig\n"
+  }
+]

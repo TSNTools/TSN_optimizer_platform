@@ -1,0 +1,976 @@
+[
+  {
+    "name": "drawFattree",
+    "class_name": null,
+    "signature": "def drawFattree(graph, **kwds):",
+    "docstring": "Draws a fat-tree network topology using matplotlib. Assigns each node a layer (core, aggregation, edge, end) based on its name, computes positions, and renders the graph using networkx draw. Accepts a networkx graph and optional keyword arguments forwarded to nx.draw.",
+    "parameters": [
+      {
+        "name": "graph",
+        "default": null
+      },
+      {
+        "name": "**kwds",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def drawFattree(graph, **kwds):  # not really needed, potentially I will remove it\n\n        plt.figure(1, figsize=(20, 8), dpi=60)\n        positions = {}\n        layers = {'core':3, 'aggregation':2, 'edge':1, 'end':0}\n        layer_spacing = 1.0  # Adjust the spacing between layers\n        xx = {'core':115, 'aggregation':75, 'edge':75, 'end':0}\n\n        for node in graph.nodes():\n            if '-c' in node:\n                layer = 'core'\n            elif '-a' in node:\n                layer = 'aggregation'\n            elif '-e' in node:\n                layer = 'edge'\n            else:\n                layer = 'end'\n            graph.nodes[node]['layer']=layer\n            y = layers[layer]\n            x = xx[layer]\n            xx[layer]+=20\n            positions[node]=(x,y)\n        pos = nx.multipartite_layout(graph, subset_key='layer', align='horizontal')\n        # Draw the graph with adjusted spacing\n        nx.draw(graph, pos=positions, font_size=10, **kwds)\n"
+  },
+  {
+    "name": "__init__",
+    "class_name": "UsecaseGenerator()",
+    "signature": "def __init__(self):",
+    "docstring": "Initialises a UsecaseGenerator instance. No parameters are set; the class relies on class-level attributes (index, __version__) and classmethod factories for all functionality.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def __init__(self):\n    pass\n"
+  },
+  {
+    "name": "generateUC",
+    "class_name": "UsecaseGenerator()",
+    "signature": "def generateUC(cls, configFile, *args, **kwargs):",
+    "docstring": "Generates a single complete use case from a config file. Creates an empty use case topology, runs the stream generator to populate all streams, increments the class-level index, and returns the fully populated Usecase object.",
+    "parameters": [
+      {
+        "name": "cls",
+        "default": null
+      },
+      {
+        "name": "configFile",
+        "default": null
+      },
+      {
+        "name": "*args",
+        "default": null
+      },
+      {
+        "name": "**kwargs",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def generateUC(cls, configFile, *args, **kwargs):\n\n    usecase = cls.empty_uc(configFile, *args, **kwargs)\n    # generate streams\n    list(cls.streamGenerator(usecase))\n    usecase.index=cls.index\n    cls.index+=1\n    return usecase\n"
+  },
+  {
+    "name": "ucGenerator",
+    "class_name": "UsecaseGenerator()",
+    "signature": "def ucGenerator(cls, configFile, *args, **kwargs):",
+    "docstring": "incrementally generating use cases by adding one more stream at the time",
+    "parameters": [
+      {
+        "name": "cls",
+        "default": null
+      },
+      {
+        "name": "configFile",
+        "default": null
+      },
+      {
+        "name": "*args",
+        "default": null
+      },
+      {
+        "name": "**kwargs",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def ucGenerator(cls, configFile, *args, **kwargs):\n    '''incrementally generating use cases by adding one more stream at the time'''\n    usecase = cls.empty_uc(configFile, *args, **kwargs)\n    streamGen = cls.streamGenerator(usecase)\n    for _ in streamGen:\n        usecase.index = cls.index\n        cls.index+=1\n        yield usecase\n"
+  },
+  {
+    "name": "empty_uc",
+    "class_name": "UsecaseGenerator()",
+    "signature": "def empty_uc(cls, configFile, index=None, topology=None, newTopo=False):",
+    "docstring": "Creates and returns an empty Usecase object with a generated topology but no streams. Accepts an optional pre-built topology and an index override. If no topology is provided or newTopo is True, a new topology is generated via makeTopology.",
+    "parameters": [
+      {
+        "name": "cls",
+        "default": null
+      },
+      {
+        "name": "configFile",
+        "default": null
+      },
+      {
+        "name": "index",
+        "default": null
+      },
+      {
+        "name": "topology",
+        "default": null
+      },
+      {
+        "name": "newTopo",
+        "default": false
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def empty_uc(cls, configFile, index=None, topology=None, newTopo=False):\n     # initialise usecase\n    usecase = Usecase(configFile, topology=topology)\n    if index is not None:\n        usecase.index = index\n\n    # make usecase topology\n    if (usecase.graph is None) or (newTopo):\n        usecase.graph = cls.makeTopology(usecase)\n    return usecase\n"
+  },
+  {
+    "name": "streamGenerator",
+    "class_name": "UsecaseGenerator()",
+    "signature": "def streamGenerator(cls, usecase):",
+    "docstring": "generate random streams as specified by the usecase configuration",
+    "parameters": [
+      {
+        "name": "cls",
+        "default": null
+      },
+      {
+        "name": "usecase",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def streamGenerator(cls, usecase):\n    '''\n    generate random streams as specified by the usecase configuration\n    '''\n    routing = ast.literal_eval(usecase.config.get('streams_config', 'routing'))\n    fixPath = routing['fixPath']\n    #fixPath = usecase.config.getboolean('streams_config', 'fixPath')\n    numStreams = usecase.config.getint('streams_config', 'numofstreamsperinstance')\n\n    for streamId in range(numStreams):\n        stream = cls.generateStream(streamId, usecase)\n        numplacesTalker = usecase.config.getint('streams_config', 'numplacesTalker')\n        if fixPath and numplacesTalker==1:\n            if routing['shortestPath']:\n                stream = cls.shortestPath(stream, usecase)\n            else: # random\n                stream = cls.randomPath(stream, usecase) \n\n        usecase.streams.append(stream)\n        yield stream\n"
+  },
+  {
+    "name": "generateStream",
+    "class_name": "UsecaseGenerator()",
+    "signature": "def generateStream(cls, streamId, usecase, talker=None, listeners=None):",
+    "docstring": "stream = streamId, interval(T)[ns], maxFramesPerInterval(Nf), maxFrameSize(l)[byte], MaxLatency(e2e)[ns]",
+    "parameters": [
+      {
+        "name": "cls",
+        "default": null
+      },
+      {
+        "name": "streamId",
+        "default": null
+      },
+      {
+        "name": "usecase",
+        "default": null
+      },
+      {
+        "name": "talker",
+        "default": null
+      },
+      {
+        "name": "listeners",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def generateStream (cls, streamId, usecase, talker=None, listeners=None):\n    '''\n    stream = streamId, interval(T)[ns], maxFramesPerInterval(Nf), maxFrameSize(l)[byte], MaxLatency(e2e)[ns]\n    '''\n     # read streams data\n    period_range = range(*ast.literal_eval(str(usecase.config.get('streams_config', 'period_range'))).values())\n    numberFrames_range = range(*ast.literal_eval(str(usecase.config.get('streams_config', 'numberframes_range'))).values())\n    maxLatency_range = [float(i) for i in usecase.config.get(\"streams_config\",\"maxlatency_range\").split(',')]\n    dataSize_range = range(*ast.literal_eval(str(usecase.config.get('streams_config', 'datasize_range'))).values())       \n\n    maxLatency = int(random.choice(maxLatency_range)*1000000) # to make it in nanosecond\n    numFramesPerCycle = random.choice(numberFrames_range)\n    maxFrameSize = random.choice(dataSize_range)\n    cycle_ns = int(random.choice(period_range)*1000) # to make it in nanosecond\n\n    expiration = ast.literal_eval(usecase.config.get('streams_config', 'expiration'))\n    if bool(expiration['finite_duration']):\n        durations = range(int(expiration['start'])*60, int(expiration['stop'])*60) # in s\n        random_duration_ns = random.choice(durations) * 1_000_000_000\n        lifespanCycles = random_duration_ns // cycle_ns\n\n    if talker is None:\n        talker = cls.talkerEmbedding(usecase)\n\n    if listeners is None:\n        listeners = cls.listenerEmbedding(usecase, talker= talker[0]).tolist()\n\n\n    stream =  {\n        'name': 'stream-'+str(streamId),\n        'type': 'isochronous',\n        'interval':cycle_ns, #[ns]\n        'maxFramesPerInterval':numFramesPerCycle,\n        'maxFrameSize':maxFrameSize, #[bytes]\n        'maxLatency':maxLatency, #[ns]\n        'tlkrPssblPlcmnt': talker,\n        'lstnsrPssblPlcmnt':listeners,\n        'earliest-transmit-offset': 0,\n        'latest-transmit-offset': cycle_ns//2,\n        'jitter': 0\n        }\n\n    # Add lifespan if finite_duration\n    if bool(expiration['finite_duration']):\n        stream['lifespanCycles'] = int(lifespanCycles)\n\n    return stream\n"
+  },
+  {
+    "name": "talkerEmbedding",
+    "class_name": "UsecaseGenerator()",
+    "signature": "def talkerEmbedding(cls, usecase):",
+    "docstring": "configure the probability of choosing a host as talker based on the needed options, and \nchoose the actual placements based on the configured probabilities",
+    "parameters": [
+      {
+        "name": "cls",
+        "default": null
+      },
+      {
+        "name": "usecase",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def talkerEmbedding(cls, usecase):\n    '''\n    configure the probability of choosing a host as talker based on the needed options, and \n    choose the actual placements based on the configured probabilities\n    '''    \n\n    stride = ast.literal_eval(usecase.config.get('streams_config', 'stride'))\n    staggered = ast.literal_eval(usecase.config.get('streams_config', 'staggered'))\n    hotspot = ast.literal_eval(usecase.config.get('streams_config', 'hotspot'))\n\n    numpossplace = usecase.config.getint('streams_config', 'numplacesTalker')\n\n    allhosts = [node for node, data in usecase.graph.nodes(data=True) if data['type']=='host']\n    allProbs = np.full(len(allhosts) , 1/len(allhosts))\n\n    # choose talker\n    if hotspot['active']:\n        prevchosen = set(int(plc.split('-')[1])-1 for strm in usecase.streams for plc in strm['tlkrPssblPlcmnt'])\n        allProbs[list(prevchosen)] *= hotspot['increase_factor']\n\n    probabilities = allProbs/np.sum(allProbs) # to normalize\n\n    '''does striding between chosen_placement and placements to be selected'''\n    if stride['active'] and numpossplace>1:\n        i = stride['step']\n\n        chosen_placement = np.random.choice(allhosts, size=1, p=probabilities, replace=False)[0] # choose 1st placement of the talker\n        x = int(chosen_placement.split('-')[1])-1\n        for _ in range(numpossplace):\n            x = (i+x)%len(allhosts)\n            allProbs[x] *= stride['increase_factor']\n\n        x = int(chosen_placement.split('-')[1])-1   \n        tmp_hosts = allhosts[:x]+allhosts[x+1:]\n        tmp_probabilities = allProbs[[int(plc.split('-')[1])-1 for plc in  tmp_hosts]] / np.sum(allProbs[[int(plc.split('-')[1])-1 for plc in  tmp_hosts]]) # to normalize\n        return np.append(np.random.choice(tmp_hosts, size=numpossplace-1, p=tmp_probabilities, replace=False),chosen_placement).tolist()\n\n        '''does staggering between chosen_placement and elements to be selected'''\n    elif staggered['active'] and numpossplace>1: \n        edgep = staggered['edgep']\n        podp = staggered['podp']\n\n        chosen_placement = np.random.choice(allhosts, size=1, p=probabilities, replace=False)[0] # choose 1st placement of the talker\n        pod = chosen_placement.split('-')[2]\n\n        neighbors_in_pod = [node for node in allhosts if pod in node]        \n        for host in neighbors_in_pod:\n            x = int(host.split('-')[1])-1\n            allProbs[x] = podp\n\n        neighbors_in_edge = [node for node in usecase.graph.neighbors(list(usecase.graph.neighbors(chosen_placement))[0]) if (node in allhosts) and (node!=chosen_placement)]\n        for host in neighbors_in_edge:\n            x = int(host.split('-')[1])-1\n            allProbs[x] = edgep\n\n        x = int(chosen_placement.split('-')[1])-1\n        if hotspot['active']:# in case hotspoting is combined with staggering\n            allProbs[list(prevchosen)] *= hotspot['increase_factor']\n\n        tmp_hosts = allhosts[:x]+allhosts[x+1:]\n        tmp_probabilities = allProbs[[int(plc.split('-')[1])-1 for plc in  tmp_hosts]] / np.sum(allProbs[[int(plc.split('-')[1])-1 for plc in  tmp_hosts]]) # to normalize\n        return np.append(np.random.choice(tmp_hosts, size=numpossplace-1, p=tmp_probabilities, replace=False),chosen_placement).tolist()\n\n        '''choose randomly, uniformly'''\n    else: \n        return np.random.choice(allhosts, size=numpossplace, p=probabilities, replace=False).tolist()\n"
+  },
+  {
+    "name": "listenerEmbedding",
+    "class_name": "UsecaseGenerator()",
+    "signature": "def listenerEmbedding(cls, usecase, talker, listeners=None):",
+    "docstring": "configure the probability of choosing a host based on the needed options, and \nchoose the actual placements based on the configured probabilities\n\n* the function is used to select listeners, the talker should be:\n    - provided, \n    - filtered from hosts, and\n    - removed from the returned list of elements if needed (don't forget to increase numpossplace to count for the given talker)",
+    "parameters": [
+      {
+        "name": "cls",
+        "default": null
+      },
+      {
+        "name": "usecase",
+        "default": null
+      },
+      {
+        "name": "talker",
+        "default": null
+      },
+      {
+        "name": "listeners",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def listenerEmbedding(cls, usecase, talker, listeners = None):\n    '''\n    configure the probability of choosing a host based on the needed options, and \n    choose the actual placements based on the configured probabilities\n\n    * the function is used to select listeners, the talker should be:\n        - provided, \n        - filtered from hosts, and\n        - removed from the returned list of elements if needed (don't forget to increase numpossplace to count for the given talker)\n    ''' \n    if listeners is None:\n        listeners = []\n\n    stride = ast.literal_eval(usecase.config.get('streams_config', 'stride'))\n    staggered = ast.literal_eval(usecase.config.get('streams_config', 'staggered'))\n    hotspot = ast.literal_eval(usecase.config.get('streams_config', 'hotspot'))\n\n    numpossplace = usecase.config.getint('streams_config', 'numplacesListener')\n    numlistenersperstr = usecase.config.getint('streams_config', 'numlistenersperstr')\n\n    allhosts = [node for node, data in usecase.graph.nodes(data=True) if data['type']=='host']\n    allProbs = np.full(len(allhosts) , 1/len(allhosts))\n\n    if hotspot['active']:\n        prevchosen = [plc for strm in usecase.streams for plcs in strm['lstnsrPssblPlcmnt'] for plc in plcs]+listeners\n        prevchosen = set(int(plc.split('-')[1])-1 for plc in prevchosen if plc in allhosts)\n        allProbs[list(prevchosen)] *= hotspot['increase_factor']\n\n\n    # if talker is None:\n    #     probabilities = allProbs/np.sum(allProbs) # to normalize\n    #     talker = np.random.choice(allhosts, size=1, p=probabilities, replace=False)[0]\n\n        '''does striding between talker and elements to be selected'''\n    if stride['active']:\n        i = stride['step']\n\n        x = int(talker.split('-')[1])-1\n        for _ in range(numpossplace*numlistenersperstr):\n            x = (i+x)%len(allhosts)\n            allProbs[x] *= stride['increase_factor']\n        x = int(talker.split('-')[1])-1   \n\n        tmp_hosts = allhosts[:x]+allhosts[x+1:]\n        tmp_probabilities = allProbs[[int(plc.split('-')[1])-1 for plc in  tmp_hosts]] / np.sum(allProbs[[int(plc.split('-')[1])-1 for plc in  tmp_hosts]]) # to normalize\n        return np.random.choice(tmp_hosts, size=numpossplace*numlistenersperstr, p=tmp_probabilities, replace=False).reshape(numlistenersperstr, numpossplace)\n\n        '''does staggering between talker and elements to be selected'''\n    elif staggered['active']: \n        edgep = staggered['edgep']\n        podp = staggered['podp']\n        pod = talker.split('-')[2]\n\n        neighbors_in_pod = [node for node in allhosts if pod in node]        \n        for host in neighbors_in_pod:\n            x = int(host.split('-')[1])-1\n            allProbs[x] = podp\n\n        neighbors_in_edge = [node for node in usecase.graph.neighbors(list(usecase.graph.neighbors(talker))[0]) if (node in allhosts) and (node!=talker)]\n        for host in neighbors_in_edge:\n            x = int(host.split('-')[1])-1\n            allProbs[x] = edgep\n\n        x = int(talker.split('-')[1])-1\n        if hotspot['active']:# in case hotspoting is combined with staggering\n            allProbs[list(prevchosen)] *= hotspot['increase_factor']\n\n        tmp_hosts = allhosts[:x]+allhosts[x+1:]\n        tmp_probabilities = allProbs[[int(plc.split('-')[1])-1 for plc in  tmp_hosts]] / np.sum(allProbs[[int(plc.split('-')[1])-1 for plc in  tmp_hosts]]) # to normalize\n        return np.random.choice(tmp_hosts, size=numpossplace*numlistenersperstr, p=tmp_probabilities, replace=False).reshape(numlistenersperstr, numpossplace)\n\n        '''choose randomly, uniformly'''\n    else: \n        x = int(talker.split('-')[1])-1\n        tmp_hosts = allhosts[:x]+allhosts[x+1:]\n        tmp_probabilities = allProbs[[int(plc.split('-')[1])-1 for plc in  tmp_hosts]] / np.sum(allProbs[[int(plc.split('-')[1])-1 for plc in  tmp_hosts]]) # to normalize\n        return np.random.choice(tmp_hosts, size=numpossplace*numlistenersperstr, p=tmp_probabilities, replace=False).reshape(numlistenersperstr, numpossplace)\n"
+  },
+  {
+    "name": "findAllPaths",
+    "class_name": "UsecaseGenerator()",
+    "signature": "def findAllPaths(cls, usecase, talkers=None, listeners=None):",
+    "docstring": "Finds all simple paths between every eligible talker-listener pair in the use-case graph. Returns a dict keyed by (talker, listener) tuples whose values are path generators produced by networkx all_simple_paths. Optionally restricts talkers and listeners to provided node lists.",
+    "parameters": [
+      {
+        "name": "cls",
+        "default": null
+      },
+      {
+        "name": "usecase",
+        "default": null
+      },
+      {
+        "name": "talkers",
+        "default": null
+      },
+      {
+        "name": "listeners",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def findAllPaths(cls, usecase, talkers=None, listeners=None):\n    allPaths = {} # dict of paths generators indexed by src-dest pair\n    eligibleTalkers = [node for node in usecase.graph.nodes if node.startswith('host')]\n    eligibleListeners = [node for node in usecase.graph.nodes if node.startswith('host')]\n    # check list of talkers\n    if talkers!=None:\n        eligibleTalkers = [node for node in talkers if node in eligibleTalkers]\n    # check list of listeners\n    if listeners!=None:\n        flat_listeners = [item for sublist in listeners for item in sublist]\n        eligibleListeners = [node for node in flat_listeners if node in eligibleListeners]\n\n    for nd in itertools.product(*[eligibleTalkers,eligibleListeners]):\n        pathsGen = nx.all_simple_paths(usecase.graph, nd[0], nd[1])  \n        allPaths[nd] = pathsGen\n    return allPaths \n"
+  },
+  {
+    "name": "shortestPath",
+    "class_name": "UsecaseGenerator()",
+    "signature": "def shortestPath(cls, stream, usecase):",
+    "docstring": "Assigns the shortest path between each talker-listener pair to a stream. For each path it encodes hops as sourcePort strings, checks latency and period feasibility, adjusting the stream interval if necessary, and sets stream['pathLists'] with the valid paths.",
+    "parameters": [
+      {
+        "name": "cls",
+        "default": null
+      },
+      {
+        "name": "stream",
+        "default": null
+      },
+      {
+        "name": "usecase",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def shortestPath(cls, stream, usecase):\n    paths = []\n    period_range = range(*ast.literal_eval(str(usecase.config.get('streams_config', 'period_range'))).values())\n    shortestPaths = [nx.shortest_path(usecase.graph,pair[0],pair[1]) for pair in itertools.product(*[stream['tlkrPssblPlcmnt'],[item for sublist in stream['lstnsrPssblPlcmnt'] for item in sublist]])]\n\n    for path in shortestPaths:\n        for hop in range(len(path)-1):\n            if usecase.graph.is_directed():\n                path[hop] = usecase.graph.get_edge_data(path[hop], path[hop+1])['sourcePort']\n            else:\n                path[hop] = path[hop]+'.'+usecase.graph._adj[path[hop]][path[hop+1]][path[hop]]\n\n        if cls.pathConvenient(path, stream['maxLatency'], stream['maxFramesPerInterval'], stream['maxFrameSize'], usecase):\n            paths.append(path)\n\n        ##check convenience of period for the given (numFrames*dataSize), that the talker have enough time to transmit in every cycle\n        cycle = stream['interval']\n        while not cls.periodConvenient(path, cycle,stream['maxFramesPerInterval'],stream['maxFrameSize'], usecase):\n            cycle = max(stream['interval'], int(random.choice(period_range)*1000)) # to make it in nanosecond\n        stream['interval'] = cycle\n        stream['latest-transmit-offset'] = cycle//2\n    stream['pathLists'] = paths\n    return stream\n"
+  },
+  {
+    "name": "randomPath",
+    "class_name": "UsecaseGenerator()",
+    "signature": "def randomPath(cls, stream, usecase):",
+    "docstring": "Assigns a randomly selected feasible path to a stream for each listener. Shuffles candidate paths per talker-listener pair, picks paths that satisfy latency and period constraints, avoids duplicate listener assignments, and stores the selected paths in stream['pathLists'].",
+    "parameters": [
+      {
+        "name": "cls",
+        "default": null
+      },
+      {
+        "name": "stream",
+        "default": null
+      },
+      {
+        "name": "usecase",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def randomPath (cls, stream, usecase):\n    chosenListeners=[]\n    paths = []\n\n    flat_listeners = [item for sublist in stream['lstnsrPssblPlcmnt'] for item in sublist]\n    allPathsList = [list(nx.all_simple_paths(usecase.graph, pair[0], pair[1])) \n                   for pair in itertools.product(*[stream['tlkrPssblPlcmnt'], flat_listeners])\n                  ]\n\n    # Shuffle the paths for each (talker, listener) pair to get randomness\n    for paths_per_pair in allPathsList:\n        random.shuffle(paths_per_pair)\n\n    period_range = range(*ast.literal_eval(usecase.config.get('streams_config', 'period_range')).values())\n\n    while allPathsList:\n        idx = random.randrange(len(allPathsList))\n        candidate_paths = allPathsList[idx]\n        if not candidate_paths:\n            allPathsList.pop(idx)\n            continue\n\n        # Pick and remove a random path from the shuffled sublist\n        path = random.choice(candidate_paths)\n        candidate_paths.remove(path)\n        # path = candidate_paths.pop()\n        if path[-1] in chosenListeners:\n            continue  # Listener already assigned to a path; try another\n\n        for hop in range(len(path)-1):\n            if usecase.graph.is_directed():\n                path[hop] = usecase.graph.get_edge_data(path[hop], path[hop+1])['sourcePort']\n            else:\n                path[hop] = path[hop]+'.'+usecase.graph._adj[path[hop]][path[hop+1]][path[hop]]\n\n        if cls.pathConvenient(path, stream['maxLatency'], stream['maxFramesPerInterval'], stream['maxFrameSize'], usecase):\n            paths.append(path)\n            chosenListeners.append(path[-1])\n\n        if len(chosenListeners) >= len(stream['lstnsrPssblPlcmnt']):\n            break\n\n        ##check convenience of period for the given (numFrames*dataSize), that the talker have enough time to transmit in every cycle\n        cycle = stream['interval']\n        while not cls.periodConvenient(path, cycle,stream['maxFramesPerInterval'],stream['maxFrameSize'], usecase):\n            cycle = max(stream['interval'], int(random.choice(period_range)*1000)) # to make it in nanosecond\n        stream['interval'] = cycle\n        stream['latest-transmit-offset'] = cycle//2\n\n    stream['pathLists'] = paths\n    stream['lstnsrPssblPlcmnt'] = [chosenListeners]\n\n    return stream\n"
+  },
+  {
+    "name": "pathConvenient",
+    "class_name": "UsecaseGenerator()",
+    "signature": "def pathConvenient(cls, pathList, maxLatency, maxFramesPerInterval, maxFrameSize, usecase):",
+    "docstring": "Checks whether the minimum possible end-to-end latency along a path is below the stream's maxLatency. Computes transmission and propagation delays hop by hop and returns True if the path is feasible.",
+    "parameters": [
+      {
+        "name": "cls",
+        "default": null
+      },
+      {
+        "name": "pathList",
+        "default": null
+      },
+      {
+        "name": "maxLatency",
+        "default": null
+      },
+      {
+        "name": "maxFramesPerInterval",
+        "default": null
+      },
+      {
+        "name": "maxFrameSize",
+        "default": null
+      },
+      {
+        "name": "usecase",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def pathConvenient (cls, pathList, maxLatency, maxFramesPerInterval, maxFrameSize, usecase):\n    dataSize = maxFramesPerInterval*maxFrameSize*8 #size in bits\n    minLatency = 0 # minimum possible latency\n    for idx, hop in enumerate(pathList[:-1]):\n        node = hop.split('.')[0]\n        port = hop.split('.')[1]\n        nextNode = pathList[idx+1].split('.')[0]\n        #port = possibleEgress(node, G)[nextNode]\n        transDelay = dataSize/usecase.graph.nodes[node]['ports'][port]['speed'] # need to consider the linkBw !!!!!\n        try:\n            minLatency += usecase.graph.get_edge_data(node,nextNode)['propDelay']+ transDelay + usecase.graph.nodes[node]['procDelay']\n        except:\n            pass\n    return maxLatency > minLatency\n"
+  },
+  {
+    "name": "periodConvenient",
+    "class_name": "UsecaseGenerator()",
+    "signature": "def periodConvenient(cls, pathList, cycle, maxFramesPerInterval, maxFrameSize, usecase):",
+    "docstring": "Checks whether the stream's cycle period is long enough for the talker to transmit the full frame on each hop. Iterates over path hops and returns False as soon as the transmission delay exceeds the cycle.",
+    "parameters": [
+      {
+        "name": "cls",
+        "default": null
+      },
+      {
+        "name": "pathList",
+        "default": null
+      },
+      {
+        "name": "cycle",
+        "default": null
+      },
+      {
+        "name": "maxFramesPerInterval",
+        "default": null
+      },
+      {
+        "name": "maxFrameSize",
+        "default": null
+      },
+      {
+        "name": "usecase",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def periodConvenient (cls, pathList, cycle, maxFramesPerInterval, maxFrameSize, usecase):\n    accepted = True\n    dataSize = maxFramesPerInterval*maxFrameSize*8 #size in bits\n    i = 0\n    while accepted:\n        nextNode = pathList[i+1].split('.')[0]\n        node = pathList[i].split('.')[0]\n        port = pathList[i].split('.')[1]\n        transDelay = dataSize/(usecase.graph.nodes[node]['ports'][port]['speed']/1000) #in [ns]  # need to consider the linkBw !!!!!\n        if transDelay > cycle: \n            accepted = False\n        elif i < len(pathList)-2:\n            i+=1  \n        else:\n            break\n    return accepted\n"
+  },
+  {
+    "name": "makeTopology",
+    "class_name": "UsecaseGenerator()",
+    "signature": "def makeTopology(cls, usecase):",
+    "docstring": "Builds a networkx graph topology according to the use-case config. Reads topology parameters (port speed, propagation delay, processing delay, link bandwidth, queue count), generates either a fat-tree or random graph, then assigns port and node metadata to every edge.",
+    "parameters": [
+      {
+        "name": "cls",
+        "default": null
+      },
+      {
+        "name": "usecase",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def makeTopology(cls, usecase):\n     # read default topology config\n    portSpeed  = usecase.config.getint('topology_config', 'portspeed') # mbps\n    propDelay = usecase.config.getint('topology_config', 'propdelay')\n    procDelay = usecase.config.getint('topology_config', 'procdelay') # us\n    linkBw = usecase.config.getint('topology_config', 'linkBw') # mbps\n    queueCountPerPort = usecase.config.getint('topology_config', 'queuecountperport')\n\n    graphConfig = ast.literal_eval(usecase.config.get('topology_config', 'graphconfig'))\n    graphType = graphConfig['typ'].replace(\"'\", '')\n\n    ## generate graph\n    if graphType == 'ft':\n        #print('generating fat-tree graph...')\n        graph = cls.k_ary_fat_tree(graphConfig['k'])\n    else:\n        graph = cls.makeRandomGraph(usecase)\n\n    # add port information to graph\n    for node, successors in graph._adj.items():\n        portName = 1 \n        graph.nodes[node]['ports'] = {}\n        graph.nodes[node]['type'] = 'host'\n        for succ in successors:\n            if node not in graph._adj[succ]: # this is needed for directed graphs\n                graph._adj[succ][node]={}\n            if succ not in graph._adj[node]: # this is needed for directed graphs\n                graph._adj[node][succ]={}\n\n            UsecaseGenerator.set_link_data(graph, \n                                           node, \n                                           succ, \n                                           portName, \n                                           propDelay, \n                                           linkBw, \n                                           portSpeed, \n                                           queueCountPerPort)\n\n            # graph._adj[succ][node]['sourceNode']=succ\n            # graph._adj[succ][node]['destNode']=node\n            # graph._adj[succ][node]['destPort']=node+'.Port'+str(portName)\n            # graph._adj[node][succ]['sourcePort']=node+'.Port'+str(portName)\n            # graph._adj[succ][node]['propDelay']= propDelay\n            # graph._adj[succ][node]['linkBw']= linkBw\n            # graph.nodes[node]['ports']['Port'+str(portName)]= {'name':'Port'+str(portName) ,'speed':portSpeed, 'queueCount':queueCountPerPort}\n            if portName > 1:\n                graph.nodes[node]['type'] = 'switch'\n                graph.nodes[node]['procDelay'] = procDelay*1000 # in [ns]\n\n            portName+=1\n    return graph\n"
+  },
+  {
+    "name": "set_link_data",
+    "class_name": "UsecaseGenerator()",
+    "signature": "def set_link_data(cls, graph, src, dst, portName, propDelay, linkBw, portSpeed, queueCountPerPort):",
+    "docstring": "Sets directional link and port attributes on a graph edge from src to dst. Assigns sourcePort, destPort, sourceNode, destNode, propagation delay, link bandwidth, and port metadata (speed, queue count) on both directed sides of the edge.",
+    "parameters": [
+      {
+        "name": "cls",
+        "default": null
+      },
+      {
+        "name": "graph",
+        "default": null
+      },
+      {
+        "name": "src",
+        "default": null
+      },
+      {
+        "name": "dst",
+        "default": null
+      },
+      {
+        "name": "portName",
+        "default": null
+      },
+      {
+        "name": "propDelay",
+        "default": null
+      },
+      {
+        "name": "linkBw",
+        "default": null
+      },
+      {
+        "name": "portSpeed",
+        "default": null
+      },
+      {
+        "name": "queueCountPerPort",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def set_link_data(cls, graph, src, dst, portName, propDelay, linkBw, portSpeed, queueCountPerPort):\n    graph._adj[dst][src]['sourceNode']=dst\n    graph._adj[dst][src]['destNode']=src\n    graph._adj[dst][src]['destPort']=src+'.Port'+str(portName)\n    graph._adj[src][dst]['sourcePort']=src+'.Port'+str(portName)\n    graph._adj[dst][src]['propDelay']= propDelay\n    graph._adj[dst][src]['linkBw']= linkBw\n    graph.nodes[src]['ports']['Port'+str(portName)]= {'name':'Port'+str(portName) ,'speed':portSpeed, 'queueCount':queueCountPerPort}\n"
+  },
+  {
+    "name": "k_ary_fat_tree",
+    "class_name": "UsecaseGenerator()",
+    "signature": "def k_ary_fat_tree(cls, k, directed=True):",
+    "docstring": "Generates a k-ary fat-tree topology as a networkx graph. Creates core, aggregation, and edge switches across k pods, connects them according to fat-tree wiring rules, and attaches k/2 hosts per edge switch. Returns a directed graph by default.",
+    "parameters": [
+      {
+        "name": "cls",
+        "default": null
+      },
+      {
+        "name": "k",
+        "default": null
+      },
+      {
+        "name": "directed",
+        "default": true
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def k_ary_fat_tree(cls, k, directed=True):\n    G = nx.Graph()\n\n    core_switches = [('switch-c%d'%i, {'type':'switch', 'layer':'core'}) for i in range(1, (k**2)//4+1)] \n    G.add_nodes_from(core_switches)\n\n    idx = 1\n    hosts = []\n    for pod in range(k):\n        # adding agg switchs of a pod\n        aggSwitches = [('switch-p%d-a%d'%(pod,i), {'type':'switch', 'layer':'aggregation'}) for i in range(1,1+k//2)]\n        G.add_nodes_from(aggSwitches)\n        # adding edge switchs of a pod\n        edgeSwitches = [('switch-p%d-e%d'%(pod,i), {'type':'switch', 'layer':'edge'}) for i in range(1,1+ math.ceil(k/2))]\n        G.add_nodes_from(edgeSwitches)\n        # connection within the pod\n        for s1, s2 in itertools.product(aggSwitches, edgeSwitches):\n            G.add_edge(s1[0], s2[0])\n        # insert hosts\n        hosts = []\n        for sw in (edgeSwitches):\n            hosts = [('host-%d-p%d'%(idx+i, pod), {'type':'host', 'layer':'end'}) for i in range(k//2)]\n            G.add_nodes_from(hosts)\n            for host in hosts:\n                G.add_edge(host[0], sw[0])\n            idx+=k//2                \n    # Connect core switches to aggregation switches\n    i=0\n    for sw, data in G.nodes(data=True):\n        if data['layer']=='aggregation': \n            for _ in range(math.ceil(k/2)):\n                core_switch = core_switches[i % ((k**2)//4)]\n                G.add_edge(sw, core_switch[0])\n                i+=1\n    if directed:\n        return G.to_directed()\n    else:\n        return G\n"
+  },
+  {
+    "name": "makeRandomGraph",
+    "class_name": "UsecaseGenerator()",
+    "signature": "def makeRandomGraph(cls, usecase, directed=True):",
+    "docstring": "Generates a random network topology (Waxman, Barabási-Albert, or Erdős-Rényi) of numSwitchs switches and numHosts hosts. Ensures minimum node degree per switch, relabels nodes, attaches hosts to random switches, and returns a directed graph.",
+    "parameters": [
+      {
+        "name": "cls",
+        "default": null
+      },
+      {
+        "name": "usecase",
+        "default": null
+      },
+      {
+        "name": "directed",
+        "default": true
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def makeRandomGraph(cls, usecase, directed=True):\n\n    numHosts = usecase.config.getint('topology_config', 'numhosts')\n    numSwitchs = usecase.config.getint('topology_config', 'numswitchs')\n    minnodedegreepersw = usecase.config.getint('topology_config', 'minnodedegreepersw') # minnumconnportpersw\n    graphConfig = ast.literal_eval(usecase.config.get('topology_config', 'graphconfig'))\n\n    typ = graphConfig['typ'].replace(\"'\", '')\n\n    # validate input\n    if numSwitchs==1:\n        typ ='er'\n    if graphConfig['minnodedegreepersw'] >= numSwitchs:\n        print('not enough switches to fulfill the condition on minnodedegreepersw, numSwitchs is increased to', minnodedegreepersw, ' + 1 !!')\n        numSwitchs = graphConfig['minnodedegreepersw'] + 1\n\n    # generate graph\n    try:\n        if typ == 'w':\n            #print('generating waxman graph...')\n            graph = nx.waxman_graph(numSwitchs)\n        if typ == 'ba':\n            #print('generating barabasi_albert graph...')\n            graph = nx.barabasi_albert_graph(numSwitchs, graphConfig['numEdgN'])\n        if typ == 'er':\n            #print('generating erdos_renyi graph...')\n            graph = nx.erdos_renyi_graph(numSwitchs, graphConfig['prob'])\n\n        # check and correct connection\n        if graph and numSwitchs>1: # graph with more than one switch\n            for node in graph.nodes():\n                if graph.degree(node) < graphConfig['minnodedegreepersw']:\n                    cls.changeDegree(node,graph,graphConfig['minnodedegreepersw'])\n        graph = graph.to_directed()\n        ## rename switches\n        mapping = {sw:'switch-'+str(sw) for sw in graph.nodes()}\n        nx.relabel_nodes(graph, mapping, copy=False)\n\n        ## generate hosts\n        switches = list(graph.nodes())[:-graphConfig['numCoreSwitches']]\n        for host in range(numHosts):\n            hostName = 'host-'+str(host)\n            graph.add_node(hostName)\n            # link it to a switch\n            switch = random.choice(switches)\n            graph.add_edge(hostName, switch)\n            graph.add_edge(switch, hostName) # to make it directed\n        if directed:\n            return graph.to_directed()\n        else:\n            return graph\n    except ValueError:\n        print('Graph generation failed!!')\n        return ValueError\n"
+  },
+  {
+    "name": "changeDegree",
+    "class_name": "UsecaseGenerator()",
+    "signature": "def changeDegree(cls, node, graph, newDegree):",
+    "docstring": "Adjusts the degree of a node in a graph to match newDegree. Adds edges to random non-neighbour nodes if the current degree is too low, or removes edges to random neighbours if it is too high.",
+    "parameters": [
+      {
+        "name": "cls",
+        "default": null
+      },
+      {
+        "name": "node",
+        "default": null
+      },
+      {
+        "name": "graph",
+        "default": null
+      },
+      {
+        "name": "newDegree",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def changeDegree (cls, node, graph, newDegree):\n    degree = graph.degree(node)\n    neighbors = [n for n in graph.neighbors(node)]\n    if newDegree > degree:\n        newNeighbors = random.choices([i for i in graph.nodes() if i not in neighbors+[node]], k=newDegree-degree)\n        for n in newNeighbors:\n            graph.add_edge(node, n)\n#        return graph\n    if newDegree < degree:\n        oldneighbors = random.choices(neighbors, k=degree-newDegree)\n        for n in oldneighbors:\n            graph.remove_edge(node, n)\n"
+  },
+  {
+    "name": "__init__",
+    "class_name": "Usecase()",
+    "signature": "def __init__(self, configFile, index=None, topology=None, streams=None, schedule=None):",
+    "docstring": "the charateristics of topology and streams are specified in the config file\nportSpeed [Mbps], linkbw [Mbps], propDelay [ns], procDelay [us], period[μs], \ndatasize[byte], maxLatency[ms]\n--> usecaseGenerator converts all timed values to ns\n\nTODO:            \n    * we can fix talkers and listeners and remove paths, but we can not add paths or make talker/listeners floating: embedding*() needs to be improved:\n    if numplacesTalker>len(tlkrPssblPlcmnt):\n        tlkrPssblPlcmnt+random.sample([host for host in hosts if host not in tlkrPssblPlcmnt], numplacesTalker-len(tlkrPssblPlcmnt))  \n    else: \n        tlkrPssblPlcmnt",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "configFile",
+        "default": null
+      },
+      {
+        "name": "index",
+        "default": null
+      },
+      {
+        "name": "topology",
+        "default": null
+      },
+      {
+        "name": "streams",
+        "default": null
+      },
+      {
+        "name": "schedule",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def __init__(self, configFile, index= None, topology=None, streams=None, schedule=None):\n    '''\n    the charateristics of topology and streams are specified in the config file\n    portSpeed [Mbps], linkbw [Mbps], propDelay [ns], procDelay [us], period[μs], \n    datasize[byte], maxLatency[ms]\n    --> usecaseGenerator converts all timed values to ns\n\n    TODO:            \n        * we can fix talkers and listeners and remove paths, but we can not add paths or make talker/listeners floating: embedding*() needs to be improved:\n        if numplacesTalker>len(tlkrPssblPlcmnt):\n            tlkrPssblPlcmnt+random.sample([host for host in hosts if host not in tlkrPssblPlcmnt], numplacesTalker-len(tlkrPssblPlcmnt))  \n        else: \n            tlkrPssblPlcmnt\n    '''\n    self.config = configparser.RawConfigParser(inline_comment_prefixes=\"#\", allow_no_value=True)\n    if configFile is not None:\n        self.config.read(configFile)\n    self.index = index\n    self.graph = topology.to_directed() if topology is not None else topology\n    self.streams = [] if streams is None else streams\n    self.schedule = schedule\n"
+  },
+  {
+    "name": "hosts",
+    "class_name": "Usecase()",
+    "signature": "def hosts(self):",
+    "docstring": "Property that returns a list of all host node names in the use-case graph, identified by the presence of 'host' in their name.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def hosts(self):\n    return [node for node in self.graph.nodes if 'host' in node]\n"
+  },
+  {
+    "name": "_frame_size",
+    "class_name": "Usecase()",
+    "signature": "def _frame_size(self, stream_idx):",
+    "docstring": "Compute the frame size in bits *with tolerance*.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "stream_idx",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def _frame_size(self, stream_idx):\n    \"\"\"\n    Compute the frame size in bits *with tolerance*.\n    \"\"\"\n    stream = self.streams[stream_idx]\n    return int(\n        stream[\"maxFramesPerInterval\"]\n        * stream[\"maxFrameSize\"]\n        * BYTE_2_BIT\n        * TOL # as a rate of the frame size\n    )\n"
+  },
+  {
+    "name": "window_length",
+    "class_name": "Usecase()",
+    "signature": "def window_length(self, stream_idx, port_name, eps=1e-09):",
+    "docstring": "Computes the transmission window length in nanoseconds for a stream on a given port. Divides the frame size in bits (with tolerance) by the port speed converted to bits-per-nanosecond.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "stream_idx",
+        "default": null
+      },
+      {
+        "name": "port_name",
+        "default": null
+      },
+      {
+        "name": "eps",
+        "default": 1e-09
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def window_length(self, stream_idx, port_name, eps = 1e-9):\n    frame_size = self._frame_size(stream_idx)\n    return frame_size / max(self.ports[port_name]['speed'] * MBPS_2_BPNS, eps)\n"
+  },
+  {
+    "name": "distance_to_hosts",
+    "class_name": "Usecase()",
+    "signature": "def distance_to_hosts(self):",
+    "docstring": "Returns: dict -> {host: {node: distance}}",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def distance_to_hosts(self):\n    \"\"\"\n    Returns: dict -> {host: {node: distance}}\n    \"\"\"\n    all_distances = {}\n\n    for host in self.hosts:\n        if host not in self.graph:\n            continue\n        dist = nx.single_source_dijkstra_path_length(self.graph, host)\n        all_distances[host] = dist\n\n    return all_distances\n"
+  },
+  {
+    "name": "switches",
+    "class_name": "Usecase()",
+    "signature": "def switches(self):",
+    "docstring": "Property that returns a list of all switch node names in the use-case graph, identified by the presence of 'switch' in their name.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def switches(self):\n    return [node for node in self.graph.nodes if 'switch' in node]\n"
+  },
+  {
+    "name": "links",
+    "class_name": "Usecase()",
+    "signature": "def links(self):",
+    "docstring": "Property that returns a list of all edge data dicts in the use-case graph, one entry per directed link.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def links(self):\n    return [d for _,_,d in self.graph.edges(data=True)]\n"
+  },
+  {
+    "name": "ports",
+    "class_name": "Usecase()",
+    "signature": "def ports(self):",
+    "docstring": "Property that returns a dict of all ports in the use-case graph keyed by port name. Each entry contains sourceNode, destPort, destNode, speed, queueCount, and nodeName, assembled from both edge data and node port attributes.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def ports(self):\n    ports = {}\n    for _, _, d in self.graph.edges(data=True):\n        ports[d['sourcePort']]={'sourceNode':d['sourceNode'],'destPort':d['destPort'], 'destNode':d['destNode']}\n    for node, data in self.graph.nodes(data=True):\n        for pname, pdata in data['ports'].items():   \n            ports[node+'.'+pname].update(name=node+'.'+pname, speed=pdata['speed'], queueCount=pdata['queueCount'],nodeName=node)\n    return ports\n"
+  },
+  {
+    "name": "port_name_id_mapping",
+    "class_name": "Usecase()",
+    "signature": "def port_name_id_mapping(self):",
+    "docstring": "name -> 1-based port id mapping. includes '' -> 0.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def port_name_id_mapping(self):\n    \"\"\"name -> 1-based port id mapping. includes '' -> 0.\"\"\"\n    port_name_to_id = {key: index for index, key in enumerate(self.ports.keys(), start=1)}\n    port_name_to_id[''] = 0\n    port_id_to_name = dict(enumerate(self.ports.keys(), start=1))\n    port_id_to_name[0] = ''\n    return port_name_to_id, port_id_to_name\n"
+  },
+  {
+    "name": "addSchedule",
+    "class_name": "Usecase()",
+    "signature": "def addSchedule(self, schedule):",
+    "docstring": "Attaches a Schedule object to the use case, updates the graph with schedule data, and updates stream data with port id mappings. The schedule is stored on self.schedule.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "schedule",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def addSchedule(self, schedule):\n    _, port_id_to_name = self.port_name_id_mapping\n    self.schedule = schedule\n    schedule.update_graph(self.graph, port_id_to_name)\n    schedule.update_streams(self.streams, self.ports, port_id_to_name)\n"
+  },
+  {
+    "name": "removeSchedule",
+    "class_name": "Usecase()",
+    "signature": "def removeSchedule(self):",
+    "docstring": "Removes the current schedule from the use case. Clears the schedule attribute and deletes 'schedule', 'basetime', and 'scheduleCycle' from all port data, as well as 'offset' and 'accLatency' from all stream dicts.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def removeSchedule(self):\n    self.schedule = None\n    for _ , node_data in self.graph.nodes(data=True):\n        for port, port_data in node_data['ports'].items():\n            if 'schedule' in port_data:\n                del port_data['schedule']\n            if 'basetime' in port_data:\n                del port_data['basetime']\n            if 'scheduleCycle' in port_data:\n                del port_data['scheduleCycle']\n\n    for stream in self.streams:\n        if 'offset' in stream:\n                del stream['offset']\n        if 'accLatency' in stream:\n                del stream['accLatency']\n"
+  },
+  {
+    "name": "addRouting",
+    "class_name": "Usecase()",
+    "signature": "def addRouting(self, overwrite_config=False):",
+    "docstring": "Adds path routing to all streams based on the current routing config. If numplacesTalker is 1 and fixPath is set, assigns either shortest or random paths to each stream using the UsecaseGenerator routing methods.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "overwrite_config",
+        "default": false
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def addRouting(self, overwrite_config=False):\n    numplacesTalker = self.config.getint('streams_config', 'numplacesTalker')\n    if numplacesTalker!=1:\n        return\n\n    routing = ast.literal_eval(self.config.get('streams_config', 'routing'))\n    if routing.get('fixPath', False) or overwrite_config:\n        routing['fixPath'] = True\n        self.config.set('streams_config', 'routing', str(routing))\n        for stream in self.streams:\n            if routing.get('shortestPath', False):\n                stream = UsecaseGenerator.shortestPath(stream, self)\n            else: # random\n                stream = UsecaseGenerator.randomPath(stream, self)\n"
+  },
+  {
+    "name": "removeRouting",
+    "class_name": "Usecase()",
+    "signature": "def removeRouting(self):",
+    "docstring": "Removes path routing from all streams by deleting the 'pathLists' key from each stream dict and setting fixPath to False in the routing config.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def removeRouting(self):\n    routing = ast.literal_eval(self.config.get('streams_config', 'routing'))\n    routing['fixPath'] = False\n    self.config.set('streams_config', 'routing', str(routing))\n    for stream in self.streams:\n        try:\n            del stream['pathLists']\n        except:\n            pass\n"
+  },
+  {
+    "name": "fixTalkers",
+    "class_name": "Usecase()",
+    "signature": "def fixTalkers(self):",
+    "docstring": "Reduces each stream's talker possible placements to a single randomly chosen host and sets numplacestalker to 1 in the config.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def fixTalkers(self):\n    self.config.set('streams_config','numplacestalker',1)\n    for stream in self.streams:\n        stream['tlkrPssblPlcmnt'] = [random.choice(stream['tlkrPssblPlcmnt'])]\n"
+  },
+  {
+    "name": "fixListeners",
+    "class_name": "Usecase()",
+    "signature": "def fixListeners(self):",
+    "docstring": "Reduces each stream's listener possible placements to a single randomly chosen host per listener group and sets numplaceslistener to 1 in the config.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def fixListeners(self):\n    self.config.set('streams_config','numplaceslistener',1)\n    for stream in self.streams:\n        stream['lstnsrPssblPlcmnt'] = [[random.choice(listener)] for listener in stream['lstnsrPssblPlcmnt']]\n"
+  },
+  {
+    "name": "remove_stream",
+    "class_name": "Usecase()",
+    "signature": "def remove_stream(self, stream_ids):",
+    "docstring": "Removes streams from the use case by their indices. Deletes each stream in stream_ids from self.streams.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "stream_ids",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def remove_stream(self, stream_ids):\n    for stream_id in stream_ids:\n        del self.streams[stream_id]\n"
+  },
+  {
+    "name": "add_stream",
+    "class_name": "Usecase()",
+    "signature": "def add_stream(self):",
+    "docstring": "Appends a newly generated stream to the use case's stream list using UsecaseGenerator.generateStream.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def add_stream(self):\n    self.streams.append(UsecaseGenerator.generateStream(len(self.streams), self))\n"
+  },
+  {
+    "name": "remove_link",
+    "class_name": "Usecase()",
+    "signature": "def remove_link(self, src, dst):",
+    "docstring": "Removes a directed edge between src and dst from the use-case graph. Silently ignores errors if the edge does not exist.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "src",
+        "default": null
+      },
+      {
+        "name": "dst",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def remove_link(self, src, dst):\n    try:\n        self.graph.remove_edge(src, dst)\n    except:\n        pass\n"
+  },
+  {
+    "name": "add_link",
+    "class_name": "Usecase()",
+    "signature": "def add_link(self, src, dst):",
+    "docstring": "Adds a directed edge between src and dst to the use-case graph and sets its port and link attributes according to the use-case topology config. Silently ignores errors.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "src",
+        "default": null
+      },
+      {
+        "name": "dst",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def add_link(self, src, dst):\n    try:\n        self.graph.add_edge(src, dst)\n\n        portName = self.graph.out_degree(src)+1\n        propDelay = self.config.getint('topology_config', 'propdelay')\n        linkBw = self.config.getint('topology_config', 'linkBw') # mbps\n        portSpeed  = self.config.getint('topology_config', 'portspeed') # mbps\n        queueCountPerPort = self.config.getint('topology_config', 'queuecountperport')\n        # update link data according to usecase config\n        UsecaseGenerator.set_link_data(graph, node, succ, portName, \n                                       propDelay, \n                                       linkBw, \n                                       portSpeed, \n                                       queueCountPerPort)\n    except:\n        pass\n"
+  },
+  {
+    "name": "to_file",
+    "class_name": "Usecase()",
+    "signature": "def to_file(self, jsnPath=None, ucFileName=None):",
+    "docstring": "Serialises the use case to a JSON file. Writes topology and stream data to jsnPath/ucFileName, defaulting to the current directory and a config-derived filename. Returns the filename used.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "jsnPath",
+        "default": null
+      },
+      {
+        "name": "ucFileName",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def to_file(self, jsnPath=None, ucFileName=None):\n\n    useCaseData = self.to_json()\n\n    if jsnPath is None:\n        jsnPath = './' \n    if ucFileName is None:\n        ucFileName = self.get_config()+'.json'\n    # export useCase\n    with open(jsnPath+ucFileName, 'w') as outfile:\n        json.dump(useCaseData, outfile, indent=4)\n\n    print('A usecase is saved under the name', ucFileName,'under the folder', jsnPath)\n    return ucFileName\n"
+  },
+  {
+    "name": "to_json",
+    "class_name": "Usecase()",
+    "signature": "def to_json(self):",
+    "docstring": "Serialises the use case to a Python dict containing topology (nodes and links) and streams. Returns the dict without the 'customGraph' key on stream entries.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def to_json(self):\n    usecase = self.topology2json()\n    usecase['streams'] = []\n    for stream in self.streams:\n        usecase['streams'].append({key: value for key, value in stream.items() if key!=\"customGraph\"})\n    usecase['index'] = self.index\n    return usecase\n"
+  },
+  {
+    "name": "topology2json",
+    "class_name": "Usecase()",
+    "signature": "def topology2json(self, source='sourcePort', target='destPort', name='name', key='key', linkSym='links', nodeSym='nodes'):",
+    "docstring": "this function adds ports attributes to the graph and export it to json\n!!! it changes the graph permanently !!!",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      },
+      {
+        "name": "source",
+        "default": "sourcePort"
+      },
+      {
+        "name": "target",
+        "default": "destPort"
+      },
+      {
+        "name": "name",
+        "default": "name"
+      },
+      {
+        "name": "key",
+        "default": "key"
+      },
+      {
+        "name": "linkSym",
+        "default": "links"
+      },
+      {
+        "name": "nodeSym",
+        "default": "nodes"
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def topology2json(self, source=\"sourcePort\", target=\"destPort\", name=\"name\", key=\"key\", linkSym=\"links\",nodeSym=\"nodes\"):\n    '''\n    this function adds ports attributes to the graph and export it to json\n    !!! it changes the graph permanently !!!\n    '''\n    if len({source, target, key}) < 3:\n        raise nx.NetworkXError(\"Attribute names are not unique.\")\n    data = {nodeSym: \n            [dict([\n                ('type',self.graph.nodes[n]['type']),\n                (name, n),\n                ('ports',self.graph.nodes[n]['ports'])\n            ])for n in self.graph if self.graph.nodes[n]['type']=='host'] + \n            [dict([\n                ('type',self.graph.nodes[n]['type']),\n                (name, n),\n                ('procDelay', self.graph.nodes[n]['procDelay']),\n                ('ports',self.graph.nodes[n]['ports'])\n            ])for n in self.graph if self.graph.nodes[n]['type']=='switch'],\n\n            linkSym: [d for _,_,d in self.graph.edges(data=True)]\n            #[dict([(source, d[source]), (target, d[target]), ('sourceNode', u), ('destNode', v), ('propDelay', d['propDelay']), ('linkBw', d['linkBw'])]) for u, v, d in self.graph.edges(data=True)]\n    }\n    return data\n"
+  },
+  {
+    "name": "from_json",
+    "class_name": "Usecase()",
+    "signature": "def from_json(cls, impUC):",
+    "docstring": "Class method that reconstructs a Usecase instance from a previously exported JSON dict. Rebuilds the directed graph, restores streams, guesses the config from the data, and compiles the associated Schedule object.",
+    "parameters": [
+      {
+        "name": "cls",
+        "default": null
+      },
+      {
+        "name": "impUC",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def from_json(cls, impUC):\n    # Build graph\n    G = nx.DiGraph()\n    ## add nodes\n    G.add_nodes_from([(node['name'], node) for node in impUC['nodes']])\n    ## add edges\n    G.add_edges_from([(link['sourceNode'], \n                       link['destNode'],\n                       {'sourcePort':link['sourcePort'],\n                        'destPort':link['destPort'],\n                        'sourceNode':link['sourceNode'],\n                        'destNode':link['destNode'],\n                        'propDelay':link['propDelay'],\n                        'linkBw':link['linkBw'],}) \n                      for link in impUC['links']])\n\n    ucc = Usecase(configFile=None, index=impUC['index'], topology=G, streams=impUC['streams'])\n    ucc.config = Usecase.guess_config(impUC)\n    # ompile the schedule object\n    port_name_to_id, _ = self.port_name_id_mapping\n    ucc.schedule = Schedule.from_usecase(ucc, port_name_to_id)\n    return ucc\n"
+  },
+  {
+    "name": "guess_config",
+    "class_name": "Usecase()",
+    "signature": "def guess_config(cls, impUC):",
+    "docstring": "Class method that reconstructs a RawConfigParser config object from an imported use-case JSON dict. Infers topology parameters (hosts, switches, port speed, delays) and stream parameters (period, frame count, data size, latency, routing) from the data.",
+    "parameters": [
+      {
+        "name": "cls",
+        "default": null
+      },
+      {
+        "name": "impUC",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def guess_config(cls, impUC):\n    config = configparser.RawConfigParser(inline_comment_prefixes=\"#\", allow_no_value=True)\n\n    streams = impUC['streams']\n    _streams ={}\n    for d in streams:\n        for key, value in d.items():\n            try:\n                _streams[key].append(value)\n            except:\n                _streams[key] = []\n                _streams[key].append(value)\n    nodes = impUC['nodes']\n    links = impUC['links']\n    switches = [node for node in nodes if node['type']=='switch']\n    randomNode = next(iter(nodes[0]['ports'].values()))\n\n    config.add_section('topology_config')\n    config.set('topology_config','numhosts',len(nodes)-len(switches))\n    config.set('topology_config','numswitchs',len(switches))\n    config.set('topology_config','portspeed',randomNode['speed'])\n    config.set('topology_config','procdelay', switches[0]['procDelay']/1000)# make it in us\n    config.set('topology_config','propdelay',links[0]['propDelay'])\n    config.set('topology_config','linkBw', links[0]['linkBw'])\n    config.set('topology_config','queuecountperport', randomNode['queueCount'])\n    config.set('topology_config', 'graphconfig' ,\"{'typ':'imported'}\")\n\n    config.add_section('streams_config')\n    config.set('streams_config','numofstreamsperinstance', len(streams))\n    #config.set('streams_config','maxstrpernode',)\n    config.set('streams_config','period_range', {'start':min(_streams['interval'])//1000,'stop':max(_streams['interval'])//1000})# make it in us\n    config.set('streams_config','numberframes_range', {'start':min(_streams['maxFramesPerInterval']),'stop':max(_streams['maxFramesPerInterval'])})\n    config.set('streams_config','datasize_range', {'start':min(_streams['maxFrameSize']),'stop':min(_streams['maxFrameSize'])})\n    config.set('streams_config','maxlatency_range', ','.join(set(str(val/1000000) for val in _streams['maxLatency']))) # make it in ms\n    config.set('streams_config','numplacestalker',len(streams[0]['tlkrPssblPlcmnt']))\n    config.set('streams_config','numplaceslistener',len(streams[0]['lstnsrPssblPlcmnt'][0]))\n    config.set('streams_config','numlistenersperstr', max([len(l) for lol in _streams['lstnsrPssblPlcmnt'] for l in lol]))\n    config.set('streams_config','routing',{'fixPath':'pathLists' in _streams})\n    #config.set('streams_config','stride',)\n    #config.set('streams_config','staggered',)\n    #config.set('streams_config','hotspot',)\n    return config\n"
+  },
+  {
+    "name": "get_config",
+    "class_name": "Usecase()",
+    "signature": "def get_config(self):",
+    "docstring": "Builds and returns a compact string representation of the use-case configuration, encoding topology type, port speed, delays, link bandwidth, queue count, stream count, talker/listener placement counts, routing flags, and range parameters.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def get_config(self):\n\n    configstr = ''\n    #topology config\n    graphConfig = ast.literal_eval(self.config.get('topology_config', 'graphconfig'))\n    if graphConfig[\"typ\"] == 'ft': # typ\n        configstr = 'ft'+'-'+str(graphConfig['k'])+'-'\n    else: \n        for _, value in graphConfig.items():\n            configstr+=str(value)+'-'\n        configstr+=str(self.config.getint('topology_config', 'numhosts'))+'-'\n        configstr+=str(self.config.getint('topology_config', 'numswitchs'))+'-'\n    configstr += str(self.config.getint('topology_config', 'portspeed'))+'-'\n    configstr += str(self.config.getint('topology_config', 'propdelay'))+'-'\n    configstr += str(self.config.getint('topology_config', 'procdelay'))+'-'\n    configstr += str(self.config.getint('topology_config', 'linkBw'))+'-'\n    configstr += str(self.config.getint('topology_config', 'queuecountperport'))+'|'\n\n    # traffic config\n    configstr += str(self.config.getint('streams_config', 'numofstreamsperinstance')) + \"-\"\n    configstr += str(self.config.getint('streams_config', 'numplacesTalker')) + \"-\" # numplacesTalker\n    configstr += str(self.config.getint('streams_config', 'numplacesListener')) + \"-\" # numplacesListener \n    configstr += str(self.config.getint('streams_config', 'numlistenersperstr')) + \"-\" # numlistenersperstr \n    for param in ['routing','stride','staggered','hotspot']: # routing/taskConfig\n        try:\n            config = ast.literal_eval(str(self.config.get('streams_config', param)))\n            for _, value in config.items():\n                configstr+=str(value)+'-'\n        except:\n            pass\n    configstr += str(range(*ast.literal_eval(str(self.config.get('streams_config', 'period_range'))).values())) + \"-\" # period_range\n    configstr += str(range(*ast.literal_eval(str(self.config.get('streams_config', 'numberframes_range'))).values())) + \"-\" # numberframes_range\n    configstr += str(range(*ast.literal_eval(str(self.config.get('streams_config', 'dataSize_range'))).values())) + \"-\" # datasize_range\n    configstr += str([float(i) for i in self.config.get(\"streams_config\",\"maxlatency_range\").split(',')]) + \"|\" # maxlatency_range\n    # generation = ast.literal_eval(instance.config.get('streams_config', 'generation'))\n    # configstr += str(generation['incremental'])+ \"-\"\n    return configstr.rstrip(\"|\")\n"
+  },
+  {
+    "name": "generate_fattree_regions",
+    "class_name": "Usecase()",
+    "signature": "def generate_fattree_regions(k: int) -> list[list[str]]:",
+    "docstring": "Generate non-overlapping, topology-aware regions for a k-ary Fat-Tree network.\n\nRegions:\n  - Region 0: all core switches\n  - Region i>0: aggregation + edge switches of pod i-1\n\nNaming conventions (consistent with k_ary_fat_tree):\n  Core:          switch-c{1..(k^2)//4}\n  Aggregation:   switch-p{pod}-a{1..k//2}\n  Edge:          switch-p{pod}-e{1..ceil(k/2)}",
+    "parameters": [
+      {
+        "name": "k",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def generate_fattree_regions(k: int) -> list[list[str]]:\n    \"\"\"\n    Generate non-overlapping, topology-aware regions for a k-ary Fat-Tree network.\n\n    Regions:\n      - Region 0: all core switches\n      - Region i>0: aggregation + edge switches of pod i-1\n\n    Naming conventions (consistent with k_ary_fat_tree):\n      Core:          switch-c{1..(k^2)//4}\n      Aggregation:   switch-p{pod}-a{1..k//2}\n      Edge:          switch-p{pod}-e{1..ceil(k/2)}\n    \"\"\"\n    import math\n\n    regions = []\n\n    # --- Core region ---\n    n_core = (k ** 2) // 4\n    core_switches = [f\"switch-c{i}\" for i in range(1, n_core + 1)]\n    regions.append(core_switches)\n\n    # --- One region per pod (aggregation + edge) ---\n    for pod in range(k):\n        pod_switches = []\n        n_agg = k // 2\n        n_edge = math.ceil(k / 2)\n\n        pod_switches += [f\"switch-p{pod}-a{i}\" for i in range(1, n_agg + 1)]\n        pod_switches += [f\"switch-p{pod}-e{i}\" for i in range(1, n_edge + 1)]\n\n        regions.append(pod_switches)\n\n    return regions\n"
+  },
+  {
+    "name": "drawTopology",
+    "class_name": "Usecase()",
+    "signature": "def drawTopology(self):",
+    "docstring": "Renders the use-case network topology using matplotlib. Positions nodes by layer for fat-tree and imported topologies, or falls back to a default networkx layout for other graph types.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def drawTopology(self): \n\n    plt.figure(1, figsize=(20, 8), dpi=60)\n\n    positions = {}\n    layers = {'core':3, 'aggregation':2, 'edge':1, 'end':0}\n    layer_spacing = 1.0  # Adjust the spacing between layers\n    xx = {'core':115, 'aggregation':75, 'edge':75, 'end':0}\n\n    graphConfig = ast.literal_eval(self.config.get('topology_config', 'graphconfig'))\n    graphType = graphConfig['typ'].replace(\"'\", '')\n    if graphType == 'ft':\n        for node, data in self.graph.nodes(data=True):\n            y = layers[data['layer']]\n            x = xx[data['layer']]\n            xx[data['layer']]+=20\n            positions[node]=(x,y)\n        pos = nx.multipartite_layout(self.graph, subset_key='layer', align='horizontal')\n        # Draw the graph with adjusted spacing\n        nx.draw(self.graph, pos=positions, with_labels=True, font_size=10)\n    elif graphType == 'imported':\n        try:\n            for node in self.graph.nodes():\n                if '-c' in node:\n                    layer = 'core'\n                elif '-a' in node:\n                    layer = 'aggregation'\n                elif '-e' in node:\n                    layer = 'edge'\n                else:\n                    layer = 'end'\n                self.graph.nodes[node]['layer']=layer\n                y = layers[layer]\n                x = xx[layer]\n                xx[layer]+=20\n                positions[node]=(x,y)\n            pos = nx.multipartite_layout(self.graph, subset_key='layer', align='horizontal')\n            # Draw the graph with adjusted spacing\n            nx.draw(self.graph, pos=positions, with_labels=True, font_size=10)\n        except:\n            nx.draw(self.graph, with_labels = True, font_size=10)\n    else:\n        nx.draw(self.graph, with_labels = True, font_size=10)\n"
+  },
+  {
+    "name": "test_add",
+    "class_name": "TestUsecaseGenerator()",
+    "signature": "def test_add(self):",
+    "docstring": "Unit test that asserts 1 + 2 equals 3. Placeholder test to verify the test framework is operational.",
+    "parameters": [
+      {
+        "name": "self",
+        "default": null
+      }
+    ],
+    "module": "usecase_generator.py",
+    "code": "def test_add(self):\n    self.assertEqual(1+2, 3)\n"
+  }
+]
