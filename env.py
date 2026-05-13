@@ -72,7 +72,7 @@ class TSNCandidatePathEnv(gym.Env):
         max_steps: int = 30,
         max_hops: Optional[int] = None,
         init_from_usecase_schedule: bool = True,
-        include_current_offset_candidate: bool = True,
+        include_current_offset_candidate: bool = False,
         per_hop_candidate_limit: int = 3,
         beam_width: Optional[int] = None,
         defrag_cycle_penalty: float = 0.05,
@@ -140,6 +140,7 @@ class TSNCandidatePathEnv(gym.Env):
         self.episode_violation_sum = 0
         self.episode_decision_points = 0
         self.sim_steps_between_decisions = 0
+        self.pending_arrivals_after_decision = 0
 
         self.decision_stream_order: List[int] = []
         self.decision_pointer = 0
@@ -525,6 +526,13 @@ class TSNCandidatePathEnv(gym.Env):
         add(by_first[-1])                      # right-most
         add(by_first[len(by_first) // 2])      # middle
 
+        # Extra right-side candidates are useful because arrivals use first-fit.
+        # Moving streams later can free early space for future arrivals.
+        for c in reversed(by_first):
+            add(c)
+            if len(selected) >= min(max_candidates, 5):
+                break
+
         # 3) Fill remaining slots with best fragmentation-ranked candidates.
         for c in best_sorted:
             add(c)
@@ -886,7 +894,6 @@ class TSNCandidatePathEnv(gym.Env):
         for pidx in range(self.n_ports):
             port_id = pidx + 1
             threshold_ns = self._useless_gap_threshold_ns_for_port(port_id)
-            expected_dur_ns = self._expected_incoming_duration_ns_for_port(port_id)
             gaps = self._port_gaps(pidx)
 
             largest_hole_ns = max(largest_hole_ns, max(gaps) if gaps else 0.0)
@@ -895,8 +902,6 @@ class TSNCandidatePathEnv(gym.Env):
             total_gap_count += len(gaps)
             total_used_time += float(self.cycle_ns) - float(sum(gaps))
 
-            if expected_dur_ns > 0:
-                acceptance_count += sum(int(g // expected_dur_ns) for g in gaps)
 
         mean_util = total_used_time / max(1.0, float(self.n_ports * self.cycle_ns))
         return {
@@ -905,10 +910,244 @@ class TSNCandidatePathEnv(gym.Env):
             "total_useful_gaps": float(total_useful_gaps),
             "total_gap_count": float(total_gap_count),
             "mean_utilization": float(np.clip(mean_util, 0.0, 1.0)),
-            "acceptance_count": float(acceptance_count),
+            "acceptance_count": float(self._path_aware_acceptance_count()),
             "frss": float(self._fragmentation_rss2()),
             "fse": float(self._fragmentation_entropy()),
         }
+
+    def _merge_intervals(self, intervals):
+        cleaned = []
+
+        for a, b in intervals:
+            a = max(0.0, float(a))
+            b = min(float(self.cycle_ns), float(b))
+
+            if b > a:
+                cleaned.append((a, b))
+
+        if not cleaned:
+            return []
+
+        cleaned.sort(key=lambda x: x[0])
+        merged = [cleaned[0]]
+
+        for a, b in cleaned[1:]:
+            last_a, last_b = merged[-1]
+
+            if a <= last_b:
+                merged[-1] = (last_a, max(last_b, b))
+            else:
+                merged.append((a, b))
+
+        return merged
+
+    def _intersect_interval_sets(self, A, B):
+        A = self._merge_intervals(A)
+        B = self._merge_intervals(B)
+
+        i = 0
+        j = 0
+        out = []
+
+        while i < len(A) and j < len(B):
+            a1, a2 = A[i]
+            b1, b2 = B[j]
+
+            left = max(a1, b1)
+            right = min(a2, b2)
+
+            if right > left:
+                out.append((left, right))
+
+            if a2 < b2:
+                i += 1
+            else:
+                j += 1
+
+        return out
+
+    def _future_path_templates(self):
+        """
+        Return unique path templates used to estimate future embeddability.
+
+        First version:
+        - use paths already present in stream_info
+        - remove duplicates
+        - ignore empty paths
+
+        Later, we can replace this with paths sampled from the network generator.
+        """
+        paths = []
+        seen = set()
+
+        for info in self.stream_info:
+            path = tuple(int(p) for p in info.get("path", []))
+
+            if not path:
+                continue
+
+            if path not in seen:
+                seen.add(path)
+                paths.append(list(path))
+
+        return paths
+
+    def _path_aligned_capacity_for_template(self, path):
+        """
+        Estimate how many expected future streams can be inserted on this path.
+
+        This is a fast no-wait aligned approximation:
+        if the first hop starts at t, hop k is assumed around:
+
+            t + cumulative_delay_to_hop_k
+
+        The result counts how many expected-sized streams fit in the aligned
+        feasible first-hop intervals.
+        """
+        path = [int(p) for p in path]
+
+        if not path:
+            return 0.0
+
+        feasible_first_hop_intervals = [(0.0, float(self.cycle_ns))]
+
+        cumulative_delay = 0.0
+
+        for hop_idx, port_id in enumerate(path):
+            expected_dur = float(self._expected_incoming_duration_ns_for_port(port_id))
+
+            pidx = int(port_id) - 1
+            gaps = self._port_gaps(pidx)
+
+            hop_valid_first_start_intervals = []
+
+            cursor = 0.0
+
+            # Convert gap lengths from _port_gaps() into absolute intervals.
+            slots = self._sorted_slots_on_port(pidx)
+
+            absolute_gaps = []
+            cursor = 0.0
+
+            for slot in slots:
+                st = float(slot.start_ns)
+                en = float(slot.end_ns)
+
+                if st > cursor:
+                    absolute_gaps.append((cursor, st))
+
+                cursor = max(cursor, en)
+
+            if cursor < float(self.cycle_ns):
+                absolute_gaps.append((cursor, float(self.cycle_ns)))
+
+            for gap_start, gap_end in absolute_gaps:
+                # On this hop, the future transmission must fit inside:
+                # [gap_start, gap_end]
+                #
+                # If first-hop start is t, this hop starts around:
+                # t + cumulative_delay
+                #
+                # Therefore:
+                # gap_start <= t + cumulative_delay
+                # t + cumulative_delay + expected_dur <= gap_end
+                #
+                # So:
+                # t >= gap_start - cumulative_delay
+                # t <= gap_end - expected_dur - cumulative_delay
+
+                first_start_min = float(gap_start) - float(cumulative_delay)
+                first_start_max = float(gap_end) - float(expected_dur) - float(cumulative_delay)
+
+                first_start_min = max(0.0, first_start_min)
+                first_start_max = min(float(self.cycle_ns), first_start_max)
+
+                if first_start_max > first_start_min:
+                    hop_valid_first_start_intervals.append(
+                        (first_start_min, first_start_max)
+                    )
+
+            feasible_first_hop_intervals = self._intersect_interval_sets(
+                feasible_first_hop_intervals,
+                hop_valid_first_start_intervals,
+            )
+
+            if not feasible_first_hop_intervals:
+                return 0.0
+
+            # Advance cumulative delay to next hop.
+            # We use existing stream_info hop delay statistics when possible.
+            if hop_idx < len(path) - 1:
+                delay = self._estimated_hop_delay_for_path(path, hop_idx)
+                cumulative_delay += float(delay)
+
+        first_port = int(path[0])
+        expected_first_dur = float(self._expected_incoming_duration_ns_for_port(first_port))
+
+        if expected_first_dur <= 0:
+            return 0.0
+
+        capacity = 0.0
+
+        for a, b in feasible_first_hop_intervals:
+            length = max(0.0, float(b) - float(a))
+            capacity += math.floor(length / expected_first_dur)
+
+        return float(capacity)
+
+    def _estimated_hop_delay_for_path(self, path, hop_idx):
+        """
+        Estimate delay between path[hop_idx] and path[hop_idx + 1].
+
+        First tries to reuse delays from existing streams with the same local hop.
+        Falls back to expected transmission duration on the current port.
+        """
+        path = [int(p) for p in path]
+
+        if hop_idx < 0 or hop_idx >= len(path) - 1:
+            return 0.0
+
+        p1 = int(path[hop_idx])
+        p2 = int(path[hop_idx + 1])
+
+        delays = []
+
+        for info in self.stream_info:
+            existing_path = [int(p) for p in info.get("path", [])]
+            hop_delays = list(info.get("hop_delays", []))
+
+            for k in range(len(existing_path) - 1):
+                if existing_path[k] == p1 and existing_path[k + 1] == p2:
+                    if k < len(hop_delays):
+                        delays.append(float(hop_delays[k]))
+
+        if delays:
+            return float(np.mean(delays))
+
+        return float(self._expected_incoming_duration_ns_for_port(p1))
+
+    def _path_aware_acceptance_count(self):
+        """
+        Path-aware embeddability score.
+
+        Higher means the current schedule has more aligned free space for
+        expected future streams across complete paths.
+
+        This is more TSN-relevant than counting free space independently per port.
+        """
+        paths = self._future_path_templates()
+
+        if not paths:
+            return 0.0
+
+        capacities = []
+
+        for path in paths:
+            cap = self._path_aligned_capacity_for_template(path)
+            capacities.append(float(cap))
+
+        # Mean keeps the scale stable even if the number of path templates changes.
+        return float(np.mean(capacities)) if capacities else 0.0
 
     def _stream_current_offset_vector(self, stream_id: int) -> List[int]:
         path = self._stream_path(stream_id)
@@ -1083,10 +1322,9 @@ class TSNCandidatePathEnv(gym.Env):
 
         Improvements over old version:
         - Generates candidates with richer hop starts from _candidate_start_set_for_stream_hop().
-        - Keeps the current/no-move candidate as the first candidate when available.
-            This gives action 1 a stable meaning:
-                action 0 = STOP
-                action 1 = current/no-move candidate
+        - Excludes the current/no-move candidate.
+            Action 0 already represents STOP / do not reconfigure.
+            Therefore, actions 1..K are real reallocation candidates only.
         - Selects diverse remaining candidates, so we avoid exposing five very
             similar left-biased candidates.
         """
@@ -1144,11 +1382,7 @@ class TSNCandidatePathEnv(gym.Env):
 
             partials = next_partials
 
-        # ------------------------------------------------------------
-        # Always include current/no-move offset vector if available
-        # ------------------------------------------------------------
-        if self.include_current_offset_candidate and current_offsets and len(current_offsets) == len(path):
-            partials.append(list(current_offsets))
+    
         right_fit_offsets = self._right_fit_offsets_for_stream(stream_id)
 
         if right_fit_offsets is not None and len(right_fit_offsets) == len(path):
@@ -1186,6 +1420,11 @@ class TSNCandidatePathEnv(gym.Env):
 
         for vec in unique_vecs:
 
+            vec_key = tuple(int(x) for x in vec)
+
+            if current_key is not None and vec_key == current_key:
+                continue
+
             eval_metrics = self._evaluate_candidate_metrics(stream_id, vec)
 
             if eval_metrics is None:
@@ -1193,11 +1432,8 @@ class TSNCandidatePathEnv(gym.Env):
 
             cuts = self._stream_cut_count(stream_id, offsets=vec)
 
-            vec_key = tuple(int(x) for x in vec)
 
-            if current_key is not None and vec_key == current_key:
-                source = "current"
-            elif right_fit_key is not None and vec_key == right_fit_key:
+            if right_fit_key is not None and vec_key == right_fit_key:
                 source = "right_fit"
             else:
                 source = "generated"
@@ -1266,10 +1502,7 @@ class TSNCandidatePathEnv(gym.Env):
 
         # Stable semantic:
         # action 0 = STOP
-        # action 1 = current/no-move candidate, when available
-        # action 2 = right-fit candidate, when available
-        if current_candidates:
-            final_candidates.append(current_candidates[0])
+        # action 1..K = real reallocation candidates only
 
         if right_fit_candidates:
             rk = tuple(int(x) for x in right_fit_candidates[0].offsets)
@@ -1391,15 +1624,15 @@ class TSNCandidatePathEnv(gym.Env):
     def _sample_arrivals(self) -> int:
         return int(self.rng_np.poisson(self.lambda_arrival))
 
-    def _process_arrivals(self) -> None:
-        sampled_arrivals = self._sample_arrivals()
-        if sampled_arrivals <= 0:
+    def _process_n_arrivals(self, n_arrivals: int) -> None:
+        n_arrivals = int(n_arrivals)
+        if n_arrivals <= 0:
             return
 
         self._sync_usecase_schedule()
         sched = self.usecase.schedule
 
-        for _ in range(sampled_arrivals):
+        for _ in range(n_arrivals):
             self.total_requests += 1
 
             raw_stream = generate_one_arrival_stream(
@@ -1422,8 +1655,6 @@ class TSNCandidatePathEnv(gym.Env):
                 self.blocked_requests += 1
                 continue
 
-            # New-stream placement using preserve-ID existing-stream placement.
-            # This replaces sched.place_stream_first_fit_fast(...).
             self.usecase.streams.append(copy.deepcopy(stream))
             self.problem.usecase = self.usecase
             self.problem.build_metadata()
@@ -1439,7 +1670,6 @@ class TSNCandidatePathEnv(gym.Env):
             )
 
             if not result.get("accepted"):
-                # Roll back stream definition if placement failed.
                 self.usecase.streams.pop()
                 self.problem.usecase = self.usecase
                 self.problem.build_metadata()
@@ -1453,8 +1683,24 @@ class TSNCandidatePathEnv(gym.Env):
                 self.blocked_requests += 1
 
             self._load_state_from_schedule(sched)
-    
+
+    def _process_arrivals(self) -> None:
+        # Trace-style arrival step: sample the number of arrivals once,
+        # then process exactly that many arrivals.
+        self._process_n_arrivals(self._sample_arrivals())
+
     def _advance_until_next_decision_point(self) -> bool:
+        """
+        Trace-style simulator.
+
+        Each trace step is:
+        1) advance time,
+        2) force exactly one departure if there is at least one active stream,
+        3) start one decision point,
+        4) process this step's sampled arrivals only after the decision point ends.
+
+        This replaces the old stochastic Binomial departure loop.
+        """
         while self.episode_decision_points < self.decision_points_per_episode:
             self.current_time += self.dt
             self.sim_steps_between_decisions += 1
@@ -1462,37 +1708,51 @@ class TSNCandidatePathEnv(gym.Env):
             self._sync_usecase_schedule()
             sched = self.usecase.schedule
             active_stream_ids = self._active_stream_ids()
-            n_active = len(active_stream_ids)
 
-            if n_active > 0:
-                n_dep = int(self.rng_np.binomial(n_active, self.p_dep))
-                if n_dep > 0:
-                    before_ids = list(active_stream_ids)
-                    sched.delete_streams(
-                        n_remove=n_dep,
-                        usecase=self.usecase,
-                        rng=self.rng_py,
-                        port_intervals=self.port_intervals,
-                        stream_arrival_times=self.stream_arrival_times,
-                    )
-                    self._load_state_from_schedule(sched)
-                    after_ids = self._active_stream_ids()
-                    for sid in self._removed_stream_ids(before_ids, after_ids):
-                        self.stream_arrival_times.pop(int(sid), None)
+            # If no active stream exists, no departure can be forced.
+            # Still process arrivals for this trace step and keep advancing.
+            if len(active_stream_ids) <= 0:
+                self._process_arrivals()
+                continue
 
-                    self.episode_decision_points += 1
-                    if self._begin_decision_point():
-                        return True
-                    continue
+            # Match trace generation: exactly one departure per decision step.
+            n_dep = 1
 
-            self._process_arrivals()
+            # Match trace timing: arrivals belong to this trace step,
+            # but are replayed after the defrag decision point finishes.
+            self.pending_arrivals_after_decision = self._sample_arrivals()
+
+            before_ids = list(active_stream_ids)
+            sched.delete_streams(
+                n_remove=n_dep,
+                usecase=self.usecase,
+                rng=self.rng_py,
+                port_intervals=self.port_intervals,
+                stream_arrival_times=self.stream_arrival_times,
+            )
+
+            self._load_state_from_schedule(sched)
+
+            after_ids = self._active_stream_ids()
+            for sid in self._removed_stream_ids(before_ids, after_ids):
+                self.stream_arrival_times.pop(int(sid), None)
+
+            self.episode_decision_points += 1
+
+            if self._begin_decision_point():
+                return True
+
+            # If no decision can be opened after the departure, still replay
+            # the arrivals attached to this trace step.
+            self._process_n_arrivals(self.pending_arrivals_after_decision)
+            self.pending_arrivals_after_decision = 0
 
         self.decision_active = False
         self.current_candidates = []
         return False
-    
+
     def _begin_decision_point(self) -> bool:
-        self.decision_stream_order = self._ordered_streams_by_candidate_potential()
+        self.decision_stream_order = self._ordered_streams_by_age()
         self.decision_pointer = 0
         self.in_defrag_cycle = False
 
@@ -1603,6 +1863,12 @@ class TSNCandidatePathEnv(gym.Env):
         self.decision_active = False
         self.in_defrag_cycle = False
         self.current_candidates = []
+
+        # Trace-style timing: replay arrivals only after the agent stops
+        # or after the current defrag cycle is exhausted.
+        self._process_n_arrivals(self.pending_arrivals_after_decision)
+        self.pending_arrivals_after_decision = 0
+
         has_next = self._advance_until_next_decision_point()
         terminated = not has_next
         truncated = bool(self.step_count >= self.max_steps)
@@ -1643,44 +1909,22 @@ class TSNCandidatePathEnv(gym.Env):
         reward = 0.0
 
 
-        # If action points to padded / nonexistent candidate, convert it to STOP
+        # If action points to padded / nonexistent candidate, match eval behavior:
+        # convert it to STOP instead of returning an invalid penalty.
         if action > 0:
             cand_idx = action - 1
             if cand_idx < 0 or cand_idx >= len(self.current_candidates):
-                invalid = True
-                self.episode_invalid_moves += 1
-                reward = -float(self.invalid_penalty)
-                
-                terminated = False
-                truncated = bool(self.step_count >= self.max_steps)
-
-                info = {
-                    "stop_action": False,
-                    "forced_to_stop": False,
-                    "invalid_move": True,
-                    "invalid_reason": "padded_action",
-                    "stream_id": current_stream_id,
-                    "chosen_offsets": None,
-                    "candidate_count": int(len(self.current_candidates)),
-                    "sbr": float(self._current_sbr()),
-                    "frss_before": float(before_metrics["frss"]),
-                    "frss_after": float(before_metrics["frss"]),
-                    "fse_before": float(before_metrics["fse"]),
-                    "fse_after": float(before_metrics["fse"]),
-                    "in_defrag_cycle_before": in_defrag_cycle_before,
-                    "in_defrag_cycle_after": bool(self.in_defrag_cycle),
-                    "step_count": int(self.step_count),
-                }
-
-                if truncated:
-                    info.update(self._terminal_info())
-
-                return self._get_obs(), float(reward), terminated, truncated, info
+                action = 0
+                forced_to_stop = True
 
         if action == 0:
             stop_action = True
+            self._backup_current_as_last_valid()
+            after_metrics = self._global_metrics()
             terminated, truncated = self._finish_decision_point_and_continue()
-            reward = 0.1 - self._current_sbr()
+
+            reward = 0.2 * (1 - self._current_sbr())
+
             info = {
                 "stop_action": True,
                 "forced_to_stop": bool(forced_to_stop),
@@ -1690,12 +1934,17 @@ class TSNCandidatePathEnv(gym.Env):
                 "candidate_count": int(len(self.current_candidates)),
                 "sbr": float(self._current_sbr()),
                 "frss_before": float(before_metrics["frss"]),
-                "frss_after": float(before_metrics["frss"]),
+                "frss_after": float(after_metrics["frss"]),
                 "fse_before": float(before_metrics["fse"]),
-                "fse_after": float(before_metrics["fse"]),
+                "fse_after": float(after_metrics["fse"]),
                 "in_defrag_cycle_before": in_defrag_cycle_before,
                 "in_defrag_cycle_after": bool(self.in_defrag_cycle),
                 "step_count": int(self.step_count),
+                "acceptance_before": float(before_metrics["acceptance_count"]),
+                "acceptance_after": float(after_metrics["acceptance_count"]),
+                "delta_acceptance": float(after_metrics["acceptance_count"] - before_metrics["acceptance_count"]),
+                "delta_frss": float(after_metrics["frss"] - before_metrics["frss"]),
+                "reward": float(reward),
             }
             if terminated or truncated:
                 info.update(self._terminal_info())
@@ -1729,19 +1978,17 @@ class TSNCandidatePathEnv(gym.Env):
                 self._backup_current_as_last_valid()
                 after_metrics = self._global_metrics()
                 delta_frss = after_metrics["frss"] - before_metrics["frss"]
-                frss_improvement = max(0.0, float(delta_frss))
+                delta_acceptance = after_metrics["acceptance_count"] - before_metrics["acceptance_count"]
+                r_acc = np.clip(delta_acceptance / 1.0, -1.0, 1.0)
+                r_frss = np.clip(delta_frss / 0.0055, -1.0, 1.0)
 
-                frag_reward = math.log10(1.0 + 100.0 * frss_improvement) / 2.0
-                reward = frag_reward
-                reward -= float(self.reallocation_penalty)
+                reward = 0.7 * r_acc + 0.3 * r_frss
+                reward -= self.reallocation_penalty
 
                 if not self.in_defrag_cycle:
                     self.in_defrag_cycle = True
                     self.episode_defrag_cycles += 1
-                    if self._current_sbr() == 0.0:
-                        reward = 1.0 - float(self.defrag_cycle_penalty)
-                    else:
-                        reward = -math.log10(self._current_sbr())/3.0 - float(self.reallocation_penalty) - float(self.defrag_cycle_penalty)
+                    reward -= self.defrag_cycle_penalty
 
         terminated = False
         truncated = bool(self.step_count >= self.max_steps)
@@ -1777,6 +2024,11 @@ class TSNCandidatePathEnv(gym.Env):
             "step_count": int(self.step_count),
             "focus_stream_id": int(self.focus.stream_id) if self.decision_stream_order else -1,
             "decision_points_seen": int(self.episode_decision_points),
+            "acceptance_before": float(before_metrics["acceptance_count"]),
+            "acceptance_after": float(after_metrics["acceptance_count"]),
+            "delta_acceptance": float(after_metrics["acceptance_count"] - before_metrics["acceptance_count"]),
+            "delta_frss": float(after_metrics["frss"] - before_metrics["frss"]),
+            "reward": float(reward),
         }
         if terminated or truncated:
             info.update(self._terminal_info())
