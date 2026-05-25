@@ -11,6 +11,15 @@ from stable_baselines3.common.monitor import Monitor
 from env import TSNCandidatePathEnv
 from tsn_scheduling_problem import TSNScheduling
 
+DEFAULT_ED_ED_SETTINGS = {
+    "packet_sizes": [128, 256, 512],
+    "periods": [100000, 150000, 300000],
+    "latency_factors": [0.7, 0.8, 0.9, 1.0],
+    "priorities": [1],
+    "gammas": [1.0],
+    "jitter_factors": [0.0, 0.2, 0.5],
+}
+
 
 class SaveBestMeanRewardCallback(BaseCallback):
     def __init__(self, save_path: str, verbose: int = 1):
@@ -125,8 +134,13 @@ def make_env(args):
         mu_departure=args.mu_departure,
         dt=args.dt,
         decision_points_per_episode=args.decision_points_per_episode,
+        ed_ed_settings=DEFAULT_ED_ED_SETTINGS,
         top_k_oldest_random=args.top_k_oldest_random,
         seed=args.seed,
+        reward_alpha=args.reward_alpha,
+        min_reallocations_per_cycle=args.min_reallocations_per_cycle,
+        early_stop_penalty=args.early_stop_penalty,
+        stream_cooldown_decisions=args.stream_cooldown_decisions,
     )
 
     os.makedirs(args.out_dir, exist_ok=True)
@@ -158,6 +172,8 @@ def main():
 
     parser.add_argument("--resume-from", type=str, default=None)
 
+    parser.add_argument("--reward-alpha", type=float, default=0.7)
+
     parser.add_argument("--timesteps", type=int, default=100_000)
     parser.add_argument("--train-episodes", type=int, default=5)
     parser.add_argument("--seed", type=int, default=42)
@@ -174,6 +190,10 @@ def main():
     parser.add_argument("--max-hops", type=int, default=None)
     parser.add_argument("--per-hop-candidate-limit", type=int, default=3)
     parser.add_argument("--beam-width", type=int, default=None)
+
+    parser.add_argument("--min-reallocations-per-cycle", type=int, default=5)
+    parser.add_argument("--early-stop-penalty", type=float, default=0.10)
+    parser.add_argument("--stream-cooldown-decisions", type=int, default=3)
 
     parser.add_argument("--lambda-arrival", type=float, default=1.0)
     parser.add_argument("--mu-departure", type=float, default=0.2)

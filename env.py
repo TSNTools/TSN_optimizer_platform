@@ -35,6 +35,7 @@ class StreamMoveCandidate:
     cuts: int = 0
     frss_after: float = 0.0
     fse_after: float = 0.0
+    acceptance_after: float = 0.0   # E after applying this candidate
     source: str = "generated"
     debug: Dict[str, object] = field(default_factory=dict)
 
@@ -45,9 +46,9 @@ class TSNCandidatePathEnv(gym.Env):
 
     Semantics
     ---------
-    - The schedule evolves continuously with:
+    - The schedule evolves in trace-style decision steps:
         * arrivals ~ Poisson(lambda_arrival)
-        * departures ~ Binomial(n_active, p_dep) with p_dep = 1 - exp(-mu_departure * dt)
+        * each decision step removes exactly one active stream before defrag
     - A departure creates a *decision point*.
     - During a decision point, the agent may:
         * STOP immediately (skip defrag)
@@ -84,6 +85,10 @@ class TSNCandidatePathEnv(gym.Env):
         ed_ed_settings: Optional[dict] = None,
         top_k_oldest_random: int = 10,
         seed: int = 42,
+        reward_alpha: float = 0.7,
+        min_reallocations_per_cycle: int = 5,
+        early_stop_penalty: float = 0.10,
+        stream_cooldown_decisions: int = 3,
     ):
         super().__init__()
 
@@ -103,6 +108,15 @@ class TSNCandidatePathEnv(gym.Env):
 
         self.top_k_oldest_random = int(top_k_oldest_random)
 
+        self.reward_alpha = float(reward_alpha)
+
+        self.min_reallocations_per_cycle = int(min_reallocations_per_cycle)
+        self.early_stop_penalty = float(early_stop_penalty)
+        self.stream_cooldown_decisions = int(stream_cooldown_decisions)
+
+        self.current_cycle_reallocations = 0
+        self.stream_last_moved_decision: Dict[int, int] = {}
+
         self.per_hop_candidate_limit = max(1, int(per_hop_candidate_limit))
         self.beam_width = int(beam_width) if beam_width is not None else max(self.max_candidates * 2, 8)
 
@@ -110,11 +124,13 @@ class TSNCandidatePathEnv(gym.Env):
         self.reallocation_penalty = float(reallocation_penalty)
 
         self.lambda_arrival = float(lambda_arrival)
+        # Kept for backward-compatible CLI/configs. The current trace-style
+        # simulator forces one departure per decision step instead of sampling
+        # from mu_departure.
         self.mu_departure = float(mu_departure)
         self.dt = float(dt)
-        self.p_dep = 1.0 - math.exp(-self.mu_departure * self.dt)
         self.decision_points_per_episode = int(decision_points_per_episode)
-        self.ed_ed_settings = None
+        self.ed_ed_settings = ed_ed_settings
         self.seed_value = int(seed)
 
         self.rng_py = random.Random(self.seed_value)
@@ -314,11 +330,6 @@ class TSNCandidatePathEnv(gym.Env):
         self.last_valid_port_schedules = copy.deepcopy(self.port_schedules)
         self.last_valid_stream_offsets = copy.deepcopy(self.stream_offsets)
 
-    def _restore_last_valid(self) -> None:
-        self.port_schedules = copy.deepcopy(self.last_valid_port_schedules)
-        self.stream_offsets = copy.deepcopy(self.last_valid_stream_offsets)
-        self._sync_usecase_schedule()
-        self._sync_evaluator_with_schedule_durations()
 
     # ------------------------------------------------------------------
     # Schedule utilities
@@ -497,8 +508,8 @@ class TSNCandidatePathEnv(gym.Env):
         best_sorted = sorted(
             unique,
             key=lambda c: (
+                -float(c.acceptance_after),  # prefer candidates that increase acceptance
                 -float(c.frss_after),
-                float(c.fse_after),
                 int(c.cuts),
                 tuple(int(x) for x in c.offsets),
             ),
@@ -675,116 +686,51 @@ class TSNCandidatePathEnv(gym.Env):
         if not active:
             return []
 
-        ordered = sorted(
+        ordered_all = sorted(
             active,
-            key=lambda sid: (self.stream_arrival_times.get(int(sid), 0.0), int(sid))
+            key=lambda sid: (
+                self.stream_arrival_times.get(int(sid), 0.0),
+                int(sid),
+            ),
         )
+
+        current_dp = int(self.episode_decision_points)
+        cooldown = int(getattr(self, "stream_cooldown_decisions", 0))
+
+        eligible = []
+        cooled = []
+
+        for sid in ordered_all:
+            sid = int(sid)
+            last_moved = self.stream_last_moved_decision.get(sid, -10**9)
+
+            if cooldown > 0 and (current_dp - int(last_moved)) < cooldown:
+                cooled.append(sid)
+            else:
+                eligible.append(sid)
+
+        # Prefer non-cooled streams, but if all are cooled, fall back to all.
+        ordered = eligible if eligible else ordered_all
 
         k = min(self.top_k_oldest_random, len(ordered))
         top_k = ordered[:k]
 
         first = int(self.rng_py.choice(top_k))
-
         remaining = [sid for sid in ordered if int(sid) != first]
 
-        return [first] + remaining
-
-
-    def _candidate_potential_score_for_stream(self, stream_id: int) -> float:
-        """
-        Estimate how promising a stream is for reconfiguration.
-
-        Higher score = better candidate potential.
-
-        Uses already generated valid candidates and compares each candidate's
-        FRSS against the current global FRSS.
-        """
-        stream_id = int(stream_id)
-
-        try:
-            current_metrics = self._global_metrics()
-            current_frss = float(current_metrics["frss"])
-
-            candidates = self._candidate_list_for_stream(stream_id)
-            if not candidates:
-                return -1e9
-
-            best_delta_frss = max(
-                float(c.frss_after) - current_frss
-                for c in candidates
-                if c.source != "current"
-            ) if any(c.source != "current" for c in candidates) else 0.0
-
-            # Small extra preference for streams that actually have move candidates.
-            move_count = sum(1 for c in candidates if c.source != "current")
-
-            return float(best_delta_frss) + 1e-4 * float(move_count)
-
-        except Exception:
-            return -1e9
-
-
-    def _ordered_streams_by_candidate_potential(self) -> List[int]:
-        """
-        Order active streams by candidate potential, but only score a limited
-        oldest subset for speed.
-
-        This avoids evaluating candidates for every active stream.
-        """
-        active_ids = self._active_stream_ids()
-
-        if not active_ids:
-            return []
-
-        now = float(self.current_time)
-
-        # First sort by age
-        age_sorted = []
-
-        for sid in active_ids:
-            sid = int(sid)
-            arrival_t = float(self.stream_arrival_times.get(sid, 0.0))
-            age = now - arrival_t
-            age_sorted.append((sid, age))
-
-        age_sorted.sort(
-            key=lambda x: (
-                -float(x[1]),
-                int(x[0]),
-            )
-        )
-
-        # Only score top-k oldest streams for candidate potential
-        k = int(getattr(self, "top_k_oldest_random", 10))
-        candidate_pool = [sid for sid, _ in age_sorted[:k]]
-
-        scored = []
-
-        for sid in candidate_pool:
-            sid = int(sid)
-            potential = self._candidate_potential_score_for_stream(sid)
-            arrival_t = float(self.stream_arrival_times.get(sid, 0.0))
-            age = now - arrival_t
-            scored.append((sid, potential, age))
-
-        scored.sort(
-            key=lambda x: (
-                -float(x[1]),  # best candidate potential first
-                -float(x[2]),  # older first
-                int(x[0]),
-            )
-        )
-
-        selected = [sid for sid, _, _ in scored]
-
-        # Append remaining active streams by age, so focus list is complete
-        selected_set = set(selected)
-        remaining = [
-            sid for sid, _ in age_sorted
-            if sid not in selected_set
+        # Recently moved streams are still available, but only after eligible ones.
+        remaining_set = set(int(sid) for sid in remaining)
+        cooled_tail = [
+            int(sid)
+            for sid in cooled
+            if int(sid) != first and int(sid) not in remaining_set
         ]
 
-        return selected + remaining
+        return [first] + remaining + cooled_tail
+
+
+
+
 
  
     def _advance_stream_focus(self) -> None:
@@ -825,36 +771,6 @@ class TSNCandidatePathEnv(gym.Env):
             gaps.append(float(self.cycle_ns) - cursor)
         return gaps
 
-    def _fragmentation_rss(self) -> float:
-        """
-        FRSS based on number of useful gaps, not gap durations.
-
-        A useful gap is a gap whose duration is >= the time needed to transmit
-        useless_gap_threshold_bytes on that port.
-
-        Higher value means useful space is concentrated in fewer gaps.
-        Lower value means useful gaps are more spread out / fragmented.
-        """
-        per_port_vals: List[float] = []
-
-        for pidx in range(self.n_ports):
-            port_id = pidx + 1
-            threshold_ns = self._useless_gap_threshold_ns_for_port(port_id)
-            gaps = self._port_gaps(pidx)
-
-            useful_gap_count = sum(1 for g in gaps if float(g) >= float(threshold_ns))
-
-            if useful_gap_count <= 0:
-                per_port_vals.append(0.0)
-                continue
-
-            # Count-based RSS:
-            # vector = [1, 1, ..., 1] over useful gaps
-            # sqrt(sum(1^2)) / sum(1) = sqrt(k) / k = 1/sqrt(k)
-            frss_count = 1.0 / np.sqrt(float(useful_gap_count))
-            per_port_vals.append(float(frss_count))
-
-        return float(np.mean(per_port_vals)) if per_port_vals else 0.0
     
     def _fragmentation_rss2(self) -> float:
         per_port_vals: List[float] = []
@@ -1171,9 +1087,6 @@ class TSNCandidatePathEnv(gym.Env):
     def _current_sbr(self) -> float:
         return float(self.blocked_requests) / max(1.0, float(self.total_requests))
 
-    def _stop_reward(self) -> float:
-        sbr = max(self._current_sbr(), 1.0 / max(1.0, float(self.total_requests)))
-        return float(-np.log10(sbr) / 3.0)
 
     # ------------------------------------------------------------------
     # Candidate generation
@@ -1286,10 +1199,6 @@ class TSNCandidatePathEnv(gym.Env):
         return sorted(starts)
 
 
-    def _score_partial_offsets(self, stream_id: int, offsets: List[int]) -> Tuple[int, float]:
-        cuts = self._stream_cut_count(stream_id, offsets=offsets)
-        span = float(max(offsets) - min(offsets)) if offsets else 0.0
-        return cuts, span
 
     def _evaluate_candidate_metrics(self, stream_id: int, offsets: List[int]) -> Optional[Dict[str, float]]:
         saved_ports = copy.deepcopy(self.port_schedules)
@@ -1314,7 +1223,11 @@ class TSNCandidatePathEnv(gym.Env):
         self.stream_offsets = saved_offsets
         self._sync_usecase_schedule()
         self._sync_evaluator_with_schedule_durations()
-        return {"frss_after": float(g["frss"]), "fse_after": float(g["fse"])}
+        return {
+            "frss_after": float(g["frss"]),
+            "fse_after": float(g["fse"]),
+            "acceptance_after": float(g["acceptance_count"]),
+        }
 
     def _candidate_list_for_stream(self, stream_id: int) -> List[StreamMoveCandidate]:
         """
@@ -1430,6 +1343,13 @@ class TSNCandidatePathEnv(gym.Env):
             if eval_metrics is None:
                 continue
 
+            current_metrics = self._global_metrics()
+            delta_e = float(eval_metrics["acceptance_after"]) - float(current_metrics["acceptance_count"])
+            delta_frss = float(eval_metrics["frss_after"]) - float(current_metrics["frss"])
+            
+            if delta_e < 0.0 and delta_frss < 0.0:
+                continue
+                
             cuts = self._stream_cut_count(stream_id, offsets=vec)
 
 
@@ -1445,6 +1365,7 @@ class TSNCandidatePathEnv(gym.Env):
                     cuts=int(cuts),
                     frss_after=float(eval_metrics["frss_after"]),
                     fse_after=float(eval_metrics["fse_after"]),
+                    acceptance_after=float(eval_metrics["acceptance_after"]),
                     source=source,
                 )
             )
@@ -1452,72 +1373,30 @@ class TSNCandidatePathEnv(gym.Env):
         if not candidates:
             return []
 
-        # ------------------------------------------------------------
-        # Split current/no-move from other candidates
-        # ------------------------------------------------------------
-        current_candidates: List[StreamMoveCandidate] = []
-        right_fit_candidates: List[StreamMoveCandidate] = []
-        other_candidates: List[StreamMoveCandidate] = []
-
-        for c in candidates:
-            if c.source == "current":
-                current_candidates.append(c)
-            elif c.source == "right_fit":
-                right_fit_candidates.append(c)
-            else:
-                other_candidates.append(c)
-
-        # Best current candidate first, if present.
-        # Usually there is only one.
-        current_candidates.sort(
-            key=lambda c: (
-                -float(c.frss_after),
-                float(c.fse_after),
-                int(c.cuts),
-                tuple(int(x) for x in c.offsets),
-            )
-        )
-
-        right_fit_candidates.sort(
-            key=lambda c: (
-                -float(c.frss_after),
-                float(c.fse_after),
-                int(c.cuts),
-                tuple(int(x) for x in c.offsets),
-            )
-        )
-
-        # Sort others before diversity selection, so the first occurrence of each
-        # unique candidate is already good.
-        other_candidates.sort(
-            key=lambda c: (
-                -float(c.frss_after),
-                float(c.fse_after),
-                int(c.cuts),
-                tuple(int(x) for x in c.offsets),
-            )
-        )
-
-        final_candidates: List[StreamMoveCandidate] = []
-
         # Stable semantic:
         # action 0 = STOP
-        # action 1..K = real reallocation candidates only
+        # action 1..K = real reallocation candidates only.
+        # Current/no-move vectors were already removed above.
+        right_fit_candidates = [c for c in candidates if c.source == "right_fit"]
+        other_candidates = [c for c in candidates if c.source != "right_fit"]
 
+        sort_key = lambda c: (
+            -float(c.acceptance_after),
+            -float(c.frss_after),
+            int(c.cuts),
+            tuple(int(x) for x in c.offsets),
+        )
+        right_fit_candidates.sort(key=sort_key)
+        other_candidates.sort(key=sort_key)
+
+        final_candidates: List[StreamMoveCandidate] = []
         if right_fit_candidates:
-            rk = tuple(int(x) for x in right_fit_candidates[0].offsets)
-            existing = {tuple(int(x) for x in c.offsets) for c in final_candidates}
-            if rk not in existing:
-                final_candidates.append(right_fit_candidates[0])
+            final_candidates.append(right_fit_candidates[0])
 
         remaining_slots = self.max_candidates - len(final_candidates)
-
         if remaining_slots > 0:
             final_candidates.extend(
-                self.select_diverse_candidates(
-                    other_candidates,
-                    remaining_slots,
-                )
+                self.select_diverse_candidates(other_candidates, remaining_slots)
             )
 
         return final_candidates[: self.max_candidates]
@@ -1755,6 +1634,7 @@ class TSNCandidatePathEnv(gym.Env):
         self.decision_stream_order = self._ordered_streams_by_age()
         self.decision_pointer = 0
         self.in_defrag_cycle = False
+        self.current_cycle_reallocations = 0
 
         if not self.decision_stream_order:
             self.focus = StreamDecisionFocus(stream_id=0)
@@ -1814,6 +1694,7 @@ class TSNCandidatePathEnv(gym.Env):
             cuts_norm = float(cand.cuts / max(1, self.max_hops - 1))
             frss_after_norm = np.tanh(float(cand.frss_after))
             fse_after_norm = np.tanh(float(cand.fse_after))
+            acceptance_after_norm = np.tanh(float(cand.acceptance_after) / 10.0)
             move_ratio = 0.0
             if current_offsets:
                 diff = sum(int(a != b) for a, b in zip(cand.offsets, current_offsets))
@@ -1822,7 +1703,7 @@ class TSNCandidatePathEnv(gym.Env):
                 [
                     cuts_norm * 2.0 - 1.0,
                     frss_after_norm * 2.0 - 1.0,
-                    fse_after_norm * 2.0 - 1.0,
+                    acceptance_after_norm * 2.0 - 1.0,
                     move_ratio * 2.0 - 1.0,
                 ],
                 dtype=np.float32,
@@ -1900,6 +1781,45 @@ class TSNCandidatePathEnv(gym.Env):
             return self._get_obs(), 0.0, terminated, truncated, info
 
         before_metrics = self._global_metrics()
+        candidate_count_before = int(len(self.current_candidates))
+
+        candidate_delta_acceptances = [
+            float(c.acceptance_after) - float(before_metrics["acceptance_count"])
+            for c in self.current_candidates
+        ]
+
+        candidate_delta_frss = [
+            float(c.frss_after) - float(before_metrics["frss"])
+            for c in self.current_candidates
+        ]
+
+        best_candidate_delta_acceptance = (
+            max(candidate_delta_acceptances) if candidate_delta_acceptances else 0.0
+        )
+
+        mean_candidate_delta_acceptance = (
+            float(np.mean(candidate_delta_acceptances)) if candidate_delta_acceptances else 0.0
+        )
+
+        best_candidate_delta_frss = (
+            max(candidate_delta_frss) if candidate_delta_frss else 0.0
+        )
+
+        mean_candidate_delta_frss = (
+            float(np.mean(candidate_delta_frss)) if candidate_delta_frss else 0.0
+        )
+
+        num_positive_delta_acceptance_candidates = sum(
+            1 for x in candidate_delta_acceptances if x > 0.0
+        )
+
+        num_positive_delta_frss_candidates = sum(
+            1 for x in candidate_delta_frss if x > 0.0
+        )
+
+        right_fit_candidate_count = sum(
+            1 for c in self.current_candidates if c.source == "right_fit"
+        )
         current_stream_id = int(self.focus.stream_id)
         in_defrag_cycle_before = bool(self.in_defrag_cycle)
 
@@ -1923,7 +1843,16 @@ class TSNCandidatePathEnv(gym.Env):
             after_metrics = self._global_metrics()
             terminated, truncated = self._finish_decision_point_and_continue()
 
-            reward = 0.2 * (1 - self._current_sbr())
+            reward = 0 * (1 - self._current_sbr())
+            if (
+                in_defrag_cycle_before
+                and self.current_cycle_reallocations < self.min_reallocations_per_cycle
+            ):
+                missing = self.min_reallocations_per_cycle - self.current_cycle_reallocations
+
+                reward -= self.early_stop_penalty * (
+                    missing / max(1, self.min_reallocations_per_cycle)
+                )
 
             info = {
                 "stop_action": True,
@@ -1945,6 +1874,17 @@ class TSNCandidatePathEnv(gym.Env):
                 "delta_acceptance": float(after_metrics["acceptance_count"] - before_metrics["acceptance_count"]),
                 "delta_frss": float(after_metrics["frss"] - before_metrics["frss"]),
                 "reward": float(reward),
+                "current_cycle_reallocations": int(self.current_cycle_reallocations),
+                "min_reallocations_per_cycle": int(self.min_reallocations_per_cycle),
+                "stream_cooldown_decisions": int(self.stream_cooldown_decisions),
+                "candidate_count_before": int(candidate_count_before),
+                "best_candidate_delta_acceptance": float(best_candidate_delta_acceptance),
+                "mean_candidate_delta_acceptance": float(mean_candidate_delta_acceptance),
+                "num_positive_delta_acceptance_candidates": int(num_positive_delta_acceptance_candidates),
+                "best_candidate_delta_frss": float(best_candidate_delta_frss),
+                "mean_candidate_delta_frss": float(mean_candidate_delta_frss),
+                "num_positive_delta_frss_candidates": int(num_positive_delta_frss_candidates),
+                "right_fit_candidate_count": int(right_fit_candidate_count),
             }
             if terminated or truncated:
                 info.update(self._terminal_info())
@@ -1979,10 +1919,11 @@ class TSNCandidatePathEnv(gym.Env):
                 after_metrics = self._global_metrics()
                 delta_frss = after_metrics["frss"] - before_metrics["frss"]
                 delta_acceptance = after_metrics["acceptance_count"] - before_metrics["acceptance_count"]
+                alpha = float(self.reward_alpha)
                 r_acc = np.clip(delta_acceptance / 1.0, -1.0, 1.0)
                 r_frss = np.clip(delta_frss / 0.0055, -1.0, 1.0)
 
-                reward = 0.7 * r_acc + 0.3 * r_frss
+                reward = alpha * r_acc + (1 - alpha) * r_frss
                 reward -= self.reallocation_penalty
 
                 if not self.in_defrag_cycle:
@@ -1996,6 +1937,10 @@ class TSNCandidatePathEnv(gym.Env):
         if not invalid and chosen_candidate is not None:
             self._advance_stream_focus()
             self.episode_reallocations += 1
+            self.current_cycle_reallocations += 1
+            self.stream_last_moved_decision[int(chosen_candidate.stream_id)] = int(
+                self.episode_decision_points
+            )
             if self.decision_pointer >= len(self.decision_stream_order):
                 terminated, truncated = self._finish_decision_point_and_continue()
             elif not truncated:
@@ -2029,6 +1974,28 @@ class TSNCandidatePathEnv(gym.Env):
             "delta_acceptance": float(after_metrics["acceptance_count"] - before_metrics["acceptance_count"]),
             "delta_frss": float(after_metrics["frss"] - before_metrics["frss"]),
             "reward": float(reward),
+            "current_cycle_reallocations": int(self.current_cycle_reallocations),
+            "min_reallocations_per_cycle": int(self.min_reallocations_per_cycle),
+            "stream_cooldown_decisions": int(self.stream_cooldown_decisions),
+            "candidate_count_before": int(candidate_count_before),
+            "best_candidate_delta_acceptance": float(best_candidate_delta_acceptance),
+            "mean_candidate_delta_acceptance": float(mean_candidate_delta_acceptance),
+            "num_positive_delta_acceptance_candidates": int(num_positive_delta_acceptance_candidates),
+            "best_candidate_delta_frss": float(best_candidate_delta_frss),
+            "mean_candidate_delta_frss": float(mean_candidate_delta_frss),
+            "num_positive_delta_frss_candidates": int(num_positive_delta_frss_candidates),
+            "right_fit_candidate_count": int(right_fit_candidate_count),
+            "chosen_candidate_source": None if chosen_candidate is None else str(chosen_candidate.source),
+            "chosen_candidate_acceptance_after": 0.0 if chosen_candidate is None else float(chosen_candidate.acceptance_after),
+            "chosen_candidate_frss_after": 0.0 if chosen_candidate is None else float(chosen_candidate.frss_after),
+            "chosen_candidate_delta_acceptance": (
+                0.0 if chosen_candidate is None
+                else float(chosen_candidate.acceptance_after) - float(before_metrics["acceptance_count"])
+            ),
+            "chosen_candidate_delta_frss": (
+                0.0 if chosen_candidate is None
+                else float(chosen_candidate.frss_after) - float(before_metrics["frss"])
+            ),
         }
         if terminated or truncated:
             info.update(self._terminal_info())
@@ -2047,6 +2014,9 @@ class TSNCandidatePathEnv(gym.Env):
 
         self.episode_reallocations = 0
         self.episode_defrag_cycles = 0
+        self.current_cycle_reallocations = 0
+        self.stream_last_moved_decision = {}
+        self.pending_arrivals_after_decision = 0
 
         self.usecase = copy.deepcopy(self.base_usecase)
         self.problem.usecase = self.usecase
@@ -2096,5 +2066,3 @@ class TSNCandidatePathEnv(gym.Env):
     def render(self):
         return self.get_combined_schedule().plot()
 
-
-TSNCandidateHopEnv = TSNCandidatePathEnv
