@@ -12,12 +12,12 @@ from env import TSNCandidatePathEnv
 from tsn_scheduling_problem import TSNScheduling
 
 DEFAULT_ED_ED_SETTINGS = {
-    "packet_sizes": [128, 256, 512],
-    "periods": [100000, 150000, 300000],
+    "packet_sizes": [256, 512],
+    "periods": [150000, 300000],
     "latency_factors": [0.7, 0.8, 0.9, 1.0],
     "priorities": [1],
     "gammas": [1.0],
-    "jitter_factors": [0.0, 0.2, 0.5],
+    "jitter_factors": [0.0],
 }
 
 
