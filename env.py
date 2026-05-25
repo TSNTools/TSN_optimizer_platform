@@ -755,6 +755,15 @@ class TSNCandidatePathEnv(gym.Env):
     def _expected_incoming_duration_ns_for_port(self, port_id: int) -> float:
         spd = self._port_speed_mbps.get(int(port_id), 1000.0)
         return (self.expected_incoming_bytes * BYTE_2_BIT) / (spd * MBPS_2_BPNS) + 4000.0
+    
+    def _expected_duration_ns_for_port_and_size(self, port_id: int, packet_size_bytes: float,) -> float:
+        """
+        Expected transmission duration on a port for a future stream profile.
+        Includes the same fixed margin previously used in
+        _expected_incoming_duration_ns_for_port().
+        """
+        spd = self._port_speed_mbps.get(int(port_id), 1000.0)
+        return (float(packet_size_bytes) * BYTE_2_BIT) / (spd * MBPS_2_BPNS) + 4000.0
 
     def _port_gaps(self, pidx: int) -> List[float]:
         slots = self._sorted_slots_on_port(pidx)
@@ -882,6 +891,29 @@ class TSNCandidatePathEnv(gym.Env):
 
         return out
 
+
+    def _future_stream_profiles(self) -> List[Dict[str, float]]:
+        settings = self.ed_ed_settings or {}
+
+        packet_sizes = settings.get("packet_sizes", [self.expected_incoming_bytes])
+        periods = settings.get("periods", [self.cycle_ns])
+
+        profiles: List[Dict[str, float]] = []
+
+        for packet_size in packet_sizes:
+            for period in periods:
+                profiles.append(
+                    {
+                        "packet_size_bytes": float(packet_size),
+                        "period_ns": float(period),
+                        "latency_factor": 1.0,
+                        "jitter_factor": 0.0,
+                    }
+                )
+
+        return profiles
+
+
     def _future_path_templates(self):
         """
         Return unique path templates used to estimate future embeddability.
@@ -908,38 +940,77 @@ class TSNCandidatePathEnv(gym.Env):
 
         return paths
 
-    def _path_aligned_capacity_for_template(self, path):
-        """
-        Estimate how many expected future streams can be inserted on this path.
 
-        This is a fast no-wait aligned approximation:
+    def _path_aligned_capacity_for_template(
+        self,
+        path,
+        profile: Optional[Dict[str, float]] = None,
+    ) -> float:
+        """
+        Estimate how many future streams of a given profile can be inserted on this path.
+
+        This is still a fast aligned approximation:
         if the first hop starts at t, hop k is assumed around:
 
             t + cumulative_delay_to_hop_k
 
-        The result counts how many expected-sized streams fit in the aligned
-        feasible first-hop intervals.
+        Level 1 improvement:
+        - duration comes from profile packet size instead of one fixed expected size
+        - period affects the score through a simple repetition weight
+        - latency factor applies a rough end-to-end feasibility guard
         """
         path = [int(p) for p in path]
 
         if not path:
             return 0.0
 
-        feasible_first_hop_intervals = [(0.0, float(self.cycle_ns))]
+        if profile is None:
+            profile = {
+                "packet_size_bytes": float(self.expected_incoming_bytes),
+                "period_ns": float(self.cycle_ns),
+                "latency_factor": 1.0,
+                "jitter_factor": 0.0,
+            }
 
+        packet_size_bytes = float(profile.get("packet_size_bytes", self.expected_incoming_bytes))
+        period_ns = float(profile.get("period_ns", self.cycle_ns))
+        latency_factor = float(profile.get("latency_factor", 1.0))
+        jitter_factor = float(profile.get("jitter_factor", 0.0))
+
+        period_ns = max(1.0, period_ns)
+
+        feasible_first_hop_intervals = [(0.0, float(self.cycle_ns))]
         cumulative_delay = 0.0
 
+        # Rough latency budget. This is intentionally lightweight.
+        # Smaller latency_factor means stricter allowed end-to-end span.
+        estimated_path_duration = 0.0
         for hop_idx, port_id in enumerate(path):
-            expected_dur = float(self._expected_incoming_duration_ns_for_port(port_id))
+            estimated_path_duration += self._expected_duration_ns_for_port_and_size(
+                int(port_id),
+                packet_size_bytes,
+            )
+            if hop_idx < len(path) - 1:
+                estimated_path_duration += float(self._estimated_hop_delay_for_path(path, hop_idx))
+
+        latency_budget = max(
+            estimated_path_duration,
+            float(latency_factor) * float(self.cycle_ns),
+        )
+
+        # Jitter guard: larger jitter requirement means less usable flexibility.
+        # Keep it mild for Level 1.
+        jitter_shrink = max(0.0, min(0.5, float(jitter_factor))) * 0.05
+
+        for hop_idx, port_id in enumerate(path):
+            expected_dur = float(
+                self._expected_duration_ns_for_port_and_size(
+                    int(port_id),
+                    packet_size_bytes,
+                )
+            )
 
             pidx = int(port_id) - 1
-            gaps = self._port_gaps(pidx)
-
-            hop_valid_first_start_intervals = []
-
-            cursor = 0.0
-
-            # Convert gap lengths from _port_gaps() into absolute intervals.
             slots = self._sorted_slots_on_port(pidx)
 
             absolute_gaps = []
@@ -957,31 +1028,26 @@ class TSNCandidatePathEnv(gym.Env):
             if cursor < float(self.cycle_ns):
                 absolute_gaps.append((cursor, float(self.cycle_ns)))
 
-            for gap_start, gap_end in absolute_gaps:
-                # On this hop, the future transmission must fit inside:
-                # [gap_start, gap_end]
-                #
-                # If first-hop start is t, this hop starts around:
-                # t + cumulative_delay
-                #
-                # Therefore:
-                # gap_start <= t + cumulative_delay
-                # t + cumulative_delay + expected_dur <= gap_end
-                #
-                # So:
-                # t >= gap_start - cumulative_delay
-                # t <= gap_end - expected_dur - cumulative_delay
+            hop_valid_first_start_intervals = []
 
+            for gap_start, gap_end in absolute_gaps:
                 first_start_min = float(gap_start) - float(cumulative_delay)
-                first_start_max = float(gap_end) - float(expected_dur) - float(cumulative_delay)
+                first_start_max = float(gap_end) - expected_dur - float(cumulative_delay)
 
                 first_start_min = max(0.0, first_start_min)
                 first_start_max = min(float(self.cycle_ns), first_start_max)
 
                 if first_start_max > first_start_min:
-                    hop_valid_first_start_intervals.append(
-                        (first_start_min, first_start_max)
-                    )
+                    # Mildly shrink interval for jitter-sensitive profiles.
+                    width = first_start_max - first_start_min
+                    shrink = width * jitter_shrink
+                    first_start_min += shrink
+                    first_start_max -= shrink
+
+                    if first_start_max > first_start_min:
+                        hop_valid_first_start_intervals.append(
+                            (first_start_min, first_start_max)
+                        )
 
             feasible_first_hop_intervals = self._intersect_interval_sets(
                 feasible_first_hop_intervals,
@@ -991,14 +1057,17 @@ class TSNCandidatePathEnv(gym.Env):
             if not feasible_first_hop_intervals:
                 return 0.0
 
-            # Advance cumulative delay to next hop.
-            # We use existing stream_info hop delay statistics when possible.
             if hop_idx < len(path) - 1:
                 delay = self._estimated_hop_delay_for_path(path, hop_idx)
                 cumulative_delay += float(delay)
 
         first_port = int(path[0])
-        expected_first_dur = float(self._expected_incoming_duration_ns_for_port(first_port))
+        expected_first_dur = float(
+            self._expected_duration_ns_for_port_and_size(
+                first_port,
+                packet_size_bytes,
+            )
+        )
 
         if expected_first_dur <= 0:
             return 0.0
@@ -1007,9 +1076,21 @@ class TSNCandidatePathEnv(gym.Env):
 
         for a, b in feasible_first_hop_intervals:
             length = max(0.0, float(b) - float(a))
-            capacity += math.floor(length / expected_first_dur)
+
+            # Latency guard: aligned feasible region longer than latency budget
+            # is not fully useful for strict streams.
+            useful_length = min(length, latency_budget)
+
+            capacity += math.floor(useful_length / expected_first_dur)
+
+        # Period correction:
+        # Shorter periods consume more repeated capacity inside the macro-cycle.
+        # A 100000 ns stream in a 300000 ns cycle is roughly 3x harder than 300000 ns.
+        repetition_factor = max(1.0, float(self.cycle_ns) / period_ns)
+        capacity = capacity / repetition_factor
 
         return float(capacity)
+
 
     def _estimated_hop_delay_for_path(self, path, hop_idx):
         """
@@ -1042,28 +1123,36 @@ class TSNCandidatePathEnv(gym.Env):
 
         return float(self._expected_incoming_duration_ns_for_port(p1))
 
-    def _path_aware_acceptance_count(self):
+    def _path_aware_acceptance_count(self) -> float:
         """
-        Path-aware embeddability score.
+        Lightweight path-aware embeddability score.
+
+        Level 1 version:
+        - evaluates current path templates
+        - evaluates multiple future stream profiles from ed_ed_settings
+        - returns a normalized score in [0, 1]
 
         Higher means the current schedule has more aligned free space for
-        expected future streams across complete paths.
-
-        This is more TSN-relevant than counting free space independently per port.
+        likely future streams across complete paths.
         """
         paths = self._future_path_templates()
+        profiles = self._future_stream_profiles()
 
-        if not paths:
+        if not paths or not profiles:
             return 0.0
 
-        capacities = []
+        scores: List[float] = []
 
         for path in paths:
-            cap = self._path_aligned_capacity_for_template(path)
-            capacities.append(float(cap))
+            for profile in profiles:
+                cap = self._path_aligned_capacity_for_template(path, profile)
 
-        # Mean keeps the scale stable even if the number of path templates changes.
-        return float(np.mean(capacities)) if capacities else 0.0
+                # Cap to avoid huge easy paths dominating the reward.
+                # cap >= 3 means "good enough capacity" for this path/profile.
+                cap_norm = min(float(cap), 3.0) / 3.0
+                scores.append(float(cap_norm))
+
+        return float(np.mean(scores)) if scores else 0.0
 
     def _stream_current_offset_vector(self, stream_id: int) -> List[int]:
         path = self._stream_path(stream_id)
@@ -1347,7 +1436,10 @@ class TSNCandidatePathEnv(gym.Env):
             delta_e = float(eval_metrics["acceptance_after"]) - float(current_metrics["acceptance_count"])
             delta_frss = float(eval_metrics["frss_after"]) - float(current_metrics["frss"])
             
-            if delta_e < 0.0 and delta_frss < 0.0:
+            if delta_e < -1e-6:
+                continue
+
+            if delta_e <= 1e-6 and delta_frss <= 0.0:
                 continue
                 
             cuts = self._stream_cut_count(stream_id, offsets=vec)
@@ -1367,6 +1459,10 @@ class TSNCandidatePathEnv(gym.Env):
                     fse_after=float(eval_metrics["fse_after"]),
                     acceptance_after=float(eval_metrics["acceptance_after"]),
                     source=source,
+                    debug={
+                        "delta_e": float(delta_e),
+                        "delta_frss": float(delta_frss),
+                    },
                 )
             )
 
@@ -1381,8 +1477,8 @@ class TSNCandidatePathEnv(gym.Env):
         other_candidates = [c for c in candidates if c.source != "right_fit"]
 
         sort_key = lambda c: (
-            -float(c.acceptance_after),
-            -float(c.frss_after),
+            -float(c.debug.get("delta_e", 0.0)),
+            -float(c.debug.get("delta_frss", 0.0)),
             int(c.cuts),
             tuple(int(x) for x in c.offsets),
         )
@@ -1843,7 +1939,7 @@ class TSNCandidatePathEnv(gym.Env):
             after_metrics = self._global_metrics()
             terminated, truncated = self._finish_decision_point_and_continue()
 
-            reward = 0 * (1 - self._current_sbr())
+            reward = 0.15 * (1 - self._current_sbr())
             if (
                 in_defrag_cycle_before
                 and self.current_cycle_reallocations < self.min_reallocations_per_cycle
