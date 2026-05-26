@@ -1,0 +1,5 @@
+#{"t_start": 1779740430.5070405, "env_id": "None"}
+r,l,t,episode_sbr,episode_acceptance,episode_arrivals,episode_rejections,episode_decision_points,episode_invalid_moves,episode_violation_sum,episode_reallocations,episode_defrag_cycles
+1.370186,37,7.094361,0.4,0.6,10,4,20,0,0,19,6
+1.286053,49,17.157955,0.4,0.6,10,4,20,0,0,31,13
+2.093528,38,24.877243,0.4,0.6,10,4,20,0,0,19,9

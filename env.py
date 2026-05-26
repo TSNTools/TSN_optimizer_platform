@@ -232,15 +232,14 @@ class TSNCandidatePathEnv(gym.Env):
                 scheduling_type=ScheduleEncodingType.START_TIME,
             )
 
+        # Compact observation for DQN.
+        # base_features: current schedule state.
+        # candidate_features: per-action candidate quality.
         self.observation_space = spaces.Dict(
             {
-                "base_features": spaces.Box(low=-1.0, high=1.0, shape=(7,), dtype=np.float32),
-                "current_offsets": spaces.Box(low=-1.0, high=1.0, shape=(self.max_hops,), dtype=np.float32),
-                "candidate_offsets": spaces.Box(
-                    low=-1.0, high=1.0, shape=(self.max_candidates, self.max_hops), dtype=np.float32
-                ),
+                "base_features": spaces.Box(low=-1.0, high=1.0, shape=(5,), dtype=np.float32),
                 "candidate_features": spaces.Box(
-                    low=-1.0, high=1.0, shape=(self.max_candidates, 4), dtype=np.float32
+                    low=-1.0, high=1.0, shape=(self.max_candidates, 3), dtype=np.float32
                 ),
                 "candidate_mask": spaces.Box(
                     low=0, high=1, shape=(self.max_candidates + 1,), dtype=np.int8
@@ -533,12 +532,11 @@ class TSNCandidatePathEnv(gym.Env):
             key=lambda c: int(c.offsets[0]) if c.offsets else 0,
         )
 
-        add(by_first[0])                       # left-most
         add(by_first[-1])                      # right-most
         add(by_first[len(by_first) // 2])      # middle
+        add(by_first[0])                       # left-most
 
         # Extra right-side candidates are useful because arrivals use first-fit.
-        # Moving streams later can free early space for future arrivals.
         for c in reversed(by_first):
             add(c)
             if len(selected) >= min(max_candidates, 5):
@@ -605,9 +603,9 @@ class TSNCandidatePathEnv(gym.Env):
         # 2) Keep left-most, right-most, and middle by first-hop offset
         by_first = sorted(unique, key=lambda vec: int(vec[0]) if vec else 0)
 
-        add(by_first[0])                         # left
         add(by_first[-1])                        # right
         add(by_first[len(by_first) // 2])        # middle
+        add(by_first[0])                         # left
 
         # 3) Keep low-span alternatives
         by_span = sorted(
@@ -1081,7 +1079,7 @@ class TSNCandidatePathEnv(gym.Env):
             # is not fully useful for strict streams.
             useful_length = min(length, latency_budget)
 
-            capacity += math.floor(useful_length / expected_first_dur)
+            capacity += useful_length / expected_first_dur
 
         # Period correction:
         # Shorter periods consume more repeated capacity inside the macro-cycle.
@@ -1149,7 +1147,7 @@ class TSNCandidatePathEnv(gym.Env):
 
                 # Cap to avoid huge easy paths dominating the reward.
                 # cap >= 3 means "good enough capacity" for this path/profile.
-                cap_norm = min(float(cap), 3.0) / 3.0
+                cap_norm = min(float(cap), 10.0) / 10.0
                 scores.append(float(cap_norm))
 
         return float(np.mean(scores)) if scores else 0.0
@@ -1284,9 +1282,39 @@ class TSNCandidatePathEnv(gym.Env):
                     starts.add(int(cur))
                     break
 
-        # Sort left-to-right for now. Later candidate-level semantic ordering will decide.
-        return sorted(starts)
+        return self._right_biased_subset(starts, self.per_hop_candidate_limit)
 
+    def _right_biased_subset(self, starts, limit: int) -> List[int]:
+        """Keep a small diverse set of starts, biased toward later placements.
+
+        This does not reward right-shift directly. It only ensures that late
+        placements survive pruning and appear in the action space.
+        """
+        starts = sorted({int(x) for x in starts})
+        if not starts:
+            return []
+
+        limit = max(1, int(limit))
+        if len(starts) <= limit:
+            return starts
+
+        selected: List[int] = []
+
+        def add(x: int) -> None:
+            x = int(x)
+            if x not in selected and len(selected) < limit:
+                selected.append(x)
+
+        add(starts[-1])                    # right-most
+        add(starts[len(starts) // 2])      # middle
+        add(starts[0])                     # left-most, kept for contrast
+
+        for x in reversed(starts):
+            add(x)
+            if len(selected) >= limit:
+                break
+
+        return selected
 
 
     def _evaluate_candidate_metrics(self, stream_id: int, offsets: List[int]) -> Optional[Dict[str, float]]:
@@ -1361,10 +1389,8 @@ class TSNCandidatePathEnv(gym.Env):
                     min_start_ns,
                 )
 
-                # Keep a bounded number per hop, but these are now more diverse
-                # because _candidate_start_set_for_stream_hop samples left/mid/right.
-                hop_candidates = hop_candidates[: self.per_hop_candidate_limit]
-
+                # _candidate_start_set_for_stream_hop already returns a bounded
+                # right-biased diverse set, so late placements are not lost.
                 for st in hop_candidates:
                     next_partials.append(partial + [int(st)])
 
@@ -1435,13 +1461,7 @@ class TSNCandidatePathEnv(gym.Env):
             current_metrics = self._global_metrics()
             delta_e = float(eval_metrics["acceptance_after"]) - float(current_metrics["acceptance_count"])
             delta_frss = float(eval_metrics["frss_after"]) - float(current_metrics["frss"])
-            
-            if delta_e < -1e-6:
-                continue
 
-            if delta_e <= 1e-6 and delta_frss <= 0.0:
-                continue
-                
             cuts = self._stream_cut_count(stream_id, offsets=vec)
 
 
@@ -1746,61 +1766,45 @@ class TSNCandidatePathEnv(gym.Env):
     # ------------------------------------------------------------------
     # Observation
     # ------------------------------------------------------------------
+    def _norm_signed(self, value: float, scale: float) -> float:
+        """Normalize a signed delta to [-1, 1] using a fixed meaningful scale."""
+        return float(np.clip(float(value) / max(float(scale), 1e-12), -1.0, 1.0))
+
+    def _norm_unit(self, value: float) -> float:
+        """Map a [0, 1] quantity to [-1, 1]."""
+        return float(np.clip(float(value), 0.0, 1.0) * 2.0 - 1.0)
+
     def _get_obs(self) -> Dict[str, np.ndarray]:
-        stream_id = int(self.focus.stream_id)
-        path = self._stream_path(stream_id)
-        current_offsets = self._stream_current_offset_vector(stream_id)
+        """Small observation: global state + candidate deltas.
 
+        base_features = [SBR, FRSS, E, in_cycle, candidate_count]
+        candidate_features = [delta_E, delta_FRSS, cuts]
+        """
         g = self._global_metrics()
-        age = float(self.current_time - self.stream_arrival_times.get(stream_id, self.current_time))
-        total_required_duration = float(self.stream_info[stream_id]["total_required_duration_ns"]) if path and stream_id < len(self.stream_info) else 0.0
-        hop_count = len(path)
-        current_cuts = self._stream_cut_count(stream_id, offsets=current_offsets) if path else 0
-
-        age_norm = np.tanh(age / max(1.0, float(self.current_time + self.dt)))
-        duration_norm = float(total_required_duration / max(1.0, self.max_required_duration_ns))
-        hop_count_norm = float(hop_count / max(1, self.max_hops))
-        cut_norm = float(current_cuts / max(1, self.max_hops - 1))
-        frss_norm = np.tanh(float(g["frss"]))
-        fse_norm = np.tanh(float(g["fse"]))
-        in_cycle_norm = 1.0 if self.in_defrag_cycle else 0.0
+        before_e = float(g["acceptance_count"])
+        before_frss = float(g["frss"])
 
         base_features = np.asarray(
             [
-                age_norm * 2.0 - 1.0,
-                duration_norm * 2.0 - 1.0,
-                hop_count_norm * 2.0 - 1.0,
-                cut_norm * 2.0 - 1.0,
-                frss_norm * 2.0 - 1.0,
-                fse_norm * 2.0 - 1.0,
-                in_cycle_norm * 2.0 - 1.0,
+                self._norm_unit(self._current_sbr()),
+                self._norm_unit(before_frss),
+                self._norm_unit(before_e),
+                1.0 if self.in_defrag_cycle else -1.0,
+                self._norm_unit(len(self.current_candidates) / max(1, self.max_candidates)),
             ],
             dtype=np.float32,
         )
 
-        current_offsets_arr = np.full((self.max_hops,), -1.0, dtype=np.float32)
-        for i, off in enumerate(current_offsets[: self.max_hops]):
-            current_offsets_arr[i] = (float(off) / float(self.cycle_ns)) * 2.0 - 1.0
-
-        candidate_offsets = np.full((self.max_candidates, self.max_hops), -1.0, dtype=np.float32)
-        candidate_features = np.full((self.max_candidates, 4), -1.0, dtype=np.float32)
+        candidate_features = np.full((self.max_candidates, 3), -1.0, dtype=np.float32)
         for i, cand in enumerate(self.current_candidates[: self.max_candidates]):
-            for h, off in enumerate(cand.offsets[: self.max_hops]):
-                candidate_offsets[i, h] = (float(off) / float(self.cycle_ns)) * 2.0 - 1.0
+            delta_e = float(cand.acceptance_after) - before_e
+            delta_frss = float(cand.frss_after) - before_frss
             cuts_norm = float(cand.cuts / max(1, self.max_hops - 1))
-            frss_after_norm = np.tanh(float(cand.frss_after))
-            fse_after_norm = np.tanh(float(cand.fse_after))
-            acceptance_after_norm = np.tanh(float(cand.acceptance_after) / 10.0)
-            move_ratio = 0.0
-            if current_offsets:
-                diff = sum(int(a != b) for a, b in zip(cand.offsets, current_offsets))
-                move_ratio = float(diff / max(1, len(current_offsets)))
             candidate_features[i] = np.asarray(
                 [
-                    cuts_norm * 2.0 - 1.0,
-                    frss_after_norm * 2.0 - 1.0,
-                    acceptance_after_norm * 2.0 - 1.0,
-                    move_ratio * 2.0 - 1.0,
+                    self._norm_signed(delta_e, 0.01),
+                    self._norm_signed(delta_frss, 0.05),
+                    self._norm_unit(cuts_norm),
                 ],
                 dtype=np.float32,
             )
@@ -1813,8 +1817,6 @@ class TSNCandidatePathEnv(gym.Env):
 
         return {
             "base_features": base_features,
-            "current_offsets": current_offsets_arr,
-            "candidate_offsets": candidate_offsets,
             "candidate_features": candidate_features,
             "candidate_mask": candidate_mask,
         }
@@ -1871,128 +1873,50 @@ class TSNCandidatePathEnv(gym.Env):
         forced_to_stop = False
 
         if not self.decision_active:
-            terminated = True
-            truncated = False
             info = {"stop_action": True, "forced_to_stop": False, "invalid_move": False, **self._terminal_info()}
-            return self._get_obs(), 0.0, terminated, truncated, info
+            return self._get_obs(), 0.0, True, False, info
 
         before_metrics = self._global_metrics()
-        candidate_count_before = int(len(self.current_candidates))
-
-        candidate_delta_acceptances = [
-            float(c.acceptance_after) - float(before_metrics["acceptance_count"])
-            for c in self.current_candidates
-        ]
-
-        candidate_delta_frss = [
-            float(c.frss_after) - float(before_metrics["frss"])
-            for c in self.current_candidates
-        ]
-
-        best_candidate_delta_acceptance = (
-            max(candidate_delta_acceptances) if candidate_delta_acceptances else 0.0
-        )
-
-        mean_candidate_delta_acceptance = (
-            float(np.mean(candidate_delta_acceptances)) if candidate_delta_acceptances else 0.0
-        )
-
-        best_candidate_delta_frss = (
-            max(candidate_delta_frss) if candidate_delta_frss else 0.0
-        )
-
-        mean_candidate_delta_frss = (
-            float(np.mean(candidate_delta_frss)) if candidate_delta_frss else 0.0
-        )
-
-        num_positive_delta_acceptance_candidates = sum(
-            1 for x in candidate_delta_acceptances if x > 0.0
-        )
-
-        num_positive_delta_frss_candidates = sum(
-            1 for x in candidate_delta_frss if x > 0.0
-        )
-
-        right_fit_candidate_count = sum(
-            1 for c in self.current_candidates if c.source == "right_fit"
-        )
         current_stream_id = int(self.focus.stream_id)
-        in_defrag_cycle_before = bool(self.in_defrag_cycle)
+        in_cycle_before = bool(self.in_defrag_cycle)
 
-        invalid = False
-        stop_action = False
-        chosen_candidate: Optional[StreamMoveCandidate] = None
-        reward = 0.0
+        # Padded actions are treated as STOP, matching the benchmark runner.
+        if action > 0 and action - 1 >= len(self.current_candidates):
+            action = 0
+            forced_to_stop = True
 
-
-        # If action points to padded / nonexistent candidate, match eval behavior:
-        # convert it to STOP instead of returning an invalid penalty.
-        if action > 0:
-            cand_idx = action - 1
-            if cand_idx < 0 or cand_idx >= len(self.current_candidates):
-                action = 0
-                forced_to_stop = True
-
+        # STOP: skip or end defrag. One simple safe baseline reward.
         if action == 0:
-            stop_action = True
             self._backup_current_as_last_valid()
-            after_metrics = self._global_metrics()
+            reward = 0.10 * (1.0 - self._current_sbr())
             terminated, truncated = self._finish_decision_point_and_continue()
-
-            reward = 0.15 * (1 - self._current_sbr())
-            if (
-                in_defrag_cycle_before
-                and self.current_cycle_reallocations < self.min_reallocations_per_cycle
-            ):
-                missing = self.min_reallocations_per_cycle - self.current_cycle_reallocations
-
-                reward -= self.early_stop_penalty * (
-                    missing / max(1, self.min_reallocations_per_cycle)
-                )
-
             info = {
                 "stop_action": True,
                 "forced_to_stop": bool(forced_to_stop),
                 "invalid_move": False,
                 "stream_id": current_stream_id,
-                "chosen_offsets": None,
-                "candidate_count": int(len(self.current_candidates)),
-                "sbr": float(self._current_sbr()),
-                "frss_before": float(before_metrics["frss"]),
-                "frss_after": float(after_metrics["frss"]),
-                "fse_before": float(before_metrics["fse"]),
-                "fse_after": float(after_metrics["fse"]),
-                "in_defrag_cycle_before": in_defrag_cycle_before,
-                "in_defrag_cycle_after": bool(self.in_defrag_cycle),
-                "step_count": int(self.step_count),
-                "acceptance_before": float(before_metrics["acceptance_count"]),
-                "acceptance_after": float(after_metrics["acceptance_count"]),
-                "delta_acceptance": float(after_metrics["acceptance_count"] - before_metrics["acceptance_count"]),
-                "delta_frss": float(after_metrics["frss"] - before_metrics["frss"]),
                 "reward": float(reward),
-                "current_cycle_reallocations": int(self.current_cycle_reallocations),
-                "min_reallocations_per_cycle": int(self.min_reallocations_per_cycle),
-                "stream_cooldown_decisions": int(self.stream_cooldown_decisions),
-                "candidate_count_before": int(candidate_count_before),
-                "best_candidate_delta_acceptance": float(best_candidate_delta_acceptance),
-                "mean_candidate_delta_acceptance": float(mean_candidate_delta_acceptance),
-                "num_positive_delta_acceptance_candidates": int(num_positive_delta_acceptance_candidates),
-                "best_candidate_delta_frss": float(best_candidate_delta_frss),
-                "mean_candidate_delta_frss": float(mean_candidate_delta_frss),
-                "num_positive_delta_frss_candidates": int(num_positive_delta_frss_candidates),
-                "right_fit_candidate_count": int(right_fit_candidate_count),
+                "sbr": float(self._current_sbr()),
             }
             if terminated or truncated:
                 info.update(self._terminal_info())
             return self._get_obs(), float(reward), terminated, truncated, info
 
-        cand_idx = action - 1
-        chosen_candidate = self.current_candidates[cand_idx]
+        # MOVE: apply one safe candidate and reward the normalized improvement.
+        chosen_candidate = self.current_candidates[action - 1]
         saved_ports = copy.deepcopy(self.port_schedules)
         saved_offsets = copy.deepcopy(self.stream_offsets)
+
+        invalid = False
         applied = self._apply_stream_move(chosen_candidate.stream_id, chosen_candidate.offsets)
         if not applied:
             invalid = True
+        else:
+            violation_sum = self._violation_sum()
+            self.episode_violation_sum += int(violation_sum)
+            invalid = bool(violation_sum != 0)
+
+        if invalid:
             self.episode_invalid_moves += 1
             self.port_schedules = saved_ports
             self.stream_offsets = saved_offsets
@@ -2000,43 +1924,33 @@ class TSNCandidatePathEnv(gym.Env):
             self._sync_evaluator_with_schedule_durations()
             reward = -float(self.invalid_penalty)
         else:
-            violation_sum = self._violation_sum()
-            self.episode_violation_sum += int(violation_sum)
-            if violation_sum != 0:
-                invalid = True
-                self.episode_invalid_moves += 1
-                self.port_schedules = saved_ports
-                self.stream_offsets = saved_offsets
-                self._sync_usecase_schedule()
-                self._sync_evaluator_with_schedule_durations()
-                reward = -float(self.invalid_penalty)
-            else:
-                self._backup_current_as_last_valid()
-                after_metrics = self._global_metrics()
-                delta_frss = after_metrics["frss"] - before_metrics["frss"]
-                delta_acceptance = after_metrics["acceptance_count"] - before_metrics["acceptance_count"]
-                alpha = float(self.reward_alpha)
-                r_acc = np.clip(delta_acceptance / 1.0, -1.0, 1.0)
-                r_frss = np.clip(delta_frss / 0.0055, -1.0, 1.0)
+            self._backup_current_as_last_valid()
+            after_metrics = self._global_metrics()
 
-                reward = alpha * r_acc + (1 - alpha) * r_frss
-                reward -= self.reallocation_penalty
+            delta_e = float(after_metrics["acceptance_count"] - before_metrics["acceptance_count"])
+            delta_frss = float(after_metrics["frss"] - before_metrics["frss"])
 
-                if not self.in_defrag_cycle:
-                    self.in_defrag_cycle = True
-                    self.episode_defrag_cycles += 1
-                    reward -= self.defrag_cycle_penalty
+            e_reward = self._norm_signed(delta_e, 0.01)
+            frss_reward = self._norm_signed(delta_frss, 0.05)
+            alpha = float(self.reward_alpha)
+
+            reward = alpha * e_reward + (1.0 - alpha) * frss_reward
+            reward -= float(self.reallocation_penalty)
+
+            if not self.in_defrag_cycle:
+                self.in_defrag_cycle = True
+                self.episode_defrag_cycles += 1
+                reward -= float(self.defrag_cycle_penalty)
 
         terminated = False
         truncated = bool(self.step_count >= self.max_steps)
 
-        if not invalid and chosen_candidate is not None:
+        if not invalid:
             self._advance_stream_focus()
             self.episode_reallocations += 1
             self.current_cycle_reallocations += 1
-            self.stream_last_moved_decision[int(chosen_candidate.stream_id)] = int(
-                self.episode_decision_points
-            )
+            self.stream_last_moved_decision[int(chosen_candidate.stream_id)] = int(self.episode_decision_points)
+
             if self.decision_pointer >= len(self.decision_stream_order):
                 terminated, truncated = self._finish_decision_point_and_continue()
             elif not truncated:
@@ -2046,56 +1960,20 @@ class TSNCandidatePathEnv(gym.Env):
 
         after_metrics = self._global_metrics()
         info = {
-            "stop_action": bool(stop_action),
+            "stop_action": False,
             "invalid_move": bool(invalid),
-            "stream_id": int(current_stream_id),
-            "chosen_offsets": None if chosen_candidate is None else [int(x) for x in chosen_candidate.offsets],
-            "candidate_count": int(len(self.current_candidates)),
+            "stream_id": current_stream_id,
+            "chosen_offsets": [int(x) for x in chosen_candidate.offsets],
+            "chosen_candidate_source": str(chosen_candidate.source),
+            "reward": float(reward),
             "sbr": float(self._current_sbr()),
-            "frss_before": float(before_metrics["frss"]),
-            "frss_after": float(after_metrics["frss"]),
-            "fse_before": float(before_metrics["fse"]),
-            "fse_after": float(after_metrics["fse"]),
-            "largest_hole_before_ns": float(before_metrics["largest_hole_ns"]),
-            "largest_hole_after_ns": float(after_metrics["largest_hole_ns"]),
-            "useless_gaps_before": float(before_metrics["total_useless_gaps"]),
-            "useless_gaps_after": float(after_metrics["total_useless_gaps"]),
-            "in_defrag_cycle_before": bool(in_defrag_cycle_before),
-            "in_defrag_cycle_after": bool(self.in_defrag_cycle),
-            "step_count": int(self.step_count),
-            "focus_stream_id": int(self.focus.stream_id) if self.decision_stream_order else -1,
-            "decision_points_seen": int(self.episode_decision_points),
-            "acceptance_before": float(before_metrics["acceptance_count"]),
-            "acceptance_after": float(after_metrics["acceptance_count"]),
             "delta_acceptance": float(after_metrics["acceptance_count"] - before_metrics["acceptance_count"]),
             "delta_frss": float(after_metrics["frss"] - before_metrics["frss"]),
-            "reward": float(reward),
-            "current_cycle_reallocations": int(self.current_cycle_reallocations),
-            "min_reallocations_per_cycle": int(self.min_reallocations_per_cycle),
-            "stream_cooldown_decisions": int(self.stream_cooldown_decisions),
-            "candidate_count_before": int(candidate_count_before),
-            "best_candidate_delta_acceptance": float(best_candidate_delta_acceptance),
-            "mean_candidate_delta_acceptance": float(mean_candidate_delta_acceptance),
-            "num_positive_delta_acceptance_candidates": int(num_positive_delta_acceptance_candidates),
-            "best_candidate_delta_frss": float(best_candidate_delta_frss),
-            "mean_candidate_delta_frss": float(mean_candidate_delta_frss),
-            "num_positive_delta_frss_candidates": int(num_positive_delta_frss_candidates),
-            "right_fit_candidate_count": int(right_fit_candidate_count),
-            "chosen_candidate_source": None if chosen_candidate is None else str(chosen_candidate.source),
-            "chosen_candidate_acceptance_after": 0.0 if chosen_candidate is None else float(chosen_candidate.acceptance_after),
-            "chosen_candidate_frss_after": 0.0 if chosen_candidate is None else float(chosen_candidate.frss_after),
-            "chosen_candidate_delta_acceptance": (
-                0.0 if chosen_candidate is None
-                else float(chosen_candidate.acceptance_after) - float(before_metrics["acceptance_count"])
-            ),
-            "chosen_candidate_delta_frss": (
-                0.0 if chosen_candidate is None
-                else float(chosen_candidate.frss_after) - float(before_metrics["frss"])
-            ),
+            "in_defrag_cycle_before": bool(in_cycle_before),
+            "in_defrag_cycle_after": bool(self.in_defrag_cycle),
         }
         if terminated or truncated:
             info.update(self._terminal_info())
-
 
         return self._get_obs(), float(reward), terminated, truncated, info
 
