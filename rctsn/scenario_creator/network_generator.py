@@ -116,13 +116,23 @@ class NetworkGenerator:
             self._add_edge(nodes[i], nodes[i + 1])
         return nodes
 
-    def create_star(self, num_nodes: int) -> str:
-        """Create a star topology; return the central switch node."""
+    def create_star(self, num_nodes: int) -> List[str]:
+        """
+        Create a star topology of switches.
+
+        Returns:
+            List of switches, where switches[0] is the central switch
+            and switches[1:] are edge switches.
+        """
         central = self._add_node("SW")
+        nodes = [central]
+
         for _ in range(num_nodes - 1):
             peripheral = self._add_node("SW")
             self._add_edge(central, peripheral)
-        return central
+            nodes.append(peripheral)
+
+        return nodes
 
     def create_ring(self, num_nodes: int) -> List[str]:
         """Create a ring topology of switches."""
@@ -296,7 +306,8 @@ class NetworkGenerator:
             "jitter_factors": [0.1, 0.2, 0.3, 0.4, 0.5]
         },
         shuffle_streams: bool = True,
-        shuffle_scope: str = "all",  # "all" | "batch" | "none"
+        shuffle_scope: str = "all",  # "all" | "batch" | "none",
+        bidirectional: bool = True,
     ) -> int:
         """
         Generate bidirectional streams. Safe to call multiple times; streams are appended.
@@ -322,13 +333,16 @@ class NetworkGenerator:
             device_groups = [wed_devices + ed_devices]
 
         self._generate_stream_pairs_dict(
-            wed_devices, wed_devices, wed_to_wed, device_groups, wed_wed_settings
+            wed_devices, wed_devices, wed_to_wed, device_groups, wed_wed_settings,
+            bidirectional=bidirectional
         )
         self._generate_stream_pairs_dict(
-            ed_devices, ed_devices, ed_to_ed, device_groups, ed_ed_settings
+            ed_devices, ed_devices, ed_to_ed, device_groups, ed_ed_settings,
+            bidirectional=bidirectional
         )
         self._generate_stream_pairs_dict(
-            wed_devices, ed_devices, wed_to_ed, device_groups, wed_ed_settings
+            wed_devices, ed_devices, wed_to_ed, device_groups, wed_ed_settings,
+            bidirectional=bidirectional
         )
         
         added = len(self.streams) - start_len
@@ -355,6 +369,7 @@ class NetworkGenerator:
         count: int,
         groups: List[List[str]],
         settings: Dict[str, List],
+        bidirectional: bool = True,
     ) -> None:
         """Generate bidirectional streams between pairs of devices using dictionary settings."""
         if not groups:
@@ -405,8 +420,9 @@ class NetworkGenerator:
                     gamma = random.choice(gamma_options)
                     
                     # Add bidirectional streams
-                    self._add_bidirectional_stream_dict(
-                        src, dst, packet_size, period, max_latency, priority, gamma, max_jitter, settings
+                    self._add_stream_dict(
+                        src, dst, packet_size, period, max_latency, priority, gamma, max_jitter, settings,
+                        bidirectional=bidirectional,
                     )
                     generated += 1
             attempts += 1
@@ -449,17 +465,18 @@ class NetworkGenerator:
                 groups.append(wed_devices + ed_devices)
         return groups
 
-    def _add_bidirectional_stream_dict(
-        self, 
-        src: str, 
-        dst: str, 
-        packet_size: int, 
-        period: int, 
+    def _add_stream_dict(
+        self,
+        src: str,
+        dst: str,
+        packet_size: int,
+        period: int,
         max_latency: int,
         priority: int,
         gamma: float,
         max_jitter: int,
         settings: Dict[str, List],
+        bidirectional: bool = True,
     ) -> None:
         """
         Create and add a bidirectional stream (both directions) with independent parameters.
@@ -478,6 +495,8 @@ class NetworkGenerator:
             "max_jitter": max_jitter,  # Add max_jitter field
         }
         self.streams.append(stream)
+        if not bidirectional:
+            return
         
         # Extract settings from the dictionary
         packet_size_options = settings["packet_sizes"]
@@ -722,3 +741,104 @@ class NetworkGenerator:
                     f.write(f"  {key}: {value}\n")
         
         print(f"Network statistics saved to {output_file}")
+
+
+    def generate_one_way_ed_streams_between_switches(
+        self,
+        src_switch: str,
+        dst_switch: str,
+        count: int,
+        settings: Dict[str, List],
+        shuffle_streams: bool = True,
+    ) -> int:
+        """
+        Generate one-way ED-to-ED streams from EDs attached to src_switch
+        to EDs attached to dst_switch.
+        """
+        src_eds = [
+            n for n in self.network.neighbors(src_switch)
+            if self._get_core_type(n) == "ED"
+        ]
+
+        dst_eds = [
+            n for n in self.network.neighbors(dst_switch)
+            if self._get_core_type(n) == "ED"
+        ]
+
+        if not src_eds:
+            raise ValueError(f"No EDs attached to source switch {src_switch}")
+        if not dst_eds:
+            raise ValueError(f"No EDs attached to destination switch {dst_switch}")
+
+        start_len = len(self.streams)
+
+        packet_size_options = settings["packet_sizes"]
+        period_options = settings["periods"]
+        latency_factors = settings["latency_factors"]
+        priority_options = settings["priorities"]
+        gamma_options = settings["gammas"]
+        jitter_factors = settings.get("jitter_factors", [0.0])
+
+        generated = 0
+        attempts = 0
+
+        while generated < count and attempts < self.MAX_ATTEMPTS:
+            src = random.choice(src_eds)
+            dst = random.choice(dst_eds)
+
+            if src != dst:
+                if isinstance(packet_size_options, tuple):
+                    packet_size = random.randint(*packet_size_options)
+                else:
+                    packet_size = random.choice(packet_size_options)
+
+                period = random.choice(period_options)
+                latency_factor = random.choice(latency_factors)
+                max_latency = int(period * latency_factor)
+
+                jitter_factor = random.choice(jitter_factors)
+                max_jitter = int(period * jitter_factor)
+
+                priority = random.choice(priority_options)
+                gamma = random.choice(gamma_options)
+
+                stream = {
+                    "src": src,
+                    "dst": dst,
+                    "packet_size": packet_size,
+                    "period": period,
+                    "max_latency": max_latency,
+                    "priority": priority,
+                    "gamma": gamma,
+                    "max_jitter": max_jitter,
+                }
+
+                self.streams.append(stream)
+                generated += 1
+
+            attempts += 1
+
+        if shuffle_streams:
+            batch = self.streams[start_len:]
+            random.shuffle(batch)
+            self.streams[start_len:] = batch
+
+        return generated
+    
+
+    def add_wired_devices_to_switches(self, switches: List[str], devices_per_switch: int) -> None:
+        """
+        Add wired ED devices only to the provided switches.
+        Useful for star topologies where the central switch should not have EDs.
+        """
+        for sw in switches:
+            if sw not in self.network.nodes:
+                raise ValueError(f"Switch {sw} not found in network.")
+
+            if self._get_core_type(sw) != "SW":
+                raise ValueError(f"Node {sw} is not a switch.")
+
+            sw_subnet = self.network.nodes[sw]["subnet"]
+            for _ in range(devices_per_switch):
+                ed = self._add_node("ED", subnet_id=sw_subnet)
+                self._add_edge(sw, ed)

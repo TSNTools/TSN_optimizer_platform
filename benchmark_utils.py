@@ -1,5 +1,6 @@
 import copy
 import networkx as nx
+import random
 import io
 import contextlib
 
@@ -38,6 +39,27 @@ def build_network_generator_from_usecase(usecase):
 
     return ng
 
+def _get_switches_with_attached_eds(ng):
+    """
+    Return switches that have at least one directly attached ED.
+    For the medium star, this should return only the edge switches
+    if the center has no EDs.
+    """
+    switches = []
+    for node in ng.network.nodes():
+        if ng._get_core_type(node) != "SW":
+            continue
+
+        attached_eds = [
+            n for n in ng.network.neighbors(node)
+            if ng._get_core_type(n) == "ED"
+        ]
+
+        if attached_eds:
+            switches.append(node)
+
+    return switches
+
 
 def generate_one_arrival_stream(
     ng,
@@ -55,8 +77,8 @@ def generate_one_arrival_stream(
     """
     if ed_ed_settings is None:
         ed_ed_settings = {
-            "packet_sizes": [256],
-            "periods": [150000, 300000],
+            "packet_sizes": [64, 128, 256, 512],
+            "periods": [500000, 1000000],
             "latency_factors": [0.7, 0.8, 0.9, 1.0],
             "priorities": [1],
             "gammas": [1.0],
@@ -65,29 +87,21 @@ def generate_one_arrival_stream(
 
     before = len(ng.streams)
 
+    edge_switches = _get_switches_with_attached_eds(ng)
+
+    if len(edge_switches) < 2:
+        raise ValueError(
+            f"Need at least two switches with attached EDs, found: {edge_switches}"
+        )
+
+    src_switch, dst_switch = random.sample(edge_switches, 2)
+
     with contextlib.redirect_stdout(io.StringIO()):
-        ng.generate_streams_with_dict_settings(
-            wed_to_wed=0,
-            ed_to_ed=1,
-            wed_to_ed=0,
-            mode="any",
-            wed_wed_settings=wed_wed_settings or {
-                "packet_sizes": [1024],
-                "periods": [100000],
-                "latency_factors": [0.6, 0.8],
-                "priorities": [1],
-                "gammas": [1.0],
-                "jitter_factors": [0.0],
-            },
-            ed_ed_settings=ed_ed_settings,
-            wed_ed_settings=wed_ed_settings or {
-                "packet_sizes": [1024],
-                "periods": [100000],
-                "latency_factors": [0.6, 0.8],
-                "priorities": [1],
-                "gammas": [1.0],
-                "jitter_factors": [0.0],
-            },
+        ng.generate_one_way_ed_streams_between_switches(
+            src_switch=src_switch,
+            dst_switch=dst_switch,
+            count=1,
+            settings=ed_ed_settings,
             shuffle_streams=False,
         )
 

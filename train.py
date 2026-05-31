@@ -8,13 +8,13 @@ from stable_baselines3 import DQN
 from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 from stable_baselines3.common.monitor import Monitor
 
-from env import TSNCandidatePathEnv
+from env_clean_simple import TSNCandidatePathEnv
 from tsn_scheduling_problem import TSNScheduling
 
 DEFAULT_ED_ED_SETTINGS = {
-    "packet_sizes": [256, 512],
-    "periods": [150000, 300000],
-    "latency_factors": [0.7, 0.8, 0.9, 1.0],
+    "packet_sizes": [64, 128, 256],
+    "periods": [150_000, 300_000],
+    "latency_factors": [0.8, 0.9, 1.0],
     "priorities": [1],
     "gammas": [1.0],
     "jitter_factors": [0.0],
@@ -103,10 +103,77 @@ class StopAfterNEpisodesCallback(BaseCallback):
                     msg += f" | cycles={ep_cycles}"
                 if ep_dp is not None:
                     msg += f" | dp={ep_dp}"
+                reward_diag = (
+                    f" | moves={info.get('move_actions', 0)}"
+                    f" stops={info.get('stop_actions', 0)}"
+                    f" forced={info.get('forced_stops', 0)}"
+                    f" | sumER={info.get('sum_E_reward', 0.0):+.2f}"
+                    f" sumFR={info.get('sum_frss_reward', 0.0):+.2f}"
+                    f" rawM={info.get('sum_raw_move_reward', 0.0):+.2f}"
+                    f" stopR={info.get('sum_stop_reward', 0.0):+.2f}"
+                    f" penR={info.get('sum_realloc_penalty', 0.0):+.2f}"
+                    f" penC={info.get('sum_cycle_penalty', 0.0):+.2f}"
+                    f" dEavg={info.get('avg_delta_E', 0.0):+.5f}"
+                    f" dFavg={info.get('avg_delta_frss', 0.0):+.5f}"
+                    f" moveR={info.get('sum_scaled_move_reward', 0.0):+.2f}"
+                    f" termSBR={info.get('terminal_sbr_reward', 0.0):+.2f}"
+                )
+                msg += reward_diag
                 print(msg, flush=True)
 
             if self.episode_count >= self.max_episodes:
                 return False
+
+        return True
+
+
+class RewardDebugCallback(BaseCallback):
+    def __init__(self, max_steps: int = 200, verbose: int = 1):
+        super().__init__(verbose)
+        self.max_steps = int(max_steps)
+        self.printed = 0
+
+    def _on_step(self) -> bool:
+        if self.printed >= self.max_steps:
+            return True
+
+        infos = self.locals.get("infos", [])
+        actions = self.locals.get("actions", [])
+
+        for i, info in enumerate(infos):
+            if self.printed >= self.max_steps:
+                break
+
+            action = actions[i] if len(actions) > i else None
+
+            if info.get("stop_action", False):
+                print(
+                    "[reward-debug] "
+                    f"step={self.num_timesteps} action={action} STOP "
+                    f"reward={info.get('reward', 0.0):+.4f} "
+                    f"sbr={info.get('sbr', 0.0):.4f} "
+                    f"cands={info.get('candidate_count', -1)} "
+                    f"forced={info.get('forced_to_stop', False)}",
+                    flush=True,
+                )
+            else:
+                print(
+                    "[reward-debug] "
+                    f"step={self.num_timesteps} action={action} MOVE "
+                    f"reward={info.get('reward', 0.0):+.4f} "
+                    f"raw={info.get('raw_move_reward', 0.0):+.4f} "
+                    f"ER={info.get('E_reward', 0.0):+.4f} "
+                    f"frssR={info.get('frss_reward', 0.0):+.4f} "
+                    f"dE={info.get('delta_E', 0.0):+.5f} "
+                    f"E={info.get('E_before', 0.0):.4f}->{info.get('E_after', 0.0):.4f} "
+                    f"dFRSS={info.get('delta_frss', 0.0):+.5f} "
+                    f"penR={info.get('realloc_penalty', 0.0):.3f} "
+                    f"penC={info.get('cycle_penalty', 0.0):.3f} "
+                    f"invalid={info.get('invalid_move', False)}",
+                    flush=True,
+                )
+
+            self.printed += 1
 
         return True
 
@@ -154,10 +221,26 @@ def make_env(args):
             "episode_arrivals",
             "episode_rejections",
             "episode_decision_points",
+            "episode_requested_departures",
+            "episode_executed_departures",
+            "episode_skipped_departures",
+            "episode_trace_steps",
             "episode_invalid_moves",
             "episode_violation_sum",
             "episode_reallocations",
             "episode_defrag_cycles",
+            "sum_E_reward",
+            "sum_frss_reward",
+            "sum_raw_move_reward",
+            "sum_stop_reward",
+            "sum_realloc_penalty",
+            "sum_cycle_penalty",
+            "avg_delta_E",
+            "avg_delta_frss",
+            "move_actions",
+            "stop_actions",
+            "forced_stops",
+            "terminal_sbr_reward",
         ),
     )
     return env
@@ -184,6 +267,8 @@ def main():
     parser.add_argument("--invalid-penalty", type=float, default=50.0)
     parser.add_argument("--defrag-cycle-penalty", type=float, default=0.05)
     parser.add_argument("--reallocation-penalty", type=float, default=0.01)
+
+    parser.add_argument("--debug-reward-steps", type=int, default=0)
 
     parser.add_argument("--max-candidates", type=int, default=10)
     parser.add_argument("--max-steps", type=int, default=500)
@@ -246,14 +331,17 @@ def main():
             device="cpu",
         )
 
-    callback = CallbackList(
-        [
-            SaveBestMeanRewardCallback(
-                save_path=os.path.join(args.out_dir, "best_model"),
-            ),
-            StopAfterNEpisodesCallback(max_episodes=args.train_episodes),
-        ]
-    )
+    callbacks = [
+        SaveBestMeanRewardCallback(
+            save_path=os.path.join(args.out_dir, "best_model"),
+        ),
+        StopAfterNEpisodesCallback(max_episodes=args.train_episodes),
+    ]
+
+    if args.debug_reward_steps > 0:
+        callbacks.insert(0, RewardDebugCallback(max_steps=args.debug_reward_steps))
+
+    callback = CallbackList(callbacks)
 
     model.learn(
         total_timesteps=args.timesteps,
