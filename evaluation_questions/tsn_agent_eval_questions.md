@@ -29,7 +29,7 @@ Generate a use case incrementally, adding one stream at a time, using a given co
 
 **Q4**
 ```
-Select a random talker placement from all available hosts with uniform probability.
+Select a random talker placement from all available hosts with uniform probability. (**X**)
 ```
 
 **Q5**
@@ -120,12 +120,12 @@ I want to generate a Barabasi-Albert random graph with 20 switches and 2 edges p
 
 **Q19** *(usecase_generator.py)*
 ```
-Implement staggered listener placement so that listeners in the same pod as the talker are preferred, but listeners on the same edge switch get the highest probability.
+Implement staggered listener placement so that listeners in the same pod as the talker are preferred, but listeners on the same edge switch get the highest probability. (**X**)
 ```
 
 **Q20** *(tsn_scheduling_problem.py)*
 ```
-Force stream 0 to use a specific set of switch egress ports while excluding all host ports that are not its registered talker or listeners. Show whether a function exists for this and call it with appropriate arguments.
+Force stream 0 to use a specific set of switch egress ports while excluding all host ports that are not its registered talker or listeners. Show whether a function exists for this and call it with appropriate arguments. (**X**)
 ```
 
 **Q21** *(tsn_scheduling_problem.py + evaluator.py)*

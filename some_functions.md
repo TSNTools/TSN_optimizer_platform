@@ -1,4 +1,4 @@
-# UsecaseGenerator – Function Documentation
+# UsecaseGenerator (usecase_generator.py) – Class and function Documentation
 
 ## 1. `k_ary_fat_tree(cls, k, directed=True)`
 ```python
@@ -1649,7 +1649,7 @@ If True, forces creation of a new topology even if one exists.
   - Modifies the graph in-place
   - Ensures node degree approximates `newDegree`
 
-# Usecase - Function Documentation
+# Usecase - Class and function documentation from usecase_generator.py
 ```python
 # constants
 MBPS_2_BPNS = 0.001
@@ -2999,7 +2999,7 @@ Imported use case JSON structure containing:
 - Effects:
   - Displays a plotted fat-tree graph
 
-# TSN Scheduling Problem - Libraries constants and `require_instance(func)`
+# TSN Scheduling Problem (tsn_scheduling_problem.py) - Libraries constants and `require_instance(func)`
 
 ```python
 import math
@@ -3055,7 +3055,7 @@ def require_instance(func):
    - Prevents execution of methods when no `usecase` is assigned.
    - Delegates handling to `self.no_instance_assigned()` when the condition fails.
 
-# InstanceContext
+# InstanceContext from tsn_scheduling_problem.py
 ```python
 class InstanceContext:
     """
@@ -3116,7 +3116,7 @@ class InstanceContext:
    - Caches processed instances using their IDs.
    - Resets the usecase after exiting the context.
 
-# TSNScheduling(problem_definition, ContextHandler=InstanceContext, **kwargs)
+# TSNScheduling(problem_definition, ContextHandler=InstanceContext, **kwargs) from tsn_scheduling_problem.py
 ```python
 class TSNScheduling():
     """
@@ -4228,7 +4228,7 @@ The stream dictionary containing frame configuration.
 4. Execution: Hands off the final requirement dictionaries to configure_stream_ports.
 
 ### Output
-- Returns: (numpy.ndarray, networkx.DiGraph) The resulting configuration vector and the customized topology graph.
+- Returns: (numpy.ndarray, networkx.DiGraph) The resulting configuration vector and the customized stream graph.
 
 ## 31. hop_cost_eg2eg(self, cur_egp, next_egp, frame_size)
 
@@ -4616,7 +4616,7 @@ The stream dictionary containing frame configuration.
 
   * Displays multiple graph visualizations
 
-# TSNConstraintEvaluator(problem, weights=None, check_routing=True, check_task_placement=True, scheduling_type=ScheduleEncodingType.PRIORITY)
+# TSNConstraintEvaluator(problem, weights=None, check_routing=True, check_task_placement=True, scheduling_type=ScheduleEncodingType.PRIORITY) from evaluator.py
 
 ```python
 from enum import Enum

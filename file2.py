@@ -23,11 +23,10 @@ PERSIST_DIR = "./storage"
 
 # Groq LLM
 Settings.llm = Groq(
-    # model="openai/gpt-oss-20b",
-    model="llama-3.3-70b-versatile",
+    model="openai/gpt-oss-20b",
     api_key=API,
     temperature=0,
-    max_tokens=2048
+    # max_tokens=2048
 )
 
 # Storing hash of source files. This will compare the current file hashes to the saved ones.
@@ -234,7 +233,9 @@ base_query_engine = RetrieverQueryEngine(
     node_postprocessors=[reranker]
 )
 
-query = ("I want to compute all possible paths between talkers and listeners in my use case. Is there a function that does this?")
+query = ("I want to distribute streams across the network to avoid link congestion while respecting "
+"shortest path constraints. Determine whether such functionality exists. "
+"If not, generate a function that implements this algorithm.")
 
 response = base_query_engine.query(query)
 print(response)
