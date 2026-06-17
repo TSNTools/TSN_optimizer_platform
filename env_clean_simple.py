@@ -1945,9 +1945,9 @@ class TSNCandidatePathEnv(gym.Env):
 
             current_sbr = self._current_sbr()
             if not self.in_defrag_cycle:
-                reward = 0.1 * (1 - current_sbr)
+                reward = -1 * (1 - current_sbr)
             else:
-                reward = 0.1 * (1 - current_sbr)
+                reward = -1 * (1 - current_sbr)
             self.episode_sum_stop_reward += float(reward)
 
             terminated, truncated = self._finish_decision_point_and_continue()
@@ -2009,7 +2009,7 @@ class TSNCandidatePathEnv(gym.Env):
             alpha = float(self.reward_alpha)
 
             raw_move_reward = alpha * E_reward + (1.0 - alpha) * frss_reward
-            reward = float(raw_move_reward)
+            reward = float(raw_move_reward)*3
 
             realloc_penalty_applied = float(self.reallocation_penalty)
             reward -= realloc_penalty_applied

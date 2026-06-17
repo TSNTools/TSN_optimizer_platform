@@ -1,15 +1,15 @@
-OUT_DIR="clean/tmskhir4"
+OUT_DIR="clean/tmskhir9"
 mkdir -p "$OUT_DIR"
 
 nohup bash -c '
 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
-taskset -c 0 python -u /home/ws/TSN_optimizer_platform/train.py \
+taskset -c 2 python -u /home/ws/TSN_optimizer_platform/train.py \
   --config uc_config.cfg \
-  --instance /home/ws/TSN_optimizer_platform/finals.json \
-  --out-dir clean/tmskhir4 \
+  --instance /home/ws/TSN_optimizer_platform/3imla9.json \
+  --out-dir clean/tmskhir9 \
   --train-episodes 400 \
-  --timesteps 10000 \
-  --decision-points-per-episode 400 \
+  --timesteps 300 \
+  --decision-points-per-episode 80 \
   --lambda-arrival 0.25 \
   --mu-departure 1.0 \
   --dt 1.0 \

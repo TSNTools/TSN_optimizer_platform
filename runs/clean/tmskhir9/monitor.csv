@@ -1,0 +1,2 @@
+#{"t_start": 1780741632.9004643, "env_id": "None"}
+r,l,t,episode_sbr,episode_acceptance,episode_arrivals,episode_rejections,episode_decision_points,episode_requested_departures,episode_executed_departures,episode_skipped_departures,episode_trace_steps,episode_invalid_moves,episode_violation_sum,episode_reallocations,episode_defrag_cycles,sum_E_reward,sum_frss_reward,sum_raw_move_reward,sum_stop_reward,sum_realloc_penalty,sum_cycle_penalty,avg_delta_E,avg_delta_frss,move_actions,stop_actions,forced_stops,terminal_sbr_reward
