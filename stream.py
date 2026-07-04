@@ -473,6 +473,8 @@ class TrafficHandler:
         Checks:
         1. Transmission time per hop ≤ interval (bandwidth check)
         2. Total path latency ≤ maxLatency (short-circuit if exceeded)
+        3. (TODO) Bandwidth availability considering other streams on the same ports
+        4. (TODO) check that the pairwise gcd of two streams in the same port is greater than the sum of window length, otherwise they are going to overlap anyway
         """
         total_latency = 0
         
@@ -487,7 +489,6 @@ class TrafficHandler:
             # Bandwidth / cycle check
             if trans_delay > stream.interval:
                 return False
-            #TODO: check that there is enough bandwidth for the stream on this port, considering the other streams that are using it (concurrent streams sharing the same port should be considered in the graph construction, so if the port is present in the path, it should be able to accommodate the stream's bandwidth)
             
             # Edge propagation + node processing
             edge_data = graph.get_edge_data(node, next_node, default={})

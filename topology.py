@@ -54,8 +54,8 @@ def makeLineGraph(config, directed=True):
     Returns:
     - NetworkX graph object: A directed or undirected graph representing the line topology.
     """
-    numHosts = config.getint('topology_config', 'numhosts')
-    numSwitchs = config.getint('topology_config', 'numswitchs')
+    numHosts = config.num_hosts
+    numSwitchs = config.num_switches
     
     # Create a line graph where switches are connected in a straight line
     graph = nx.path_graph(numSwitchs)
@@ -85,8 +85,8 @@ def makeLineGraph(config, directed=True):
 
 def makeRandomGraph(config, directed=True):
     
-    numHosts = config.getint('topology_config', 'numhosts')
-    numSwitchs = config.getint('topology_config', 'numswitchs')
+    numHosts = config.num_hosts
+    numSwitchs = config.num_switches
     
     graphConfig = ast.literal_eval(config.get('topology_config', 'graphconfig'))
 

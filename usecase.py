@@ -225,7 +225,10 @@ class Usecase(DataClassJsonMixin):
     def add_stream(self):
         stream = Stream.generate(self.specification)
         self.streams.append(
-            TrafficHandler.embed_to_topology(stream, self.specification, self.graph, network_load=self.streams)
+            TrafficHandler.embed_to_topology(stream, 
+                                             self.specification, 
+                                             self.graph, 
+                                             network_load=self.streams)
         )
 
     def remove_link(self, src, dst):
