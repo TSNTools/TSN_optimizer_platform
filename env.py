@@ -478,27 +478,20 @@ class TSNCandidatePathEnv(gym.Env):
         return [int(x) for x in offsets]
 
 
+
     def select_diverse_candidates(
         self,
         candidates: List[StreamMoveCandidate],
         max_candidates: int,
     ) -> List[StreamMoveCandidate]:
-        """
-        Select a diverse final candidate set.
+        """Return a small, interpretable candidate set.
 
-        This is used after full-path candidates have already been generated
-        and evaluated as globally valid.
-
-        Goal:
-        - avoid returning several candidates with almost the same first-hop offset
-        - expose different schedule shapes to the DQN
-        - keep a strong fragmentation-oriented candidate
-        - include left/middle/right alternatives when available
-
-        Note:
-        The current/no-move candidate is handled separately in
-        _candidate_list_for_stream(), so this function only selects from
-        generated move candidates.
+        The benchmark inserts new arrivals with first-fit. Therefore we keep
+        later/right-side placements visible, but we do not let them destroy the
+        action list. The final mix is:
+        - best quality candidates by (delta_E, delta_FRSS),
+        - a few right-side candidates,
+        - one middle/diverse candidate if there is room.
         """
         if not candidates:
             return []
@@ -507,15 +500,13 @@ class TSNCandidatePathEnv(gym.Env):
         if max_candidates <= 0:
             return []
 
-        def cand_key(c: StreamMoveCandidate):
+        def key(c: StreamMoveCandidate):
             return tuple(int(x) for x in c.offsets)
 
-        # Remove duplicate offset vectors while preserving first occurrence.
-        unique = []
+        unique: List[StreamMoveCandidate] = []
         seen = set()
-
         for c in candidates:
-            k = cand_key(c)
+            k = key(c)
             if k not in seen:
                 seen.add(k)
                 unique.append(c)
@@ -523,50 +514,68 @@ class TSNCandidatePathEnv(gym.Env):
         if len(unique) <= max_candidates:
             return unique
 
-        # Best-by-fragmentation ordering.
-        best_sorted = sorted(
-            unique,
-            key=lambda c: (
-                -float(c.E_after),
-                -float(c.frss_after),
-                int(c.cuts),
-                tuple(int(x) for x in c.offsets),
-            ),
-        )
+        def delta_E(c: StreamMoveCandidate) -> float:
+            return float(c.debug.get("delta_E", 0.0))
 
-        selected = []
+        def delta_frss(c: StreamMoveCandidate) -> float:
+            return float(c.debug.get("delta_frss", 0.0))
+
+        def mean_offset(c: StreamMoveCandidate) -> float:
+            if not c.offsets:
+                return 0.0
+            return float(sum(int(x) for x in c.offsets)) / float(len(c.offsets))
+
+        selected: List[StreamMoveCandidate] = []
         selected_keys = set()
 
-        def add(c: StreamMoveCandidate):
-            k = cand_key(c)
+        def add(c: StreamMoveCandidate) -> None:
+            k = key(c)
             if k not in selected_keys and len(selected) < max_candidates:
                 selected.append(c)
                 selected_keys.add(k)
 
-        # 1) Best fragmentation candidate.
-        add(best_sorted[0])
-
-        # 2) Left-most, right-most, and middle candidate by first-hop offset.
-        by_first = sorted(
+        # 1) Quality first: this keeps the reward/action semantics stable.
+        quality_sorted = sorted(
             unique,
-            key=lambda c: int(c.offsets[0]) if c.offsets else 0,
+            key=lambda c: (
+                -delta_E(c),
+                -delta_frss(c),
+                int(c.cuts),
+                tuple(int(x) for x in c.offsets),
+            ),
         )
-
-        add(by_first[-1])
-        if len(by_first) >= 2:
-            add(by_first[-2])
-        if len(by_first) >= 3:
-            add(by_first[-3])    
-        add(by_first[len(by_first) // 2])                  
-
-        # Extra right-side candidates are useful because arrivals use first-fit.
-        for c in reversed(by_first):
+        quality_quota = max(1, int(round(0.5 * max_candidates)))
+        for c in quality_sorted:
             add(c)
-            if len(selected) >= min(max_candidates, 5):
+            if len(selected) >= quality_quota:
                 break
 
-        # 3) Fill remaining slots with best fragmentation-ranked candidates.
-        for c in best_sorted:
+        # 2) Add right-side alternatives because arrivals use first-fit.
+        right_sorted = sorted(
+            unique,
+            key=lambda c: (
+                -mean_offset(c),
+                -delta_E(c),
+                -delta_frss(c),
+                int(c.cuts),
+            ),
+        )
+        right_quota = max(1, int(round(0.3 * max_candidates)))
+        right_added = 0
+        for c in right_sorted:
+            before = len(selected)
+            add(c)
+            if len(selected) > before:
+                right_added += 1
+            if right_added >= right_quota:
+                break
+
+        # 3) Fill with diverse candidates by first-hop position.
+        by_first = sorted(unique, key=lambda c: int(c.offsets[0]) if c.offsets else 0)
+        for c in (by_first[-1], by_first[len(by_first) // 2], by_first[0]):
+            add(c)
+
+        for c in quality_sorted:
             add(c)
             if len(selected) >= max_candidates:
                 break
@@ -1202,12 +1211,9 @@ class TSNCandidatePathEnv(gym.Env):
 
         return self._right_biased_subset(starts, self.per_hop_candidate_limit)
 
-    def _right_biased_subset(self, starts, limit: int) -> List[int]:
-        """Keep a small diverse set of starts, biased toward later placements.
 
-        This does not reward right-shift directly. It only ensures that late
-        placements survive pruning and appear in the action space.
-        """
+    def _right_biased_subset(self, starts, limit: int) -> List[int]:
+        """Keep a tiny diverse set of starts, biased toward later placements."""
         starts = sorted({int(x) for x in starts})
         if not starts:
             return []
@@ -1223,16 +1229,21 @@ class TSNCandidatePathEnv(gym.Env):
             if x not in selected and len(selected) < limit:
                 selected.append(x)
 
-        add(starts[-1])                    # right-most
-        add(starts[len(starts) // 2])      # middle
-        add(starts[0])                     # left-most, kept for contrast
+        # Prefer right and right-middle starts, but keep one middle/left anchor
+        # so the model still has contrast and does not lose all quality choices.
+        add(starts[-1])
+        if len(starts) >= 2:
+            add(starts[-2])
+        add(starts[len(starts) // 2])
 
         for x in reversed(starts):
             add(x)
-            if len(selected) >= limit:
+            if len(selected) >= limit - 1:
                 break
 
-        return selected
+        # One left candidate only if there is still room.
+        add(starts[0])
+        return selected[:limit]
 
 
     def _evaluate_candidate_metrics(self, stream_id: int, offsets: List[int]) -> Optional[Dict[str, float]]:
@@ -1414,83 +1425,87 @@ class TSNCandidatePathEnv(gym.Env):
         right_fit_candidates = [c for c in candidates if c.source == "right_fit"]
         other_candidates = [c for c in candidates if c.source != "right_fit"]
 
-        sort_key = lambda c: (
-            -float(c.debug.get("delta_E", 0.0)),
-            -float(c.debug.get("delta_frss", 0.0)),
-            int(c.cuts),
-            tuple(int(x) for x in c.offsets),
+        def delta_E(c: StreamMoveCandidate) -> float:
+            return float(c.debug.get("delta_E", 0.0))
+
+        def delta_frss(c: StreamMoveCandidate) -> float:
+            return float(c.debug.get("delta_frss", 0.0))
+
+        def mean_offset(c: StreamMoveCandidate) -> float:
+            if not c.offsets:
+                return 0.0
+            return float(sum(int(x) for x in c.offsets)) / float(len(c.offsets))
+
+        quality_sorted = sorted(
+            other_candidates,
+            key=lambda c: (
+                -delta_E(c),
+                -delta_frss(c),
+                int(c.cuts),
+                tuple(int(x) for x in c.offsets),
+            ),
         )
-        right_fit_candidates.sort(key=sort_key)
-        other_candidates.sort(key=sort_key)
+
+        right_sorted = sorted(
+            other_candidates,
+            key=lambda c: (
+                -mean_offset(c),
+                -delta_E(c),
+                -delta_frss(c),
+                int(c.cuts),
+            ),
+        )
+
+        right_fit_candidates.sort(
+            key=lambda c: (
+                -delta_E(c),
+                -delta_frss(c),
+                int(c.cuts),
+                tuple(int(x) for x in c.offsets),
+            )
+        )
 
         final_candidates: List[StreamMoveCandidate] = []
         selected_keys = set()
 
-        def add_candidate(c):
+        def add_candidate(c: Optional[StreamMoveCandidate]) -> None:
             if c is None:
                 return
             k = tuple(int(x) for x in c.offsets)
             if k not in selected_keys and len(final_candidates) < self.max_candidates:
                 final_candidates.append(c)
                 selected_keys.add(k)
-        
-        def mean_offset(c):
-            if not c.offsets:
-                return 0.0
-            return float(sum(int(x) for x in c.offsets)) / max(1, len(c.offsets))
-        
+
+        # 1) Always expose one true right-fit candidate if available.
         if right_fit_candidates:
             add_candidate(right_fit_candidates[0])
 
-        right_sorted = sorted(
-            other_candidates,
-            key=lambda c: (
-                -mean_offset(c),
-                -float(c.debug.get("delta_E", 0.0)),
-                -float(c.debug.get("delta_frss", 0.0)),
-                int(c.cuts),
-            ),
-        )
-
-        # Fill about half the action list with right-side candidates.
-        right_quota = max(1, int(0.6 * self.max_candidates))
-        for c in right_sorted:
+        # 2) Most choices remain quality-ranked: this avoids the aggressive
+        # right-heavy version that hurt benchmark SBR.
+        quality_quota = max(1, int(round(0.5 * self.max_candidates)))
+        for c in quality_sorted:
             add_candidate(c)
-            if len(final_candidates) >= right_quota:
+            if len(final_candidates) >= quality_quota:
                 break
 
-        # 3) Still include a few best E/FRSS candidates.
-        quality_sorted = sorted(
-            other_candidates,
-            key=lambda c: (
-                -float(c.debug.get("delta_E", 0.0)),
-                -float(c.debug.get("delta_frss", 0.0)),
-                int(c.cuts),
-                tuple(int(x) for x in c.offsets),
-            ),
-        )
-
-        quality_quota = max(1, int(0.3 * self.max_candidates))
-        quality_added = 0
-        for c in quality_sorted:
+        # 3) Add a few right-side choices for first-fit-friendly compaction.
+        right_quota = max(1, int(round(0.3 * self.max_candidates)))
+        right_added = 0
+        for c in right_sorted:
             before = len(final_candidates)
             add_candidate(c)
             if len(final_candidates) > before:
-                quality_added += 1
-            if quality_added >= quality_quota:
+                right_added += 1
+            if right_added >= right_quota:
                 break
 
-        # 4) Fill any remaining slots with diverse candidates.
-        if len(final_candidates) < self.max_candidates:
-            remaining = [
-                c for c in other_candidates
-                if tuple(int(x) for x in c.offsets) not in selected_keys
-            ]
-            for c in self.select_diverse_candidates(
-                remaining,
-                self.max_candidates - len(final_candidates),
-            ):
-                add_candidate(c)
+        # 4) Fill the rest with diverse/quality candidates.
+        remaining = [
+            c for c in other_candidates
+            if tuple(int(x) for x in c.offsets) not in selected_keys
+        ]
+        for c in self.select_diverse_candidates(remaining, self.max_candidates - len(final_candidates)):
+            add_candidate(c)
 
         return final_candidates[: self.max_candidates]
     
@@ -1884,28 +1899,32 @@ class TSNCandidatePathEnv(gym.Env):
         return info
 
 
+
     def step(self, action: int):
         self.step_count += 1
         action = int(np.asarray(action).item())
-        forced_to_stop = False
 
         if not self.decision_active:
-            info = {"stop_action": True, "forced_to_stop": False, "invalid_move": False, **self._terminal_info()}
+            info = {
+                "stop_action": True,
+                "forced_to_stop": False,
+                "invalid_move": False,
+                **self._terminal_info(),
+            }
             return self._get_obs(), 0.0, True, False, info
 
         before_metrics = self._global_metrics()
         current_stream_id = int(self.focus.stream_id)
         in_cycle_before = bool(self.in_defrag_cycle)
 
-        # Padded actions are treated as STOP, matching the benchmark runner.
+        # DQN does not consume the mask directly. If it selects a padded action,
+        # end the decision point like a forced STOP, but give a clear penalty.
         if action > 0 and action - 1 >= len(self.current_candidates):
             self.episode_forced_stops += 1
             self.episode_invalid_moves += 1
-
-            reward = -0.10
+            reward = -float(self.invalid_penalty)
 
             terminated, truncated = self._finish_decision_point_and_continue()
-
             info = {
                 "stop_action": True,
                 "forced_to_stop": True,
@@ -1914,49 +1933,41 @@ class TSNCandidatePathEnv(gym.Env):
                 "reward": float(reward),
                 "candidate_count": int(len(self.current_candidates)),
             }
-
             if terminated or truncated:
-                info.update(self._terminal_info())   # important: parentheses
-
+                info.update(self._terminal_info())
             return self._get_obs(), float(reward), terminated, truncated, info
 
-        # STOP: skip or end defrag. One simple safe baseline reward.
+        # STOP: explicit admission feedback. This is intentionally simple:
+        # choosing to stop receives the current acceptance signal.
         if action == 0:
             self._backup_current_as_last_valid()
-            current_sbr = self.blocked_requests / max(1, self.total_requests)
-
             self.episode_stop_actions += 1
-            
-            reward = 0.0 * (0.1 - float(current_sbr))
 
-            if self.in_defrag_cycle and self.current_cycle_reallocations < self.min_reallocations_per_cycle:
-                missing = max(0, self.min_reallocations_per_cycle - self.current_cycle_reallocations)
-                reward -= self.early_stop_penalty * (missing / max(1, self.min_reallocations_per_cycle))
-
+            current_sbr = self._current_sbr()
+            if not self.in_defrag_cycle:
+                reward =  (1 - current_sbr)
+            '''else:
+                reward = -1 * (1 - current_sbr)'''
             self.episode_sum_stop_reward += float(reward)
 
             terminated, truncated = self._finish_decision_point_and_continue()
-
             info = {
                 "stop_action": True,
-                "forced_to_stop": bool(forced_to_stop),
+                "forced_to_stop": False,
+                "invalid_move": False,
                 "sbr": float(current_sbr),
                 "reward": float(reward),
                 "candidate_count": int(len(self.current_candidates)),
                 "cycle_reallocations": int(self.current_cycle_reallocations),
             }
             if terminated or truncated:
-                final_sbr = self._current_sbr()
-                terminal_sbr_reward = 0.0
-                reward += terminal_sbr_reward
-                self.episode_terminal_sbr_reward = float(terminal_sbr_reward)
-
+                self.episode_terminal_sbr_reward = 0.0
                 info.update(self._terminal_info())
-                info["terminal_sbr_reward"] = float(terminal_sbr_reward)
-
+                info["terminal_sbr_reward"] = 0.0
             return self._get_obs(), float(reward), terminated, truncated, info
 
-        # MOVE: apply one safe candidate and reward the normalized improvement.
+        # MOVE: apply one candidate. First move of a cycle pays cycle penalty;
+        # continuation moves only pay reallocation penalty.
         chosen_candidate = self.current_candidates[action - 1]
         saved_ports = copy.deepcopy(self.port_schedules)
         saved_offsets = copy.deepcopy(self.stream_offsets)
@@ -1998,15 +2009,13 @@ class TSNCandidatePathEnv(gym.Env):
             alpha = float(self.reward_alpha)
 
             raw_move_reward = alpha * E_reward + (1.0 - alpha) * frss_reward
-            useful_move_bonus = 0.05 if (delta_E > 0.0 or delta_frss > 0.0) else 0.0
             
-            reward = raw_move_reward + useful_move_bonus
-            if raw_move_reward > 0.0:
-                reward += 0.03
+            #----------------------
+            reward = float(raw_move_reward)
+            #----------------------
+            
 
             realloc_penalty_applied = float(self.reallocation_penalty)
-            cycle_penalty_applied = 0.0
-
             reward -= realloc_penalty_applied
 
             if not self.in_defrag_cycle:
@@ -2015,12 +2024,8 @@ class TSNCandidatePathEnv(gym.Env):
                 cycle_penalty_applied = float(self.defrag_cycle_penalty)
                 reward -= cycle_penalty_applied
 
-
-            unscaled_move_reward = float(reward)
-
             self.episode_sum_scaled_move_reward += float(reward)
             self.episode_move_actions += 1
-
             self.episode_sum_E_reward += float(E_reward)
             self.episode_sum_frss_reward += float(frss_reward)
             self.episode_sum_raw_move_reward += float(raw_move_reward)
@@ -2053,39 +2058,33 @@ class TSNCandidatePathEnv(gym.Env):
             "stream_id": current_stream_id,
             "chosen_offsets": [int(x) for x in chosen_candidate.offsets],
             "chosen_candidate_source": str(chosen_candidate.source),
-
             "reward": float(reward),
             "raw_move_reward": float(raw_move_reward),
-
             "E_before": float(before_metrics["E"]),
             "E_after": float(move_after_metrics["E"]),
             "delta_E": float(delta_E),
             "E_reward": float(E_reward),
-
             "before_frss": float(before_metrics["frss"]),
             "after_frss": float(move_after_metrics["frss"]),
             "delta_frss": float(delta_frss),
             "frss_reward": float(frss_reward),
-
             "realloc_penalty": float(realloc_penalty_applied),
             "cycle_penalty": float(cycle_penalty_applied),
-
             "in_defrag_cycle_before": bool(in_cycle_before),
             "in_defrag_cycle_after": bool(self.in_defrag_cycle),
+            "cycle_reallocations": int(self.current_cycle_reallocations),
+            "candidate_count": int(len(self.current_candidates)),
+            "after_frss_global": float(after_metrics["frss"]),
+            "after_E_global": float(after_metrics["E"]),
         }
 
-
         if terminated or truncated:
-            final_sbr = self._current_sbr()
-            terminal_sbr_reward = 0.0
-
-            reward += terminal_sbr_reward
-            self.episode_terminal_sbr_reward = float(terminal_sbr_reward)
-
+            self.episode_terminal_sbr_reward = 0.0
             info.update(self._terminal_info())
-            info["terminal_sbr_reward"] = float(terminal_sbr_reward)
+            info["terminal_sbr_reward"] = 0.0
 
         return self._get_obs(), float(reward), terminated, truncated, info
+
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
         super().reset(seed=seed)

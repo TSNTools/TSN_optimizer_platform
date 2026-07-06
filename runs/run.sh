@@ -1,12 +1,12 @@
-OUT_DIR="clean/tmskhir4_alpha_0.1"
+OUT_DIR="clean/tmskhir4_pr_0.009"
 mkdir -p "$OUT_DIR"
 
 nohup bash -c '
 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
-taskset -c 2 python -u /home/ws/TSN_optimizer_platform/train.py \
+taskset -c 3 python -u /home/ws/TSN_optimizer_platform/train.py \
   --config uc_config.cfg \
   --instance /home/ws/TSN_optimizer_platform/finals.json \
-  --out-dir clean/tmskhir4_alpha_0.1 \
+  --out-dir clean/tmskhir4_pr_0.009 \
   --train-episodes 400 \
   --timesteps 10000 \
   --decision-points-per-episode 400 \
@@ -17,10 +17,10 @@ taskset -c 2 python -u /home/ws/TSN_optimizer_platform/train.py \
   --max-steps 500 \
   --per-hop-candidate-limit 5 \
   --beam-width 30 \
-  --reward-alpha 0.1 \
+  --reward-alpha 0.5 \
   --invalid-penalty 1.0 \
   --defrag-cycle-penalty 0.07 \
-  --reallocation-penalty 0.005 \
+  --reallocation-penalty 0.009 \
   --min-reallocations-per-cycle 5 \
   --early-stop-penalty 0.0 \
   --stream-cooldown-decisions 5 \
