@@ -22,8 +22,6 @@ def inspect_storage(persist_dir: str, label: str):
         print(f"Could not load {label}: {e}")
 
 if __name__ == "__main__":
-    # Check Parameters specifically
-    inspect_storage(PARAMS_PERSIST, "Parameters")
-    
-    # Uncomment if you want to see the others:
-    inspect_storage(MODULE_PERSIST["usecase_generator"], "Usecase Generator")
+
+    # here write the file whose chunks need to be checked
+    inspect_storage(MODULE_PERSIST["evaluator"], "Evaluator")
