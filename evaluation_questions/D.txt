@@ -1,0 +1,320 @@
+============================================================
+QUERY: I have a TSN scheduling problem and its constraint evaluator, and I want to create a metaheuristic 
+(e.g. a genetic algorithm) that generates candidate chromosomes and uses the evaluator's violation and 
+correction feedback to converge on a feasible schedule. Can you help me design this algorithm?"
+============================================================
+
+--- FINAL ANSWER ---
+QUERY TYPE: COMPLEX
+
+MODULES INVOLVED: evaluator, tsn_scheduling_problem
+
+NORMALIZED QUERY: I have a TSN scheduling problem and its constraint evaluator, and I want to create a metaheuristic (e.g. a genetic algorithm) that generates candidate chromosomes and uses the evaluator's violation and correction feedback to converge on a feasible schedule. Can you help me design this algorithm?"
+
+
+--- RESULT 1 ---
+MODULE: tsn_scheduling_problem
+SUB-QUERY: How does the TSN scheduling problem module represent the problem instance, including port/node ID mappings and stream configurations, to prepare it for a solver?
+INTENT: EXPLAIN_CONCEPT
+
+EXPLANATION:
+Based on the provided codebase, the TSN scheduling problem module represents the problem instance by initializing a `TSNScheduling` object, loading a specific use case, and then constructing a **`config_matrix`** and attaching **`customGraph`** objects to each stream. This process maps the physical network topology (ports/nodes) into a solver-ready format.
+
+Here is how the representation is constructed:
+
+### 1. Initialization and Context
+The process begins in the `__init__` method of the `TSNScheduling` class. It sets up the core helpers (`UsecaseGenerator`, `InstancesLoader`) and initializes the `config_matrix` to `None`. The actual problem instance data is loaded into `self.usecase` (though the loading logic is handled by the helpers, the `__init__` prepares the container).
+
+```python
+def __init__(self, problem_definition, ContextHandler=InstanceContext, **kwargs):
+    # core helpers
+    self.uc_gen = UsecaseGenerator()
+    self.instances_loader = InstancesLoader()
+    self.config_file = problem_definition
+
+    # instance & context
+    self.usecase = None
+    self.ContextHandler = ContextHandler
+    self.instances = []
+
+    # metadata (initialized per-instance in build_metadata)
+    self.config_matrix = None
+```
+
+### 2. Building the Metadata Representation
+The core representation logic resides in the `build_metadata` function. This function transforms the raw use case (a list of stream dictionaries) into a structured matrix and graph objects.
+
+*   **`config_matrix`**: A NumPy matrix of shape `(n_ports, n_streams)`. Each column represents a stream, and each row represents a port. The values indicate the configuration status of a port for that specific stream.
+*   **`customGraph`**: A NetworkX `DiGraph` attached directly to each stream dictionary. This graph represents the specific topology available for that stream, potentially pruned based on constraints.
+
+```python
+def build_metadata(self):
+    """
+    Build config_matrix and attach customGraph to each stream dict.
+    - Expects self.usecase to be set.
+    - Uses make_default_stream_config(stream) which returns (config_column, custom_graph).
+    """
+    if not self.usecase:
+        return self.no_instance_assigned()
+
+    # allocate matrix
+    self.config_matrix = np.zeros((self.n_ports, self.n_streams), dtype=int)
+
+    # iterate streams in the raw usecase (list of dicts)
+    for j, stream in enumerate(self.usecase.streams):
+        config_column, custom_graph = self.make_default_stream_config(stream)
+
+        # sanity check: config_column must match number of ports
+        if len(config_column) != self.n_ports:
+            raise ValueError(
+                f"config column length ({len(config_column)}) != n_ports ({self.n_ports})"
+            )
+
+        self.config_matrix[:, j] = config_column
+        # attach custom graph to the stream dict so downstream code can use it
+        stream["customGraph"] = custom_graph
+
+    # After metadata is built, initialize Problem
+    self.initialize_problem()
+```
+
+### 3. Port/Node ID Mappings and Stream Configuration
+The mapping of ports to the solver's internal indices is handled within the logic that generates the `config_column` (partially shown in `configure_stream_ports`).
+
+*   **Port ID Mapping**: The code uses a dictionary `self.port_name_to_id` to map string-based port names (e.g., "switch1.port1") to 0-based integer indices. This is crucial for populating the `config_matrix`.
+*   **Configuration Logic**:
+    *   **Always Active**: Ports forced to be active are mapped to `1` in the `config_column`.
+    *   **Always Off / Concurrent**: Ports that are removed from the graph or are concurrent with forced ports are mapped to `0`.
+    *   **Free to Use**: Ports that exist in the graph but are not forced are also mapped to `0` (indicating they are available but not strictly required).
+
+The `configure_stream_ports` function demonstrates how these mappings are applied to create a pruned graph and the corresponding configuration vector:
+
+```python
+def configure_stream_ports(self, ports_in, ports_out):
+    # ... (docstring omitted for brevity)
+    
+    # ----- 1) always-active ports (talker/switch are egress ports; listener requires the incoming sourcePort)
+    always_active_ports = []
+    # ... (logic to collect port names) ...
+
+    # map to 0-based indices for config matrix
+    always_active_ids = [self.port_name_to_id[p] - 1 for p in always_active_ports if p in self.port_name_to_id]
+    config_column = np.zeros(self.n_ports, dtype=int)
+    if always_active_ids:
+        config_column[always_active_ids] = 1
+
+    # ----- 2) determine edges to remove from the global graph
+    # ... (logic to prune edges based on ports_out and concurrent ports) ...
+```
+
+### Summary for the Solver
+To prepare the problem for a metaheuristic solver:
+1.  **Topology**: The solver receives a `customGraph` (NetworkX DiGraph) for each stream, representing the valid paths.
+2.  **Constraints**: The `config_matrix` provides a binary representation of port usage constraints (1 = forced active, 0 = optional/inactive).
+3.  **Indices**: Port names are converted to 0-based integer indices via `port_name_to_id`, allowing the solver to operate on numerical arrays rather than string identifiers.
+
+This structure allows the solver to iterate over streams and ports efficiently using numerical indices while respecting the topological constraints defined in the `customGraph`.
+
+
+--- RESULT 2 ---
+MODULE: evaluator
+SUB-QUERY: How does the evaluator module compute constraint violations, feasibility metrics, and provide correction suggestions for a candidate chromosome?
+INTENT: EXPLAIN_CONCEPT
+
+EXPLANATION:
+Based on the provided codebase, the `TSNConstraintEvaluator` module computes constraint violations and feasibility metrics by treating a candidate schedule as a **chromosome** (a matrix where `chromosome[p, s]` represents the start time of stream `s` at port `p`).
+
+Here is how the module processes a candidate chromosome to determine feasibility and performance:
+
+### 1. Computing Constraint Violations
+The evaluator aggregates violations from two primary sources: **Host Role Violations** and **Window Sequence Violations**. These are calculated per stream and summed to provide a total violation score.
+
+#### A. Host Role Violations
+The function `_per_stream_host_role_violations` checks if the stream endpoints (talkers/listeners) are correctly placed according to the topology masks. It returns a vector of 5 violation types per stream:
+1.  **Talker/Listener Count:** Ensures exactly one talker and one listener exist per stream (`abs(count - 1)`).
+2.  **Overlap:** Checks if a talker and listener are on the same node or invalid paths.
+3.  **Stray Nodes:** Detects if traffic appears on ports that are not designated talkers or listeners.
+
+```python
+def _per_stream_host_role_violations(self, chromosome):
+    act = chromosome > 0          # bool (no astype)
+
+    # Boolean masking (no integer multiply)
+    active_talkers   = act & self.talker_mask
+    active_listeners = act & self.listener_adj_mask
+
+    # Per-stream counts
+    talker_count   = active_talkers.sum(axis=0)
+    listener_count = active_listeners.sum(axis=0)
+
+    # Stray per-stream (reduce directly)
+    stray_talker   = (act & self.stray_talker_mask).sum(axis=0)
+    stray_listener = (act & self.stray_listener_mask).sum(axis=0)
+
+    # Matrix multiply (dominant cost)
+    downstream = self.adjacency_mask @ active_listeners
+
+    # Overlap per-stream
+    overlap = (active_talkers & downstream).sum(axis=0)
+
+    return np.vstack([
+        np.abs(talker_count - 1),      # talker_not_fixed
+        np.abs(listener_count - 1),    # listener_not_fixed
+        overlap,                       # talker_listener_overlap
+        stray_talker,                  # stray_talker
+        stray_listener                 # stray_listener
+    ])
+```
+
+#### B. Window Sequence Violations
+The function `_per_stream_window_sequence_violations` enforces temporal causality and FIFO ordering. It checks two specific constraints:
+1.  **Intra-Stream Sequencing (Causality):** Ensures a frame does not leave a downstream port before it arrives from the upstream port.
+    *   *Constraint:* `chromosome[d, s] >= chromosome[u, s] + hop_cost[u, s]`
+2.  **Inter-Stream FIFO (Slot Stealing):** Ensures that if Stream A arrives before Stream B on a port, Stream A must also depart before Stream B.
+    *   *Constraint:* `(t11 - t21) * (t12 - t22) >= 0`
+
+```python
+def _per_stream_window_sequence_violations(self, chromosome):
+    """
+    chromosome[p, s] = start time (0 = inactive)
+
+    Enforces two scheduling constraints:
+    -------------------------------------------------------
+    1) INTRA-STREAM SEQUENCING (causality)
+
+        Constraint per connection (u → d): chromosome[d, s] >= chromosome[u, s] + hop_cost[u, s]
+
+    Prevents a frame leaving a downstream port before it
+    arrives from upstream. Violations are marked at the downstream port (d).
+    -------------------------------------------------------
+    2) INTER-STREAM FIFO (slot stealing / interleaving)
+
+    For two streams s1,s2 on the same port:
+        (t11 - t21)*(t12 - t22) >= 0
+    meaning arrival order must equal departure order.
+    Prevents one stream stealing another stream's slot.
+    """
+    n_ports, n_streams = self.n_ports, self.n_streams
+    upstream_ports = self._upstream_ports
+    downstream_ports = self._downstream_ports
+
+    if upstream_ports.size == 0:
+        return np.zeros((n_streams,), dtype=int)
+
+    upstream_start = chromosome[upstream_ports]          # (connections, S)
+    downstream_start = chromosome[downstream_ports]      # (connections, S)
+
+    upstream_active = upstream_start > 0
+    downstream_active = downstream_start > 0
+    # Only check connections where stream exists at both ends
+    valid = upstream_active & downstream_active
+    # Required arrival time at downstream
+    enqueuing_start = upstream_start + self.all_hops_costs[upstream_ports] # per connection
+
+    # -------------------------------------------------
+    # PART 1 — INTRA-STREAM SEQUENCING
+    # -------------------------------------------------
+    connection_violations = valid & (downstream_start < enqueuing_start)
+    # Accumulate violations at downstream ports
+    violations = np.zeros((n_ports, n_streams), dtype=bool)
+    np.maximum.at(
+        violations,
+        (downstream_ports[:, None], np.arange(n_streams)),
+        connection_violations
+    )
+    # Sum violations per stream
+    seq_v  = violations.sum(axis=0)
+    # -------------------------------------------------
+    # PART 2 — INTER-STREAM FIFO (slot stealing)
+    # -------------------------------------------------
+    active = chromosome > 0
+
+    eg_queue_arrival = np.zeros((n_ports, n_streams), dtype=float)           
+    np.maximum.at(
+        eg_queue_arrival,
+        (downstream_ports[:, None], np.arange(n_streams)),
+        enqueuing_start
+    )
+
+    arr_diff = eg_queue_arrival[:, :, None] - eg_queue_arrival[:, None, :]
+    dep_diff = chromosome[:, :, None] - chromosome[:, None, :]
+
+    interleave = (arr_diff * dep_diff) < 0
+    interleave &= self.pair_mask
+    both_active = active[:, :, None] & active[:, None, :]
+    interleave &= both_active
+
+    fifo_v = interleave.sum(axis=(0,2))
+
+    return np.vstack((seq_v[np.newaxis, :], fifo_v[np.newaxis, :]))
+```
+
+### 2. Computing Feasibility Metrics
+The function `compute_metrics` calculates performance indicators to guide the metaheuristic toward a high-quality (not just feasible) solution. It uses vectorized operations and caching for efficiency.
+
+The metrics returned are:
+1.  **Congestion Score:** A weighted combination of average utilization and standard deviation of utilization.
+2.  **Average Utilization (`avg_util`):** Mean load across ports.
+3.  **Standard Deviation of Utilization (`std_util`):** Variance in load.
+4.  **Load Imbalance:** Coefficient of variation of the load per port.
+5.  **Path Length Score:** Normalized average path length.
+6.  **Average Path Length:** Raw average number of hops.
+
+```python
+def compute_metrics(self, chromosome, alpha=0.9, eps=1e-09):
+    """Vectorized performance metrics (congestion, imbalance, path length)."""
+    key = chromosome.tobytes()
+    cached = self._metrics_evaluation_cache.get(key)
+    if cached is not None:
+        metrics = cached
+    else:
+        load_per_port = np.sum((chromosome > 0).astype(float) * self.windLengths, axis=1)
+        util = load_per_port / np.maximum(self.macro_cycle * self.port_speeds, eps)
+
+        avg_util = float(np.clip(np.nanmean(util), 0, 1))
+        std_util = float(np.clip(np.nanstd(util), 0, 1))
+        congestion_score = float(np.clip(alpha * avg_util + (1 - alpha) * std_util, 0, 1))
+
+        mean_load = float(np.mean(load_per_port))
+        if mean_load <= eps:
+            load_imbalance = 1.0
+        else:
+            imbalance = float(np.std(load_per_port) / mean_load)
+            load_imbalance = float(min(imbalance, 1.0) if np.isfinite(imbalance) else 1.0)
+
+        active_per_stream = np.count_nonzero(chromosome > 0, axis=0)
+        avg_path_len = float(np.mean(active_per_stream))
+        path_len_score = float(np.clip(avg_path_len / (self.n_ports + eps), 0, 1))
+
+        metrics = np.array([congestion_score, avg_util, std_util, load_imbalance, path_len_score, avg_path_len])
+        self._metrics_evaluation_cache[key] = metrics
+    # Return the metrics as an array
+    return metrics
+```
+
+### 3. Aggregation and Feedback Loop
+The main `evaluate` function orchestrates these checks. It returns a tuple containing:
+1.  **Violations:** The sum of all per-stream violations (Host Role + Sequence).
+2.  **Metrics:** The array of performance scores.
+
+This structure allows a genetic algorithm to:
+*   **Minimize Violations:** Drive the population toward `violations == 0` (feasibility).
+*   **Optimize Metrics:** Once feasible, minimize `congestion_score` and `load_imbalance` to find the optimal schedule.
+
+```python
+def evaluate(self, chromosome):
+    key = chromosome.tobytes()
+    # get violations
+    per_stream_violations = self.per_stream_all_violations(chromosome)
+
+    # get metrics
+    metrics = self.compute_metrics(chromosome)
+
+    return per_stream_violations.sum(axis=1), metrics
+```
+
+**Note on Correction Suggestions:**
+The provided code **does not explicitly generate correction suggestions** (e.g., "move stream X to port Y"). Instead, it provides **violation counts** and **metric scores**. In a metaheuristic context, the "correction" is implicit: the algorithm must mutate or crossover chromosomes to reduce the violation count and improve the metric scores. The evaluator acts as a fitness function, penalizing infeasible solutions (via violations) and ranking feasible ones (via metrics).
+
+[query time] 219.8s
+[done] 219.8s

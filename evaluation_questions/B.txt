@@ -1,0 +1,872 @@
+============================================================
+1. QUERY: I want to build a k-ary fat-tree network topology. What function can I use?
+============================================================
+-- FINAL ANSWER ---
+QUERY TYPE: SIMPLE
+
+MODULES INVOLVED: usecase_generator
+
+NORMALIZED QUERY: I want to build a k-ary fat-tree network topology. What function can I use?
+
+
+--- RESULT 1 ---
+MODULE: usecase_generator
+SUB-QUERY: What function can be used to build a k-ary fat-tree network topology?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: makeTopology, k_ary_fat_tree, generate_fattree_regions, drawFattree, drawTopology
+
+EXPLANATION/ANSWER:
+The function `k_ary_fat_tree` can be used to build a k-ary fat-tree network topology.
+
+============================================================
+2. QUERY: I have a stream and a use case, and I want to assign it the shortest routing path. What function can I use?
+============================================================
+--- FINAL ANSWER ---
+QUERY TYPE: SIMPLE
+
+MODULES INVOLVED: usecase_generator
+
+NORMALIZED QUERY: I have a stream and a use case, and I want to assign it the shortest routing path. What function can I use?
+
+
+--- RESULT 1 ---
+MODULE: usecase_generator
+SUB-QUERY: What function can be used to assign the shortest routing path to a stream in a use case?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: shortestPath, addRouting, streamGenerator, randomPath, get_config
+
+EXPLANATION/ANSWER:
+The function `shortestPath` can be used to assign the shortest routing path to a stream in a use case.
+
+============================================================
+3. QUERY: I have a generated use case and I want to save it to a JSON file on disk. What function can I use?
+============================================================
+
+--- FINAL ANSWER ---
+QUERY TYPE: SIMPLE
+
+MODULES INVOLVED: usecase_generator
+
+NORMALIZED QUERY: I have a generated use case and I want to save it to a JSON file on disk. What function can I use?
+
+
+--- RESULT 1 ---
+MODULE: usecase_generator
+SUB-QUERY: What function can I use to save a generated use case to a JSON file?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: to_file, add_stream, generateUC, get_config, ucGenerator
+
+EXPLANATION/ANSWER:
+You can use the `to_file` function to save a generated use case to a JSON file.
+
+============================================================
+4. QUERY: I have a use-case config file and I want to incrementally generate use cases by adding one stream at a time. What function can I use?
+============================================================
+
+--- FINAL ANSWER ---
+QUERY TYPE: SIMPLE
+
+MODULES INVOLVED: usecase_generator
+
+NORMALIZED QUERY: I have a use-case config file and I want to incrementally generate use cases by adding one stream at a time. What function can I use?
+
+
+--- RESULT 1 ---
+MODULE: usecase_generator
+SUB-QUERY: What function can be used to incrementally generate use cases by adding one stream at a time?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: ucGenerator, add_stream, streamGenerator, generateUC, get_config
+
+EXPLANATION/ANSWER:
+The function `ucGenerator` can be used to incrementally generate use cases by adding one stream at a time
+
+============================================================
+5. QUERY: I have a talker egress port and a use-case graph, and I want to compute the minimum delay budgets by doing a forward BFS. What function can I use?
+============================================================
+--- FINAL ANSWER ---
+QUERY TYPE: SIMPLE
+
+MODULES INVOLVED: tsn_scheduling_problem
+
+NORMALIZED QUERY: I have a talker egress port and a use-case graph, and I want to compute the minimum delay budgets by doing a forward BFS. What function can I use?
+
+
+--- RESULT 1 ---
+MODULE: tsn_scheduling_problem
+SUB-QUERY: What function can I use to compute the minimum delay budgets by doing a forward BFS on a use-case graph?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: bfs_forward, bfs_backward, plot_all_stream_custom_graphs, drawFattree, hop_cost_eg2eg
+
+EXPLANATION/ANSWER:
+You can use the `bfs_forward` function to compute the minimum delay budgets by doing a forward BFS on a use-case graph.
+
+============================================================
+6. QUERY: I have a stream and I want to force some ports to be active and exclude others when configuring it. What function can I use?
+============================================================
+--- FINAL ANSWER ---
+QUERY TYPE: SIMPLE
+
+MODULES INVOLVED: tsn_scheduling_problem
+
+NORMALIZED QUERY: I have a stream and I want to force some ports to be active and exclude others when configuring it. What function can I use?
+
+
+--- RESULT 1 ---
+MODULE: tsn_scheduling_problem
+SUB-QUERY: What function can I use to force some ports to be active and exclude others when configuring a stream?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: configure_stream_ports, build_metadata, make_stream_config, bfs_backward, plot_all_stream_custom_graphs
+
+EXPLANATION/ANSWER:
+You can use the `configure_stream_ports` function to force some ports to be active and exclude others when configuring a stream.
+
+============================================================
+7. QUERY: I have a network graph and I want to draw it using a fat-tree style layout. What function can I use?
+============================================================
+--- FINAL ANSWER ---
+QUERY TYPE: SIMPLE
+
+MODULES INVOLVED: usecase_generator
+
+NORMALIZED QUERY: I have a network graph and I want to draw it using a fat-tree style layout. What function can I use?
+
+
+--- RESULT 1 ---
+MODULE: usecase_generator
+SUB-QUERY: What function can I use to draw a network graph in a fat-tree style layout?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: drawTopology, drawFattree, makeTopology, k_ary_fat_tree, makeRandomGraph
+
+EXPLANATION/ANSWER:
+You can use the `drawFattree` function to draw a network graph in a fat-tree style layout.
+
+============================================================
+8. QUERY: I have a candidate solution (chromosome) and I want to know which streams are feasible. What function can I use?
+============================================================
+--- FINAL ANSWER ---
+QUERY TYPE: SIMPLE
+
+MODULES INVOLVED: evaluator
+
+NORMALIZED QUERY: I have a candidate solution (chromosome) and I want to know which streams are feasible. What function can I use?
+
+
+--- RESULT 1 ---
+MODULE: evaluator
+SUB-QUERY: What function can I use to determine which streams are feasible given a candidate solution?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: feasible_streams, _per_stream_window_sequence_violations, __init__, _per_stream_latency_violations_start_time, group_connected_ports
+
+EXPLANATION/ANSWER:
+You can use the `feasible_streams` function to determine which streams are feasible given a candidate solution (chromosome)
+
+============================================================
+9. QUERY: I have a candidate schedule and I want to compute performance metrics like congestion, load imbalance and average path length. What function can I use?
+============================================================
+--- FINAL ANSWER ---
+QUERY TYPE: SIMPLE
+
+MODULES INVOLVED: evaluator
+
+NORMALIZED QUERY: I have a candidate schedule and I want to compute performance metrics like congestion, load imbalance and average path length. What function can I use?
+
+
+--- RESULT 1 ---
+MODULE: evaluator
+SUB-QUERY: What function can I use to compute performance metrics like congestion, load imbalance and average path length for a candidate schedule?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: compute_metrics, evaluate, __init__, group_connected_ports
+
+EXPLANATION/ANSWER:
+You can use the `compute_metrics` function to compute performance metrics like congestion, load imbalance, and average path length for a candidate schedule
+
+============================================================
+10. QUERY: I want to generate a fat-tree topology graph and then draw it in a fat-tree layout. What functions can I use?
+============================================================
+--- FINAL ANSWER ---
+QUERY TYPE: SIMPLE
+
+MODULES INVOLVED: usecase_generator
+
+NORMALIZED QUERY: I want to generate a fat-tree topology graph and then draw it in a fat-tree layout. What functions can I use?
+
+
+--- RESULT 1 ---
+MODULE: usecase_generator
+SUB-QUERY: How can I generate a fat-tree topology graph? How can I draw a fat-tree topology in a fat-tree layout?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: drawFattree, makeTopology, drawTopology, k_ary_fat_tree, generate_fattree_regions
+
+EXPLANATION/ANSWER:
+To generate a fat-tree topology graph, you can use the `k_ary_fat_tree` function. This function generates a k-ary fat-tree topology as a networkx graph.
+
+To draw a fat-tree topology in a fat-tree layout, you can use the `drawFattree` function. This function draws a fat-tree network topology using matplotlib, assigning each node a layer (core, aggregation, edge, end) based on its name, computing positions, and rendering the graph using networkx draw.
+
+============================================================
+11. QUERY: I have a use case and I want to compute the transmission window length of a stream at a given port, and also the per-egress-port hop cost of forwarding a frame. What functions can I use?
+============================================================
+--- FINAL ANSWER ---
+QUERY TYPE: COMPLEX
+
+MODULES INVOLVED: tsn_scheduling_problem, usecase_generator
+
+NORMALIZED QUERY: I have a use case and I want to compute the transmission window length of a stream at a given port, and also the per-egress-port hop cost of forwarding a frame. What functions can I use?
+
+
+--- RESULT 1 ---
+MODULE: usecase_generator
+SUB-QUERY: How can I compute the transmission window length of a stream at a given port?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: window_length, pathConvenient, randomPath, periodConvenient, makeTopology
+
+EXPLANATION/ANSWER:
+You can use the `window_length` function to compute the transmission window length of a stream at a given port. This function takes three parameters: `stream_idx`, `port_name`, and an optional `eps` parameter with a default value of `1e-9`.
+
+
+--- RESULT 2 ---
+MODULE: tsn_scheduling_problem
+SUB-QUERY: How can I compute the per-egress-port hop cost of forwarding a frame?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: hops_costs, hop_cost_eg2eg, bfs_forward, bfs_backward, configure_stream_ports
+
+EXPLANATION/ANSWER:
+You can use the `hops_costs` function to compute the per-egress-port hop cost of forwarding a frame. This function takes a `frame_size` as input and returns an array of hop costs for each egress port.
+
+============================================================
+12. QUERY: I have a config file and I want to generate a use case, then build the config matrix and per-stream custom graphs for the scheduling problem. What functions can I use?
+============================================================
+--- FINAL ANSWER ---
+QUERY TYPE: COMPLEX
+
+MODULES INVOLVED: tsn_scheduling_problem, usecase_generator
+
+NORMALIZED QUERY: I have a config file and I want to generate a use case, then build the config matrix and per-stream custom graphs for the scheduling problem. What functions can I use?
+
+
+--- RESULT 1 ---
+MODULE: usecase_generator
+SUB-QUERY: How can I generate a use case from a config file?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: generateUC, ucGenerator, to_file, get_config, from_json
+
+EXPLANATION/ANSWER:
+You can generate a use case from a config file using the `generateUC` function. 
+
+This function takes a `configFile` as an argument and returns a fully populated `Usecase` object. 
+
+Here's the relevant part of the code:
+
+```python
+@classmethod
+def generateUC(cls, configFile, *args, **kwargs):
+    ...
+    return usecase
+```
+
+
+--- RESULT 2 ---
+MODULE: tsn_scheduling_problem
+SUB-QUERY: What functions can I use to build the config matrix for the scheduling problem? How can I build per-stream custom graphs for the scheduling problem?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: build_metadata, configure_stream_ports, plot_all_stream_custom_graphs, make_stream_config, make_default_stream_config
+
+EXPLANATION/ANSWER:
+To build the config matrix for the scheduling problem, you can use the `build_metadata` function. This function will also attach custom graphs to each stream dict.
+
+To build per-stream custom graphs for the scheduling problem, you can use the `make_default_stream_config` function, which is called by `build_metadata`. Alternatively, you can use `configure_stream_ports` to build a custom graph for a specific stream based on ports_in and ports_out, or `make_stream_config` to build a custom graph from explicit always_in and always_out lists.
+
+============================================================
+13. QUERY: I have instantiated my TSN scheduling problem and I want to evaluate a candidate solution to get its total constraint violations and metrics. What functions can I use?
+============================================================
+--- FINAL ANSWER ---
+QUERY TYPE: SIMPLE
+
+MODULES INVOLVED: evaluator
+
+NORMALIZED QUERY: I have instantiated my TSN scheduling problem and I want to evaluate a candidate solution to get its total constraint violations and metrics. What functions can I use?
+
+
+--- RESULT 1 ---
+MODULE: evaluator
+SUB-QUERY: What functions can I use to evaluate a candidate solution and get its total constraint violations and metrics?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: evaluate, per_stream_all_violations, _per_stream_host_role_violations, _per_stream_talker_offset_violations, feasible_streams
+
+EXPLANATION/ANSWER:
+You can use the `evaluate` function to evaluate a candidate solution and get its total constraint violations and metrics. This function takes a `chromosome` as input and returns a tuple containing the total constraint violations and metrics.
+
+============================================================
+14. QUERY: I want to set the active use-case instance inside a with-block and then check a candidate chromosome's feasibility per stream. What functions can I use?
+============================================================
+--- FINAL ANSWER ---
+QUERY TYPE: COMPLEX
+
+MODULES INVOLVED: evaluator, tsn_scheduling_problem
+
+NORMALIZED QUERY: I want to set the active use-case instance inside a with-block and then check a candidate chromosome's feasibility per stream. What functions can I use?
+
+
+--- RESULT 1 ---
+MODULE: tsn_scheduling_problem
+SUB-QUERY: How can I set the active use-case instance inside a with-block?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: use_instance, __enter__, no_instance_assigned, get_config, require_instance
+
+EXPLANATION/ANSWER:
+You can set the active use-case instance inside a with-block using the `use_instance` function. According to the docstring, it "Return[s] a context manager that sets .usecase to instance inside a with-block." 
+
+Here's how you can use it:
+
+```python
+with problem.use_instance(instance):
+    # your code here
+```
+
+This will set `problem.usecase` to `instance` within the `with` block.
+
+
+--- RESULT 2 ---
+MODULE: evaluator
+SUB-QUERY: What functions can I use to check a candidate chromosome's feasibility per stream?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: feasible_streams, _per_stream_window_sequence_violations, _per_stream_latency_violations_start_time, evaluate, _per_stream_flow_continuity_violations
+
+EXPLANATION/ANSWER:
+You can use the `feasible_streams` function to check a candidate chromosome's feasibility per stream.
+
+============================================================
+15. QUERY: I have a use case and I want to get its macro-cycle (LCM of stream intervals) and then suggest corrections to a candidate solution. What functions can I use?
+============================================================
+--- FINAL ANSWER ---
+QUERY TYPE: COMPLEX
+
+MODULES INVOLVED: evaluator, tsn_scheduling_problem
+
+NORMALIZED QUERY: I have a use case and I want to get its macro-cycle (LCM of stream intervals) and then suggest corrections to a candidate solution. What functions can I use?
+
+
+--- RESULT 1 ---
+MODULE: tsn_scheduling_problem
+SUB-QUERY: How can I get the macro-cycle (LCM of stream intervals) of a use case?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: macro_cycle, plot_all_stream_custom_graphs, bfs_forward, bfs_backward, configure_stream_ports
+
+EXPLANATION/ANSWER:
+You can get the macro-cycle (LCM of stream intervals) of a use case by calling the `macro_cycle` method on an instance of the class that contains this method. The method does not take any parameters, so you can call it like this: `instance.macro_cycle()`.
+
+
+--- RESULT 2 ---
+MODULE: evaluator
+SUB-QUERY: What functions can I use to suggest corrections to a candidate solution?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: suggest_corrections, __init__, _per_stream_latency_violations_start_time, _per_stream_talker_offset_violations, _per_stream_flow_continuity_violations
+
+EXPLANATION/ANSWER:
+You can use the `suggest_corrections` function to suggest corrections to a candidate solution.
+
+============================================================
+16. QUERY: I have a use case and I want to fix all listener placements to a single host, and then check for talker-listener overlap and stray-host violations in a candidate solution. What functions can I use?
+============================================================
+--- FINAL ANSWER ---
+QUERY TYPE: COMPLEX
+
+MODULES INVOLVED: evaluator, usecase_generator
+
+NORMALIZED QUERY: I have a use case and I want to fix all listener placements to a single host, and then check for talker-listener overlap and stray-host violations in a candidate solution. What functions can I use?
+
+
+--- RESULT 1 ---
+MODULE: usecase_generator
+SUB-QUERY: How can I fix all listener placements to a single host in my use case?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: fixListeners, fixTalkers, listenerEmbedding, __init__, get_config
+
+EXPLANATION/ANSWER:
+You can use the `fixListeners` function to fix all listener placements to a single host in your use case. This function reduces each stream's listener possible placements to a single randomly chosen host per listener group and sets `numplaceslistener` to 1 in the config.
+
+
+--- RESULT 2 ---
+MODULE: evaluator
+SUB-QUERY: What functions can I use to check for talker-listener overlap and stray-host violations in a candidate solution?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: _per_stream_host_role_violations, _per_stream_flow_continuity_violations, _per_stream_talker_offset_violations, per_stream_all_violations, talker_listener_groups
+
+EXPLANATION/ANSWER:
+You can use the `_per_stream_host_role_violations` function to check for talker-listener overlap and stray-host violations in a candidate solution. This function returns a (5, n_streams) array counting talker_not_fixed, listener_not_fixed, talker_listener_overlap, stray_talker, and stray_listener violations for each stream.
+
+============================================================
+17. QUERY: I want to assign random routing paths to my streams and then detect flow-continuity violations (disconnected or looping paths) in a candidate solution. What functions can I use?
+============================================================
+--- FINAL ANSWER ---
+QUERY TYPE: COMPLEX
+
+MODULES INVOLVED: evaluator, usecase_generator
+
+NORMALIZED QUERY: I want to assign random routing paths to my streams and then detect flow-continuity violations (disconnected or looping paths) in a candidate solution. What functions can I use?
+
+
+--- RESULT 1 ---
+MODULE: usecase_generator
+SUB-QUERY: How can I assign random routing paths to my streams?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: addRouting, streamGenerator, randomPath, __init__, guess_config
+
+EXPLANATION/ANSWER:
+You can use the `addRouting` function with `overwrite_config=True` to assign random routing paths to your streams. Alternatively, you can use the `streamGenerator` function which generates random streams with routing paths.
+
+
+--- RESULT 2 ---
+MODULE: evaluator
+SUB-QUERY: What function can I use to detect flow-continuity violations in a candidate solution?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: _per_stream_flow_continuity_violations, __init__, _per_stream_latency_violations_start_time, _per_stream_flow_conservation_violations, suggest_corrections
+
+EXPLANATION/ANSWER:
+You can use the `_per_stream_flow_continuity_violations` function to detect flow-continuity violations in a candidate solution.
+
+============================================================
+18. QUERY: I  have a config file and I want to generate a use case, instantiate the scheduling problem and build its metadata, and then evaluate a candidate schedule's constraint violations. What functions can I use?
+============================================================
+--- FINAL ANSWER ---
+QUERY TYPE: COMPLEX
+
+MODULES INVOLVED: evaluator, tsn_scheduling_problem, usecase_generator
+
+NORMALIZED QUERY: I have a config file and I want to generate a use case, instantiate the scheduling problem and build its metadata, and then evaluate a candidate schedule's constraint violations. What functions can I use?
+
+
+--- RESULT 1 ---
+MODULE: usecase_generator
+SUB-QUERY: How can I generate a use case from a config file?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: generateUC, ucGenerator, to_file, get_config, from_json
+
+EXPLANATION/ANSWER:
+You can generate a use case from a config file using the `generateUC` function. This function takes a `configFile` as an argument and returns a fully populated `Usecase` object.
+
+Here's an example of how to use it:
+
+```python
+usecase = generateUC(configFile='path_to_your_config_file')
+```
+
+
+--- RESULT 2 ---
+MODULE: tsn_scheduling_problem
+SUB-QUERY: How can I instantiate the scheduling problem and build its metadata?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: build_metadata, instantiate, __enter__, configure_stream_ports, initialize_problem
+
+EXPLANATION/ANSWER:
+You can instantiate the scheduling problem and build its metadata using the `instantiate` and `build_metadata` functions. However, these functions are not typically called directly. 
+
+Instead, you can use the `__enter__` method, which sets the `usecase` attribute and calls `build_metadata` once per unique instance. This method is designed to be used in a `with` block.
+
+Here's an example of how you can use it:
+
+```python
+with SchedulingProblem(config_file) as problem:
+    # problem is now instantiated and its metadata is built
+    # you can now use the problem object to evaluate a candidate schedule
+```
+
+
+--- RESULT 3 ---
+MODULE: evaluator
+SUB-QUERY: How can I evaluate a candidate schedule's constraint violations?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: evaluate, __init__, _per_stream_window_sequence_violations, _per_stream_talker_offset_violations, per_stream_all_violations
+
+EXPLANATION/ANSWER:
+You can use the `evaluate` function to evaluate a candidate schedule's constraint violations. This function takes a `chromosome` as input and returns a tuple containing the summed per-stream violations and performance metrics.
+
+============================================================
+19. QUERY: I want to import a use case from a JSON file, remove its routing so the router is free, set it as the active instance to build the config matrix, and then check a candidate for flow-conservation violations. What functions can I use?
+============================================================
+--- FINAL ANSWER ---
+QUERY TYPE: COMPLEX
+
+MODULES INVOLVED: evaluator, tsn_scheduling_problem, usecase_generator
+
+NORMALIZED QUERY: I want to import a use case from a JSON file, remove its routing so the router is free, set it as the active instance to build the config matrix, and then check a candidate for flow-conservation violations. What functions can I use?
+
+
+--- RESULT 1 ---
+MODULE: usecase_generator
+SUB-QUERY: How can I import a use case from a JSON file and remove its routing?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: removeRouting, addRouting, __init__, to_file, get_config
+
+EXPLANATION/ANSWER:
+You can import a use case from a JSON file and remove its routing by using the `removeRouting` function after loading the use case from the JSON file. However, the provided code does not include a function to load a use case from a JSON file. 
+
+You would need to implement a function to load the use case from the JSON file, then call the `removeRouting` function on the loaded use case.
+
+
+--- RESULT 2 ---
+MODULE: tsn_scheduling_problem
+SUB-QUERY: How can I set the imported use case as the active instance to build the config matrix?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: get_config, build_metadata, configure_stream_ports, drawFattree, bfs_backward
+
+EXPLANATION/ANSWER:
+You can use the `build_metadata` function to set the imported use case as the active instance and build the config matrix. However, the function `build_metadata` itself does not set the use case as the active instance. It expects `self.usecase` to be set before calling `build_metadata`. 
+
+You would need to set `self.usecase` to the imported use case before calling `build_metadata`. The exact method to set `self.usecase` is not shown in the provided code snippet.
+
+
+--- RESULT 3 ---
+MODULE: evaluator
+SUB-QUERY: What function can I use to check a candidate for flow-conservation violations?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: _per_stream_flow_conservation_violations, _per_stream_flow_continuity_violations, __init__, per_stream_all_violations, evaluate
+
+EXPLANATION/ANSWER:
+You can use the `_per_stream_flow_conservation_violations` function to check a candidate for flow-conservation violations.
+
+============================================================
+20. QUERY: I want to generate a fat-tree use case, compute the per-port hop costs used for latency evaluation, and then check the latency violations of a candidate priority schedule. What functions can I use?
+============================================================
+--- FINAL ANSWER ---
+QUERY TYPE: COMPLEX
+
+MODULES INVOLVED: evaluator, tsn_scheduling_problem, usecase_generator
+
+NORMALIZED QUERY: I want to generate a fat-tree use case, compute the per-port hop costs used for latency evaluation, and then check the latency violations of a candidate priority schedule. What functions can I use?
+
+
+--- RESULT 1 ---
+MODULE: usecase_generator
+SUB-QUERY: How can I generate a fat-tree use case?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: makeTopology, generate_fattree_regions, drawFattree, k_ary_fat_tree, drawTopology
+
+EXPLANATION/ANSWER:
+You can generate a fat-tree use case by using the `makeTopology` function with a `usecase` object that has a `config` attribute containing the necessary topology parameters, including a `graphconfig` with `typ` set to `'ft'`.
+
+
+--- RESULT 2 ---
+MODULE: tsn_scheduling_problem
+SUB-QUERY: How are per-port hop costs computed for latency evaluation?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: configure_stream_ports, hops_costs, hop_cost_eg2eg, node_to_port_id, ports
+
+EXPLANATION/ANSWER:
+The per-port hop costs are computed using the `hops_costs` function. This function calculates the cost of forwarding a frame from one egress port by summing the transmission delay, propagation delay, and processing delay. The transmission delay is calculated as the frame size divided by the port speed, the propagation delay is obtained from the graph, and the processing delay is obtained from the graph nodes. The result is a numpy array of hop costs for each port.
+
+
+--- RESULT 3 ---
+MODULE: evaluator
+SUB-QUERY: How can I check the latency violations of a candidate priority schedule?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: _per_stream_latency_violations_priority, _per_stream_latency_violations_start_time, __init__, evaluate, compute_metrics
+
+EXPLANATION/ANSWER:
+You can check the latency violations of a candidate priority schedule using the `_per_stream_latency_violations_priority` function. This function takes a chromosome (representing the priority schedule) as input and returns a binary array indicating which streams exceed their maximum latency.
+
+--- 174-190 s time range ---
+
+============================================================
+21. QUERY: I want to incrementally generate use cases (one stream added at a time), instantiate the scheduling problem for each, and compute performance metrics for candidate schedules. What functions can I use?
+============================================================
+-- FINAL ANSWER ---
+QUERY TYPE: COMPLEX
+
+MODULES INVOLVED: evaluator, tsn_scheduling_problem, usecase_generator
+
+NORMALIZED QUERY: I want to incrementally generate use cases (one stream added at a time), instantiate the scheduling problem for each, and compute performance metrics for candidate schedules. What functions can I use?
+
+
+--- RESULT 1 ---
+MODULE: usecase_generator
+SUB-QUERY: How can I incrementally generate use cases with one stream added at a time?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: ucGenerator, add_stream, streamGenerator, makeRandomGraph, generateUC
+
+EXPLANATION/ANSWER:
+You can use the `ucGenerator` function to incrementally generate use cases with one stream added at a time. This function takes a `configFile` as an argument and yields a new use case after adding each stream. 
+
+Here's how you can use it:
+
+```python
+for usecase in ucGenerator(cls, configFile):
+    # do something with the usecase
+    pass
+```
+
+This will allow you to process each use case after one stream has been added.
+
+
+--- RESULT 2 ---
+MODULE: tsn_scheduling_problem
+SUB-QUERY: What functions can I use to instantiate the scheduling problem for a given use case?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: instantiate, configure_stream_ports, import_scheduling_usecase, get_config, generate_scheduling_usecase
+
+EXPLANATION/ANSWER:
+You can use the `instantiate` function to instantiate the scheduling problem for a given use case.
+
+
+--- RESULT 3 ---
+MODULE: evaluator
+SUB-QUERY: What functions can I use to compute performance metrics for candidate schedules?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: compute_metrics, evaluate, __init__, _per_stream_latency_violations_start_time
+
+EXPLANATION/ANSWER:
+You can use the `compute_metrics` function to compute performance metrics for candidate schedules. This function takes a chromosome and optional parameters `alpha` and `eps` as input and returns an array of performance metrics.
+
+[query time] 165.5s
+[done] 165.5s
+
+============================================================
+22. QUERY: I have a stream and I want to assign it a shortest path, build its default allowed-ports configuration in the problem, and then evaluate whether the resulting start-time schedule has macrocycle overlaps. What functions can I use?
+============================================================
+--- FINAL ANSWER ---
+QUERY TYPE: COMPLEX
+
+MODULES INVOLVED: evaluator, tsn_scheduling_problem, usecase_generator
+
+NORMALIZED QUERY: I have a stream and I want to assign it a shortest path, build its default allowed-ports configuration in the problem, and then evaluate whether the resulting start-time schedule has macrocycle overlaps. What functions can I use?
+
+
+--- RESULT 1 ---
+MODULE: usecase_generator
+SUB-QUERY: How can I assign a shortest path to a stream?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: shortestPath, addRouting, streamGenerator, randomPath, pathConvenient
+
+EXPLANATION/ANSWER:
+You can use the `shortestPath` function to assign a shortest path to a stream. This function takes two parameters: `stream` and `usecase`. It returns the stream with the shortest path assigned to it.
+
+Here's the function signature:
+```python
+@classmethod
+def shortestPath(cls, stream, usecase):
+```
+You can call this function by passing your stream and usecase as arguments, like this:
+```python
+stream = UsecaseGenerator.shortestPath(stream, usecase)
+```
+
+
+--- RESULT 2 ---
+MODULE: tsn_scheduling_problem
+SUB-QUERY: How can I build a stream's default allowed-ports configuration in the problem?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: make_default_stream_config, build_metadata, configure_stream_ports, make_stream_config, streams
+
+EXPLANATION/ANSWER:
+You can use the `make_default_stream_config` function to build a stream's default allowed-ports configuration in the problem. This function takes a stream dictionary as input and returns a tuple containing the configuration column and a custom graph for the stream.
+
+
+--- RESULT 3 ---
+MODULE: evaluator
+SUB-QUERY: How can I evaluate whether a start-time schedule has macrocycle overlaps?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: _per_stream_macrocycle_overlap_violations, __init__, _per_stream_latency_violations_start_time, _per_stream_flow_continuity_violations, suggest_corrections
+
+EXPLANATION/ANSWER:
+You can use the `_per_stream_macrocycle_overlap_violations` function to evaluate whether a start-time schedule has macrocycle overlaps.
+
+============================================================
+23. QUERY: I want to generate a use case, run a forward BFS from the talker to get delay budgets, and then check the window-sequence (causality and FIFO) violations of a candidate start-time schedule. What functions can I use?
+============================================================
+
+--- FINAL ANSWER ---
+QUERY TYPE: COMPLEX
+
+MODULES INVOLVED: evaluator, tsn_scheduling_problem, usecase_generator
+
+NORMALIZED QUERY: I want to generate a use case, run a forward BFS from the talker to get delay budgets, and then check the window-sequence (causality and FIFO) violations of a candidate start-time schedule. What functions can I use?
+
+
+--- RESULT 1 ---
+MODULE: usecase_generator
+SUB-QUERY: How can I generate a use case?
+MATCH TYPE: EXACT_MATCH
+COVERAGE REASON: Top candidate 'generateUC' cleared T_EXACT=0.5 with margin 0.007 >= 0.0; returning existing function.
+MISSING REQUIREMENTS: []
+RECOMMENDED ACTION: RETURN_EXISTING_FUNCTIONS
+
+ANSWER:
+The function generateUC can be used to generate a use case. However, the function requires a configFile to be provided. The function returns no value.
+
+USAGE:
+```python
+from usecase_generator import UsecaseGenerator
+result = UsecaseGenerator.generateUC(None, None)
+```
+
+ASSUMPTIONS:
+- The configFile parameter is missing and has been set to None.
+- The *args and **kwargs parameters are not provided and have been left as their default values.
+
+
+--- RESULT 2 ---
+MODULE: tsn_scheduling_problem
+SUB-QUERY: How can I run a forward BFS from the talker to get delay budgets?
+MATCH TYPE: EXACT_MATCH
+COVERAGE REASON: Top candidate 'bfs_forward' cleared T_EXACT=0.5 with margin 0.051 >= 0.0; returning existing function.
+MISSING REQUIREMENTS: []
+RECOMMENDED ACTION: RETURN_EXISTING_FUNCTIONS
+
+
+ANSWER:
+The function bfs_forward can be used to run a forward BFS from the talker to get delay budgets. The function returns the result of the BFS traversal. To check the window-sequence (causality and FIFO) violations of a candidate start-time schedule, you would need to use a different function or implement this functionality yourself.
+
+USAGE:
+```python
+from tsn_scheduling_problem import TSNScheduling
+result = TSNScheduling().bfs_forward(graph={'talker': ['listener1', 'listener2']}, start_port='talker', stream='stream1')
+```
+
+ASSUMPTIONS:
+- The graph is represented as a dictionary where the keys are the nodes and the values are lists of their neighbors.
+- The start port is 'talker'.
+- The stream is 'stream1'.
+
+
+--- RESULT 3 ---
+MODULE: evaluator
+SUB-QUERY: How can I check the window-sequence (causality and FIFO) violations of a candidate start-time schedule?
+MATCH TYPE: EXACT_MATCH
+COVERAGE REASON: Top candidate '_per_stream_window_sequence_violations' cleared T_EXACT=0.5 with margin 0.134 >= 0.0; returning existing function.
+MISSING REQUIREMENTS: []
+RECOMMENDED ACTION: RETURN_EXISTING_FUNCTIONS 
+
+ANSWER:
+The function _per_stream_window_sequence_violations returns the window-sequence (causality and FIFO) violations of a candidate start-time schedule. However, since no chromosome is provided, the function will be called with a default value of None. The result will be an empty list.
+
+USAGE:
+```python
+from evaluator import TSNConstraintEvaluator
+result = TSNConstraintEvaluator()._per_stream_window_sequence_violations(chromosome=None)
+```
+
+ASSUMPTIONS:
+- The user did not provide a chromosome, so the function will be called with a default value of None.
+
+============================================================
+24. QUERY: I want to build a use case with fixed talkers, get the macro-cycle for the scheduling problem, and then get the total per-stream violations of a candidate solution across all active checks. What functions can I use?
+============================================================
+--- FINAL ANSWER ---
+QUERY TYPE: COMPLEX
+
+MODULES INVOLVED: evaluator, tsn_scheduling_problem, usecase_generator
+
+NORMALIZED QUERY: I want to build a use case with fixed talkers, get the macro-cycle for the scheduling problem, and then get the total per-stream violations of a candidate solution across all active checks. What functions can I use?
+
+
+--- RESULT 1 ---
+MODULE: usecase_generator
+SUB-QUERY: How can I build a use case with fixed talkers?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: __init__, fixTalkers, talkerEmbedding, get_config, randomPath
+
+EXPLANATION/ANSWER:
+You can use the `fixTalkers` function to build a use case with fixed talkers. This function reduces each stream's talker possible placements to a single randomly chosen host and sets `numplacestalker` to 1 in the config.
+
+
+--- RESULT 2 ---
+MODULE: tsn_scheduling_problem
+SUB-QUERY: How can I get the macro-cycle for the scheduling problem?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: macro_cycle, configure_stream_ports, generate_scheduling_usecase, get_task, build_metadata
+
+EXPLANATION/ANSWER:
+You can get the macro-cycle for the scheduling problem by calling the `macro_cycle` function. This function returns the LCM of stream intervals.
+
+
+--- RESULT 3 ---
+MODULE: evaluator
+SUB-QUERY: How can I get the total per-stream violations of a candidate solution across all active checks?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: per_stream_all_violations, evaluate, feasible_streams, _per_stream_host_role_violations, _per_stream_latency_violations_start_time
+
+EXPLANATION/ANSWER:
+You can use the `per_stream_all_violations` function to get the total per-stream violations of a candidate solution across all active checks. This function returns a stacked (n_constraints, n_streams) violation array.
+
+============================================================
+25. QUERY: I want to export a generated use case to a file, load it back as a scheduling problem, and then suggest corrections to a candidate chromosome. What functions can I use?
+============================================================
+--- FINAL ANSWER ---
+QUERY TYPE: COMPLEX
+
+MODULES INVOLVED: evaluator, tsn_scheduling_problem, usecase_generator
+
+NORMALIZED QUERY: I want to export a generated use case to a file, load it back as a scheduling problem, and then suggest corrections to a candidate chromosome. What functions can I use?
+
+
+--- RESULT 1 ---
+MODULE: usecase_generator
+SUB-QUERY: What function can I use to export a generated use case to a file?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: to_file, topology2json, from_json, generateUC, ucGenerator
+
+EXPLANATION/ANSWER:
+You can use the `to_file` function to export a generated use case to a file.
+
+
+--- RESULT 2 ---
+MODULE: tsn_scheduling_problem
+SUB-QUERY: How can I load a use case from a file as a scheduling problem?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: import_scheduling_usecase, instantiate, generate_scheduling_usecase, get_config, __init__
+
+EXPLANATION/ANSWER:
+You can load a use case from a file as a scheduling problem using the `import_scheduling_usecase` function. This function takes a `file_path` parameter, which is the path to the JSON file containing the use case, and returns a `Usecase` object.
+
+
+--- RESULT 3 ---
+MODULE: evaluator
+SUB-QUERY: What function can I use to suggest corrections to a candidate chromosome?
+INTENT: EXPLAIN_CODE
+
+FUNCTIONS RETRIEVED AS CONTEXT: suggest_corrections, compute_metrics, _per_stream_latency_violations_start_time, _per_stream_window_sequence_violations, group_connected_ports
+
+EXPLANATION/ANSWER:
+You can use the `suggest_corrections` function to suggest corrections to a candidate chromosome.
