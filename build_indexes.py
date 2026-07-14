@@ -138,11 +138,6 @@ def build_markdown_index(
         node.metadata["file_name"] = file_basename
         node.metadata["module"] = module_label
         node.metadata["section"] = existing_heading or "unknown"
-        # The heading stored in `section` is typically the "## ..." line that
-        # already lives in the node's own text, so keep it for display/filtering
-        # but don't re-embed it. file_name / module stay embedded (not in text).
-        node.excluded_embed_metadata_keys = ["section"]
-        node.excluded_llm_metadata_keys = ["section"]
 
     print(
         f"  Nodes created: {len(nodes)} | "
@@ -245,28 +240,13 @@ def build_function_json_index(
             metadata={
                 "file_name": file_basename,
                 "module": module_label,
+                "source_module": item.get("module", ""),
                 "function_name": item.get("name", ""),
                 "class_name": item.get("class_name", ""),
+                "sub_class_name": item.get("sub_class_name", ""),
                 "signature": item.get("signature", ""),
                 "section": section,
             },
-            # function_name / class_name / signature / section are already
-            # written verbatim into `text` (see _build_function_text / section).
-            # Keep them as metadata so the runtime path still works — function_name
-            # is authoritative for no-LLM reconstruction, signature/class_name are
-            # read as fallbacks, section is used for source display — but exclude
-            # them from the EMBED and LLM strings so the same tokens aren't counted
-            # twice by the embedder / BM25.
-            # file_name and module are NOT in `text`; they stay embedded because
-            # they carry file/module-scope signal (see augment_query downstream).
-            # Removed entirely: source_module and sub_class_name — both duplicated
-            # `text` and were never read by the main script.
-            excluded_embed_metadata_keys=[
-                "function_name", "class_name", "signature", "section",
-            ],
-            excluded_llm_metadata_keys=[
-                "function_name", "class_name", "signature", "section",
-            ],
         )
         nodes.append(node)
 
@@ -349,14 +329,9 @@ def build_param_explanations_index(
                 metadata={
                     "file_name": file_basename,
                     "module": module_label,
+                    "parameter_name": param_name,
                     "section": param_name,
                 },
-                # `section` (== the parameter name) is already in `text` as
-                # "Parameter: <name>", so keep it for display but don't re-embed
-                # it. The old standalone "parameter_name" key held the identical
-                # value, duplicated `section`, and was never read — so it's gone.
-                excluded_embed_metadata_keys=["section"],
-                excluded_llm_metadata_keys=["section"],
             )
         )
 
@@ -462,20 +437,12 @@ def build_python_source_index(
                 metadata={
                     "file_name": file_basename,
                     "module": module_label,
+                    "source_module": module_label,
                     "function_name": item["name"],
                     "class_name": item["class_name"],
                     "signature": item["signature"],
                     "section": section or f"function_{i}",
                 },
-                # Same rationale as the JSON builder: these fields are already in
-                # `text`, so keep them readable but don't double-embed them.
-                # source_module was identical to module_label here, so it's dropped.
-                excluded_embed_metadata_keys=[
-                    "function_name", "class_name", "signature", "section",
-                ],
-                excluded_llm_metadata_keys=[
-                    "function_name", "class_name", "signature", "section",
-                ],
             )
         )
 
@@ -487,13 +454,10 @@ def build_python_source_index(
                 metadata={
                     "file_name": file_basename,
                     "module": module_label,
+                    "source_module": module_label,
                     "function_name": "",
                     "section": file_basename,
                 },
-                # section == file_basename (already kept in file_name); don't
-                # re-embed it. source_module (== module_label) dropped.
-                excluded_embed_metadata_keys=["section"],
-                excluded_llm_metadata_keys=["section"],
             )
         )
 
