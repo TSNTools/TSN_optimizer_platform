@@ -1,9 +1,9 @@
 [
   {
     "name": "__init__",
-    "class_name": "TSNConstraintEvaluator()",
+    "class_name": "TSNConstraintEvaluator",
     "signature": "def __init__(self, problem, weights=None, check_routing=True, check_task_placement=True, scheduling_type: ScheduleEncodingType=ScheduleEncodingType.PRIORITY):",
-    "docstring": "Initialises the TSNConstraintEvaluator by merging default and user-supplied penalty weights, selecting active violation check functions based on check_routing, check_task_placement, and scheduling_type flags, and precomputing all node masks, port masks, stream masks, hop costs, window lengths, and pairwise GCD structures needed for fast vectorised evaluation.",
+    "docstring": "CALL_FORM: instance initializer. Merges penalty weights, selects active violation checks, and precomputes the masks and hop costs needed for evaluation.",
     "parameters": [
       {
         "name": "self",
@@ -35,9 +35,9 @@
   },
   {
     "name": "_per_stream_host_role_violations",
-    "class_name": "TSNConstraintEvaluator()",
+    "class_name": "TSNConstraintEvaluator",
     "signature": "def _per_stream_host_role_violations(self, chromosome):",
-    "docstring": "Computes per-stream host-role violations from a chromosome matrix. Returns a (5, n_streams) array counting talker_not_fixed, listener_not_fixed, talker_listener_overlap, stray_talker, and stray_listener violations for each stream.",
+    "docstring": "CALL_FORM: instance method. Computes per-stream host-role violations and returns a (5, n_streams) array.",
     "parameters": [
       {
         "name": "self",
@@ -53,9 +53,9 @@
   },
   {
     "name": "group_connected_ports",
-    "class_name": "TSNConstraintEvaluator()",
+    "class_name": "TSNConstraintEvaluator",
     "signature": "def group_connected_ports(self, chromosome, s_idx):",
-    "docstring": "Group connected active ports using the adjacency precomputed in __init__.",
+    "docstring": "CALL_FORM: instance method. Groups connected active ports using the adjacency precomputed in __init__.",
     "parameters": [
       {
         "name": "self",
@@ -75,9 +75,9 @@
   },
   {
     "name": "talker_listener_groups",
-    "class_name": "TSNConstraintEvaluator()",
+    "class_name": "TSNConstraintEvaluator",
     "signature": "def talker_listener_groups(self, groups, talker_ids, listener_ids):",
-    "docstring": "True if any group contains at least one talker port and one listener port.",
+    "docstring": "CALL_FORM: instance method. Returns the talker and listener group(s) if any group contains both.",
     "parameters": [
       {
         "name": "self",
@@ -101,9 +101,9 @@
   },
   {
     "name": "group_penalty",
-    "class_name": "TSNConstraintEvaluator()",
+    "class_name": "TSNConstraintEvaluator",
     "signature": "def group_penalty(self, group, k):",
-    "docstring": "Computes a connectivity penalty for a group of active ports. Returns k (fully disconnected penalty) if the group is None; otherwise computes a cycle-based penalty from the ratio of edges to nodes in the group.",
+    "docstring": "CALL_FORM: instance method. Computes a connectivity penalty for a group of active ports and returns k if the group is None.",
     "parameters": [
       {
         "name": "self",
@@ -123,7 +123,7 @@
   },
   {
     "name": "_per_stream_flow_continuity_violations",
-    "class_name": "TSNConstraintEvaluator()",
+    "class_name": "TSNConstraintEvaluator",
     "signature": "def _per_stream_flow_continuity_violations(self, chromosome):",
     "docstring": "Checks whether each stream's active ports form a connected path from talker to listener using Union-Find grouping. Returns a (1, n_streams) array of continuity violation counts.",
     "parameters": [
@@ -141,7 +141,7 @@
   },
   {
     "name": "_per_stream_flow_conservation_violations",
-    "class_name": "TSNConstraintEvaluator()",
+    "class_name": "TSNConstraintEvaluator",
     "signature": "def _per_stream_flow_conservation_violations(self, chromosome):",
     "docstring": "Checks flow conservation, backwarding, and looping violations at switch nodes for each stream. Returns a (3, n_streams) array of backwarding, flow_conservation, and looping violation counts.",
     "parameters": [
@@ -159,7 +159,7 @@
   },
   {
     "name": "_per_stream_priority_conflicts",
-    "class_name": "TSNConstraintEvaluator()",
+    "class_name": "TSNConstraintEvaluator",
     "signature": "def _per_stream_priority_conflicts(self, chromosome):",
     "docstring": "Detects priority conflicts where two streams share the same priority label on the same port. Returns a (1, n_streams) array counting the number of conflicting port-priority assignments per stream.",
     "parameters": [
@@ -177,7 +177,7 @@
   },
   {
     "name": "_per_stream_latency_violations_priority",
-    "class_name": "TSNConstraintEvaluator()",
+    "class_name": "TSNConstraintEvaluator",
     "signature": "def _per_stream_latency_violations_priority(self, chromosome):",
     "docstring": "Computes end-to-end latency for each stream under a priority-based schedule by sorting port assignments by priority and accumulating hop costs. Returns a (1, n_streams) binary array indicating which streams exceed their maxLatency.",
     "parameters": [
@@ -195,7 +195,7 @@
   },
   {
     "name": "_per_stream_latency_violations_start_time",
-    "class_name": "TSNConstraintEvaluator()",
+    "class_name": "TSNConstraintEvaluator",
     "signature": "def _per_stream_latency_violations_start_time(self, chromosome):",
     "docstring": "chromosome[p, s] = transmission start time (0 = inactive)",
     "parameters": [
@@ -213,7 +213,7 @@
   },
   {
     "name": "_per_stream_talker_offset_violations",
-    "class_name": "TSNConstraintEvaluator()",
+    "class_name": "TSNConstraintEvaluator",
     "signature": "def _per_stream_talker_offset_violations(self, chromosome):",
     "docstring": "chromosome[p, s] = start time (0 = inactive)",
     "parameters": [
@@ -231,7 +231,7 @@
   },
   {
     "name": "_per_stream_macrocycle_overlap_violations",
-    "class_name": "TSNConstraintEvaluator()",
+    "class_name": "TSNConstraintEvaluator",
     "signature": "def _per_stream_macrocycle_overlap_violations(self, chromosome):",
     "docstring": "Detect periodic window overlaps over the macro-cycle.\nImplements the periodic-interval collision test: \n    (phase1 - phase2) mod gcd(interval1, interval2) < window1 + window2; where phase = start % interval\nchromosome[p,s] = start time (0 = inactive)",
     "parameters": [
@@ -249,7 +249,7 @@
   },
   {
     "name": "_per_stream_window_sequence_violations",
-    "class_name": "TSNConstraintEvaluator()",
+    "class_name": "TSNConstraintEvaluator",
     "signature": "def _per_stream_window_sequence_violations(self, chromosome):",
     "docstring": "chromosome[p, s] = start time (0 = inactive)\n\nEnforces two scheduling constraints:\n-------------------------------------------------------\n1) INTRA-STREAM SEQUENCING (causality)\n\n    Constraint per connection (u → d): chromosome[d, s] >= chromosome[u, s] + hop_cost[u, s]\n\nPrevents a frame leaving a downstream port before it\narrives from upstream. Violations are marked at the downstream port (d).\n-------------------------------------------------------\n2) INTER-STREAM FIFO (slot stealing / interleaving)\n\nFor two streams s1,s2 on the same port:\n    (t11 - t21)*(t12 - t22) >= 0\nmeaning arrival order must equal departure order.\nPrevents one stream stealing another stream’s slot.",
     "parameters": [
@@ -267,9 +267,9 @@
   },
   {
     "name": "per_stream_all_violations",
-    "class_name": "TSNConstraintEvaluator()",
+    "class_name": "TSNConstraintEvaluator",
     "signature": "def per_stream_all_violations(self, chromosome):",
-    "docstring": "Runs all active violation check functions on a chromosome and returns a stacked (n_constraints, n_streams) violation array. Results are cached by chromosome bytes to avoid redundant computation.",
+    "docstring": "CALL_FORM: instance method. Runs all active violation checks and returns a stacked (n_constraints, n_streams) violation array; results are cached by chromosome bytes.",
     "parameters": [
       {
         "name": "self",
@@ -285,9 +285,9 @@
   },
   {
     "name": "feasible_streams",
-    "class_name": "TSNConstraintEvaluator()",
+    "class_name": "TSNConstraintEvaluator",
     "signature": "def feasible_streams(self, chromosome):",
-    "docstring": "Returns a boolean array of length n_streams indicating which streams have zero violations across all active constraint checks.",
+    "docstring": "CALL_FORM: instance method. Returns a boolean array of length n_streams indicating which streams have zero violations.",
     "parameters": [
       {
         "name": "self",
@@ -303,9 +303,9 @@
   },
   {
     "name": "compute_metrics",
-    "class_name": "TSNConstraintEvaluator()",
+    "class_name": "TSNConstraintEvaluator",
     "signature": "def compute_metrics(self, chromosome, alpha=0.9, eps=1e-09):",
-    "docstring": "Vectorized performance metrics (congestion, imbalance, path length).",
+    "docstring": "CALL_FORM: instance method. Computes vectorized performance metrics (congestion, imbalance, path length).",
     "parameters": [
       {
         "name": "self",
@@ -329,9 +329,9 @@
   },
   {
     "name": "evaluate",
-    "class_name": "TSNConstraintEvaluator()",
+    "class_name": "TSNConstraintEvaluator",
     "signature": "def evaluate(self, chromosome):",
-    "docstring": "Evaluates a chromosome by computing all per-stream violations and performance metrics. Returns a tuple of (violations summed per constraint, metrics array [congestion, avg_util, std_util, load_imbalance, path_len_score, avg_path_len]).",
+    "docstring": "CALL_FORM: instance method. Evaluates a chromosome and returns (violations_summed_per_constraint, metrics_array).",
     "parameters": [
       {
         "name": "self",
@@ -347,9 +347,9 @@
   },
   {
     "name": "suggest_corrections",
-    "class_name": "TSNConstraintEvaluator()",
+    "class_name": "TSNConstraintEvaluator",
     "signature": "def suggest_corrections(self, Y):",
-    "docstring": "Computes per-gene removal pressure, addition pressure, and value-correction bias for a batch of chromosomes Y. Returns (remove_bias, add_bias, gene_value_bias) arrays that guide repair operators or guided mutation in the optimisation loop.",
+    "docstring": "CALL_FORM: instance method. Computes per-gene removal pressure, addition pressure, and value-correction bias for a batch of chromosomes.",
     "parameters": [
       {
         "name": "self",
@@ -365,8 +365,8 @@
   },
   {
     "name": "__init__",
-    "class_name": "TSNConstraintEvaluator()",
-    "sub_class_name": "UnionFind()",
+    "class_name": "TSNConstraintEvaluator",
+    "sub_class_name": "UnionFind",
     "signature": "def __init__(self, elements):",
     "docstring": "Initialises the TSNConstraintEvaluator by merging default and user-supplied penalty weights, selecting active violation check functions based on check_routing, check_task_placement, and scheduling_type flags, and precomputing all node masks, port masks, stream masks, hop costs, window lengths, and pairwise GCD structures needed for fast vectorised evaluation.",
     "parameters": [
@@ -384,8 +384,8 @@
   },
   {
     "name": "find",
-    "class_name": "TSNConstraintEvaluator()",
-    "sub_class_name": "UnionFind()",
+    "class_name": "TSNConstraintEvaluator",
+    "sub_class_name": "UnionFind",
     "signature": "def find(self, x):",
     "docstring": "Finds the root representative of element x using path compression. Recursively follows parent pointers and flattens the tree.",
     "parameters": [
@@ -403,8 +403,8 @@
   },
   {
     "name": "union",
-    "class_name": "TSNConstraintEvaluator()",
-    "sub_class_name": "UnionFind()",
+    "class_name": "TSNConstraintEvaluator",
+    "sub_class_name": "UnionFind",
     "signature": "def union(self, x, y):",
     "docstring": "Merges the sets containing x and y. If they have different roots, sets the root of y's set to point to the root of x's set.",
     "parameters": [

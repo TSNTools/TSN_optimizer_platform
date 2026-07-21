@@ -19,7 +19,7 @@
   },
   {
     "name": "__init__",
-    "class_name": "UsecaseGenerator()",
+    "class_name": "UsecaseGenerator",
     "signature": "def __init__(self):",
     "docstring": "Initialises a UsecaseGenerator instance. No parameters are set; the class relies on class-level attributes (index, __version__) and classmethod factories for all functionality.",
     "parameters": [
@@ -33,9 +33,9 @@
   },
   {
     "name": "generateUC",
-    "class_name": "UsecaseGenerator()",
+    "class_name": "UsecaseGenerator",
     "signature": "def generateUC(cls, configFile, *args, **kwargs):",
-    "docstring": "Generates a single complete use case from a config file. Creates an empty use case topology, runs the stream generator to populate all streams, increments the class-level index, and returns the fully populated Usecase object.",
+    "docstring": "CALL_FORM: classmethod. Generates a single complete use case from a config file. Creates an empty use case topology, runs the stream generator to populate all streams, increments the class-level index, and returns the fully populated Usecase object.",
     "parameters": [
       {
         "name": "cls",
@@ -59,9 +59,9 @@
   },
   {
     "name": "ucGenerator",
-    "class_name": "UsecaseGenerator()",
+    "class_name": "UsecaseGenerator",
     "signature": "def ucGenerator(cls, configFile, *args, **kwargs):",
-    "docstring": "incrementally generating use cases by adding one more stream at the time",
+    "docstring": "CALL_FORM: classmethod. Incrementally generates use cases by adding one more stream at a time and yields each intermediate Usecase.",
     "parameters": [
       {
         "name": "cls",
@@ -85,7 +85,7 @@
   },
   {
     "name": "empty_uc",
-    "class_name": "UsecaseGenerator()",
+    "class_name": "UsecaseGenerator",
     "signature": "def empty_uc(cls, configFile, index=None, topology=None, newTopo=False):",
     "docstring": "Creates and returns an empty Usecase object with a generated topology but no streams. Accepts an optional pre-built topology and an index override. If no topology is provided or newTopo is True, a new topology is generated via makeTopology.",
     "parameters": [
@@ -115,9 +115,9 @@
   },
   {
     "name": "streamGenerator",
-    "class_name": "UsecaseGenerator()",
+    "class_name": "UsecaseGenerator",
     "signature": "def streamGenerator(cls, usecase):",
-    "docstring": "generate random streams as specified by the usecase configuration",
+    "docstring": "CALL_FORM: classmethod. Generates random streams as specified by the usecase configuration and appends them to usecase.streams.",
     "parameters": [
       {
         "name": "cls",
@@ -133,9 +133,9 @@
   },
   {
     "name": "generateStream",
-    "class_name": "UsecaseGenerator()",
+    "class_name": "UsecaseGenerator",
     "signature": "def generateStream(cls, streamId, usecase, talker=None, listeners=None):",
-    "docstring": "stream = streamId, interval(T)[ns], maxFramesPerInterval(Nf), maxFrameSize(l)[byte], MaxLatency(e2e)[ns]",
+    "docstring": "CALL_FORM: classmethod. Creates one stream dict. Units: interval and maxLatency are ns, maxFrameSize is bytes, maxFramesPerInterval is a count.",
     "parameters": [
       {
         "name": "cls",
@@ -163,9 +163,9 @@
   },
   {
     "name": "talkerEmbedding",
-    "class_name": "UsecaseGenerator()",
+    "class_name": "UsecaseGenerator",
     "signature": "def talkerEmbedding(cls, usecase):",
-    "docstring": "configure the probability of choosing a host as talker based on the needed options, and \nchoose the actual placements based on the configured probabilities",
+    "docstring": "CALL_FORM: classmethod. Configures the probability of choosing a host as talker based on the configured options, then returns the chosen talker placements.",
     "parameters": [
       {
         "name": "cls",
@@ -181,9 +181,9 @@
   },
   {
     "name": "listenerEmbedding",
-    "class_name": "UsecaseGenerator()",
+    "class_name": "UsecaseGenerator",
     "signature": "def listenerEmbedding(cls, usecase, talker, listeners=None):",
-    "docstring": "configure the probability of choosing a host based on the needed options, and \nchoose the actual placements based on the configured probabilities\n\n* the function is used to select listeners, the talker should be:\n    - provided, \n    - filtered from hosts, and\n    - removed from the returned list of elements if needed (don't forget to increase numpossplace to count for the given talker)",
+    "docstring": "CALL_FORM: classmethod. Configures listener host probabilities and returns a list-of-lists of listener placements. The talker must be provided and excluded from listener selection.",
     "parameters": [
       {
         "name": "cls",
@@ -207,9 +207,9 @@
   },
   {
     "name": "findAllPaths",
-    "class_name": "UsecaseGenerator()",
+    "class_name": "UsecaseGenerator",
     "signature": "def findAllPaths(cls, usecase, talkers=None, listeners=None):",
-    "docstring": "Finds all simple paths between every eligible talker-listener pair in the use-case graph. Returns a dict keyed by (talker, listener) tuples whose values are path generators produced by networkx all_simple_paths. Optionally restricts talkers and listeners to provided node lists.",
+    "docstring": "CALL_FORM: classmethod. Finds all simple paths between eligible talker-listener pairs in the use-case graph and returns a dict keyed by (talker, listener) tuples to path generators.",
     "parameters": [
       {
         "name": "cls",
@@ -233,9 +233,9 @@
   },
   {
     "name": "shortestPath",
-    "class_name": "UsecaseGenerator()",
+    "class_name": "UsecaseGenerator",
     "signature": "def shortestPath(cls, stream, usecase):",
-    "docstring": "Assigns the shortest path between each talker-listener pair to a stream. For each path it encodes hops as sourcePort strings, checks latency and period feasibility, adjusting the stream interval if necessary, and sets stream['pathLists'] with the valid paths.",
+    "docstring": "CALL_FORM: classmethod. Assigns shortest paths between each talker-listener pair, mutates stream['pathLists'], and may adjust stream['interval'] for period feasibility.",
     "parameters": [
       {
         "name": "cls",
@@ -255,9 +255,9 @@
   },
   {
     "name": "randomPath",
-    "class_name": "UsecaseGenerator()",
+    "class_name": "UsecaseGenerator",
     "signature": "def randomPath(cls, stream, usecase):",
-    "docstring": "Assigns a randomly selected feasible path to a stream for each listener. Shuffles candidate paths per talker-listener pair, picks paths that satisfy latency and period constraints, avoids duplicate listener assignments, and stores the selected paths in stream['pathLists'].",
+    "docstring": "CALL_FORM: classmethod. Assigns random feasible paths per listener, avoids duplicate listener assignments, and mutates stream['pathLists'].",
     "parameters": [
       {
         "name": "cls",
@@ -277,9 +277,9 @@
   },
   {
     "name": "pathConvenient",
-    "class_name": "UsecaseGenerator()",
+    "class_name": "UsecaseGenerator",
     "signature": "def pathConvenient(cls, pathList, maxLatency, maxFramesPerInterval, maxFrameSize, usecase):",
-    "docstring": "Checks whether the minimum possible end-to-end latency along a path is below the stream's maxLatency. Computes transmission and propagation delays hop by hop and returns True if the path is feasible.",
+    "docstring": "CALL_FORM: classmethod. Checks whether the minimum end-to-end latency along a path is below maxLatency using hop-by-hop transmission, propagation, and processing delays.",
     "parameters": [
       {
         "name": "cls",
@@ -311,9 +311,9 @@
   },
   {
     "name": "periodConvenient",
-    "class_name": "UsecaseGenerator()",
+    "class_name": "UsecaseGenerator",
     "signature": "def periodConvenient(cls, pathList, cycle, maxFramesPerInterval, maxFrameSize, usecase):",
-    "docstring": "Checks whether the stream's cycle period is long enough for the talker to transmit the full frame on each hop. Iterates over path hops and returns False as soon as the transmission delay exceeds the cycle.",
+    "docstring": "CALL_FORM: classmethod. Checks whether the stream cycle is long enough for transmission on each hop and returns False as soon as the hop transmission delay exceeds the cycle.",
     "parameters": [
       {
         "name": "cls",
@@ -345,7 +345,7 @@
   },
   {
     "name": "makeTopology",
-    "class_name": "UsecaseGenerator()",
+    "class_name": "UsecaseGenerator",
     "signature": "def makeTopology(cls, usecase):",
     "docstring": "Builds a networkx graph topology according to the use-case config. Reads topology parameters (port speed, propagation delay, processing delay, link bandwidth, queue count), generates either a fat-tree or random graph, then assigns port and node metadata to every edge.",
     "parameters": [
@@ -363,7 +363,7 @@
   },
   {
     "name": "set_link_data",
-    "class_name": "UsecaseGenerator()",
+    "class_name": "UsecaseGenerator",
     "signature": "def set_link_data(cls, graph, src, dst, portName, propDelay, linkBw, portSpeed, queueCountPerPort):",
     "docstring": "Sets directional link and port attributes on a graph edge from src to dst. Assigns sourcePort, destPort, sourceNode, destNode, propagation delay, link bandwidth, and port metadata (speed, queue count) on both directed sides of the edge.",
     "parameters": [
@@ -409,7 +409,7 @@
   },
   {
     "name": "k_ary_fat_tree",
-    "class_name": "UsecaseGenerator()",
+    "class_name": "UsecaseGenerator",
     "signature": "def k_ary_fat_tree(cls, k, directed=True):",
     "docstring": "Generates a k-ary fat-tree topology as a networkx graph. Creates core, aggregation, and edge switches across k pods, connects them according to fat-tree wiring rules, and attaches k/2 hosts per edge switch. Returns a directed graph by default.",
     "parameters": [
@@ -431,7 +431,7 @@
   },
   {
     "name": "makeRandomGraph",
-    "class_name": "UsecaseGenerator()",
+    "class_name": "UsecaseGenerator",
     "signature": "def makeRandomGraph(cls, usecase, directed=True):",
     "docstring": "Generates a random network topology (Waxman, Barabási-Albert, or Erdős-Rényi) of numSwitchs switches and numHosts hosts. Ensures minimum node degree per switch, relabels nodes, attaches hosts to random switches, and returns a directed graph.",
     "parameters": [
@@ -453,7 +453,7 @@
   },
   {
     "name": "changeDegree",
-    "class_name": "UsecaseGenerator()",
+    "class_name": "UsecaseGenerator",
     "signature": "def changeDegree(cls, node, graph, newDegree):",
     "docstring": "Adjusts the degree of a node in a graph to match newDegree. Adds edges to random non-neighbour nodes if the current degree is too low, or removes edges to random neighbours if it is too high.",
     "parameters": [
@@ -479,7 +479,7 @@
   },
   {
     "name": "__init__",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def __init__(self, configFile, index=None, topology=None, streams=None, schedule=None):",
     "docstring": "the charateristics of topology and streams are specified in the config file\nportSpeed [Mbps], linkbw [Mbps], propDelay [ns], procDelay [us], period[μs], \ndatasize[byte], maxLatency[ms]\n--> usecaseGenerator converts all timed values to ns\n\nTODO:            \n    * we can fix talkers and listeners and remove paths, but we can not add paths or make talker/listeners floating: embedding*() needs to be improved:\n    if numplacesTalker>len(tlkrPssblPlcmnt):\n        tlkrPssblPlcmnt+random.sample([host for host in hosts if host not in tlkrPssblPlcmnt], numplacesTalker-len(tlkrPssblPlcmnt))  \n    else: \n        tlkrPssblPlcmnt",
     "parameters": [
@@ -513,7 +513,7 @@
   },
   {
     "name": "hosts",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def hosts(self):",
     "docstring": "Property that returns a list of all host node names in the use-case graph, identified by the presence of 'host' in their name.",
     "parameters": [
@@ -527,7 +527,7 @@
   },
   {
     "name": "_frame_size",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def _frame_size(self, stream_idx):",
     "docstring": "Compute the frame size in bits *with tolerance*.",
     "parameters": [
@@ -545,7 +545,7 @@
   },
   {
     "name": "window_length",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def window_length(self, stream_idx, port_name, eps=1e-09):",
     "docstring": "Computes the transmission window length in nanoseconds for a stream on a given port. Divides the frame size in bits (with tolerance) by the port speed converted to bits-per-nanosecond.",
     "parameters": [
@@ -571,7 +571,7 @@
   },
   {
     "name": "distance_to_hosts",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def distance_to_hosts(self):",
     "docstring": "Returns: dict -> {host: {node: distance}}",
     "parameters": [
@@ -585,7 +585,7 @@
   },
   {
     "name": "switches",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def switches(self):",
     "docstring": "Property that returns a list of all switch node names in the use-case graph, identified by the presence of 'switch' in their name.",
     "parameters": [
@@ -599,7 +599,7 @@
   },
   {
     "name": "links",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def links(self):",
     "docstring": "Property that returns a list of all edge data dicts in the use-case graph, one entry per directed link.",
     "parameters": [
@@ -613,7 +613,7 @@
   },
   {
     "name": "ports",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def ports(self):",
     "docstring": "Property that returns a dict of all ports in the use-case graph keyed by port name. Each entry contains sourceNode, destPort, destNode, speed, queueCount, and nodeName, assembled from both edge data and node port attributes.",
     "parameters": [
@@ -627,9 +627,9 @@
   },
   {
     "name": "port_name_id_mapping",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def port_name_id_mapping(self):",
-    "docstring": "name -> 1-based port id mapping. includes '' -> 0.",
+    "docstring": "CALL_FORM: property-like method. Returns both name->id and id->name mappings; includes '' <-> 0.",
     "parameters": [
       {
         "name": "self",
@@ -641,9 +641,9 @@
   },
   {
     "name": "addSchedule",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def addSchedule(self, schedule):",
-    "docstring": "Attaches a Schedule object to the use case, updates the graph with schedule data, and updates stream data with port id mappings. The schedule is stored on self.schedule.",
+    "docstring": "CALL_FORM: instance method. Attaches a Schedule object to the use case, updates the graph and streams with port-id mappings, and stores the schedule on self.schedule.",
     "parameters": [
       {
         "name": "self",
@@ -659,9 +659,9 @@
   },
   {
     "name": "removeSchedule",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def removeSchedule(self):",
-    "docstring": "Removes the current schedule from the use case. Clears the schedule attribute and deletes 'schedule', 'basetime', and 'scheduleCycle' from all port data, as well as 'offset' and 'accLatency' from all stream dicts.",
+    "docstring": "CALL_FORM: instance method. Removes the current schedule from the use case and clears schedule-related fields from ports and streams.",
     "parameters": [
       {
         "name": "self",
@@ -673,9 +673,9 @@
   },
   {
     "name": "addRouting",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def addRouting(self, overwrite_config=False):",
-    "docstring": "Adds path routing to all streams based on the current routing config. If numplacesTalker is 1 and fixPath is set, assigns either shortest or random paths to each stream using the UsecaseGenerator routing methods.",
+    "docstring": "CALL_FORM: instance method. Adds path routing to streams based on the current routing config and mutates each stream's pathLists when fixPath is active.",
     "parameters": [
       {
         "name": "self",
@@ -691,9 +691,9 @@
   },
   {
     "name": "removeRouting",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def removeRouting(self):",
-    "docstring": "Removes path routing from all streams by deleting the 'pathLists' key from each stream dict and setting fixPath to False in the routing config.",
+    "docstring": "CALL_FORM: instance method. Removes path routing from all streams by deleting pathLists and setting fixPath to False in the routing config.",
     "parameters": [
       {
         "name": "self",
@@ -705,9 +705,9 @@
   },
   {
     "name": "fixTalkers",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def fixTalkers(self):",
-    "docstring": "Reduces each stream's talker possible placements to a single randomly chosen host and sets numplacestalker to 1 in the config.",
+    "docstring": "CALL_FORM: instance method. Reduces each stream's talker placements to one randomly chosen host and sets numplacestalker to 1 in the config.",
     "parameters": [
       {
         "name": "self",
@@ -719,9 +719,9 @@
   },
   {
     "name": "fixListeners",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def fixListeners(self):",
-    "docstring": "Reduces each stream's listener possible placements to a single randomly chosen host per listener group and sets numplaceslistener to 1 in the config.",
+    "docstring": "CALL_FORM: instance method. Reduces each stream's listener placements to one randomly chosen host per listener group and sets numplaceslistener to 1 in the config.",
     "parameters": [
       {
         "name": "self",
@@ -733,7 +733,7 @@
   },
   {
     "name": "remove_stream",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def remove_stream(self, stream_ids):",
     "docstring": "Removes streams from the use case by their indices. Deletes each stream in stream_ids from self.streams.",
     "parameters": [
@@ -751,7 +751,7 @@
   },
   {
     "name": "add_stream",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def add_stream(self):",
     "docstring": "Appends a newly generated stream to the use case's stream list using UsecaseGenerator.generateStream.",
     "parameters": [
@@ -765,7 +765,7 @@
   },
   {
     "name": "remove_link",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def remove_link(self, src, dst):",
     "docstring": "Removes a directed edge between src and dst from the use-case graph. Silently ignores errors if the edge does not exist.",
     "parameters": [
@@ -787,7 +787,7 @@
   },
   {
     "name": "add_link",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def add_link(self, src, dst):",
     "docstring": "Adds a directed edge between src and dst to the use-case graph and sets its port and link attributes according to the use-case topology config. Silently ignores errors.",
     "parameters": [
@@ -809,9 +809,9 @@
   },
   {
     "name": "to_file",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def to_file(self, jsnPath=None, ucFileName=None):",
-    "docstring": "Serialises the use case to a JSON file. Writes topology and stream data to jsnPath/ucFileName, defaulting to the current directory and a config-derived filename. Returns the filename used.",
+    "docstring": "CALL_FORM: instance method. Serialises the use case to a JSON file and returns the filename used.",
     "parameters": [
       {
         "name": "self",
@@ -831,9 +831,9 @@
   },
   {
     "name": "to_json",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def to_json(self):",
-    "docstring": "Serialises the use case to a Python dict containing topology (nodes and links) and streams. Returns the dict without the 'customGraph' key on stream entries.",
+    "docstring": "CALL_FORM: instance method. Serialises the use case to a Python dict containing topology and streams, omitting customGraph from each stream entry.",
     "parameters": [
       {
         "name": "self",
@@ -845,9 +845,9 @@
   },
   {
     "name": "topology2json",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def topology2json(self, source='sourcePort', target='destPort', name='name', key='key', linkSym='links', nodeSym='nodes'):",
-    "docstring": "this function adds ports attributes to the graph and export it to json\n!!! it changes the graph permanently !!!",
+    "docstring": "CALL_FORM: instance method. Exports the graph topology to JSON-like dict form and permanently mutates the graph by adding port attributes.",
     "parameters": [
       {
         "name": "self",
@@ -883,7 +883,7 @@
   },
   {
     "name": "from_json",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def from_json(cls, impUC):",
     "docstring": "Class method that reconstructs a Usecase instance from a previously exported JSON dict. Rebuilds the directed graph, restores streams, guesses the config from the data, and compiles the associated Schedule object.",
     "parameters": [
@@ -901,7 +901,7 @@
   },
   {
     "name": "guess_config",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def guess_config(cls, impUC):",
     "docstring": "Class method that reconstructs a RawConfigParser config object from an imported use-case JSON dict. Infers topology parameters (hosts, switches, port speed, delays) and stream parameters (period, frame count, data size, latency, routing) from the data.",
     "parameters": [
@@ -919,7 +919,7 @@
   },
   {
     "name": "get_config",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def get_config(self):",
     "docstring": "Builds and returns a compact string representation of the use-case configuration, encoding topology type, port speed, delays, link bandwidth, queue count, stream count, talker/listener placement counts, routing flags, and range parameters.",
     "parameters": [
@@ -933,7 +933,7 @@
   },
   {
     "name": "generate_fattree_regions",
-    "class_name": "Usecase()",
+    "class_name": "Usecase",
     "signature": "def generate_fattree_regions(k: int) -> list[list[str]]:",
     "docstring": "Generate non-overlapping, topology-aware regions for a k-ary Fat-Tree network.\n\nRegions:\n  - Region 0: all core switches\n  - Region i>0: aggregation + edge switches of pod i-1\n\nNaming conventions (consistent with k_ary_fat_tree):\n  Core:          switch-c{1..(k^2)//4}\n  Aggregation:   switch-p{pod}-a{1..k//2}\n  Edge:          switch-p{pod}-e{1..ceil(k/2)}",
     "parameters": [
@@ -961,7 +961,7 @@
   },
   {
     "name": "test_add",
-    "class_name": "TestUsecaseGenerator()",
+    "class_name": "TestUsecaseGenerator",
     "signature": "def test_add(self):",
     "docstring": "Unit test that asserts 1 + 2 equals 3. Placeholder test to verify the test framework is operational.",
     "parameters": [

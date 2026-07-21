@@ -128,7 +128,7 @@ ALL_MODULE_LABELS = [
 
 MODULE_FILE_LABELS: Dict[str, str] = {
     "usecase_generator":      "usecase_generator_functions.json",
-    "tsn_scheduling_problem": "tsn_scheduling_functions.json",
+    "tsn_scheduling_problem": "tsn_scheduling_problem_functions.json",
     "evaluator":              "evaluator_functions.json",
     "parameters":             "parameters.md",
 }
@@ -329,8 +329,9 @@ JSON). Do NOT route on the noun. Route on the LIFECYCLE STAGE / verb:
    - RAW (de)serialization of a Usecase: to_file, to_json, from_json, topology2json,
      guess_config, get_config.
    - Drawing the BASE use-case topology: drawTopology, drawFattree.
-   Route here when the user wants to build, generate, randomize, sample, or serialize a
-   use case / topology / streams / routes.
+    Route here when the user wants to build, generate, randomize, sample, or serialize a
+    use case / topology / streams / routes. Never claim a function does not exist until a
+    routed lookup and a cross-module fallback lookup both fail.
    NOT here: integer port-id mappings, per-stream pruned subgraphs, delay budgets,
    macro-cycle value -> tsn_scheduling_problem. Checking a candidate schedule ->
    evaluator.
@@ -1386,10 +1387,10 @@ LOOKUP_PROMPT = PromptTemplate("""
 You are a precise function-lookup assistant for a TSN codebase.
 
 Your ONLY job is to find and select functions matching the request in the context and return them
-as a JSON array.
+as a JSON object.
 
 Output rules:
-- Return ONLY a valid JSON array, NO PREAMBLE, NO MARKDOWN FENCES, NO EXTRA TEXT.
+- Return ONLY a valid JSON object with "functions" and "coverage", NO PREAMBLE, NO MARKDOWN FENCES, NO EXTRA TEXT.
 
 "name"          : "exact function name as it appears in the context",
 "type"          : "classmethod | staticmethod | instance_method | function | property",
@@ -1428,7 +1429,15 @@ Output rules:
   Add a "match_rank" key to each: "BEST_MATCH", "SECONDARY_MATCH", "TERTIARY_MATCH".
   The context chunks are already ordered by reranker score (highest first) —
   use that ordering as your relevance signal.
-- If no function exists in the context, return exactly: []
+- If no function exists in the context, return exactly this object:
+    {
+        "functions": [],
+        "coverage": {
+            "match_type": "NO_MATCH",
+            "recommended_action": "GENERATE_STANDALONE",
+            "missing_requirements": ["No existing callable candidate was found."]
+        }
+    }
                                
 IMPORTANT NOTES:
 - It can be the case that the user query cannot be answered using one function.
@@ -1452,10 +1461,11 @@ Return ONLY a valid JSON object, NO MARKDOWN, NO PREAMBLE:
 }
 
 Coverage rules:
-- EXACT_MATCH: the returned function(s), called with suitable params, fully satisfy the request; no glue code needed; missing_requirements = [].
+- EXACT_MATCH: the returned function(s), when called directly and safely, fully satisfy the request; no glue code needed; missing_requirements = [].
 - PARTIAL_MATCH: returned functions are useful helpers but new wrapper/orchestration/logic is still needed; list what's missing.
 - NO_MATCH: nothing useful; functions = [].
 - High relevance rank alone does NOT justify EXACT_MATCH.
+- Do not use EXACT_MATCH unless the call form, required context, and output semantics are all directly supported by the retrieved code.
 """)
 
 COVERAGE_ASSESSMENT_PROMPT = """\
@@ -1490,10 +1500,11 @@ Important:
   not by retrieval order or how confident retrieval seemed.
 - If functions are empty, the answer must be NO_MATCH.
 - If the request asks for a pipeline involving multiple actions and the retrieved functions only cover one action, use PARTIAL_MATCH.
-- When a candidate plausibly performs the requested task, prefer EXACT_MATCH even if its
-  parameter names or calling convention differ from how the user phrased it.
-- Choose PARTIAL_MATCH only when genuine additional logic or orchestration beyond calling
-  the existing function(s) is required.
+- Use EXACT_MATCH only when the retrieved function(s) can be called directly and safely
+    to satisfy the sub-query without inventing wrapper logic, missing context, or an invalid
+    call form.
+- Prefer PARTIAL_MATCH whenever the retrieved function(s) are useful but the request still
+    needs orchestration, adapters, or any non-trivial glue code.
 
 Return ONLY valid JSON, no markdown fences.
 
@@ -1532,10 +1543,13 @@ How to use the context:
   Declare any third-party libraries under dependencies.external.
 
 Rules:
-- Write a complete function: a def signature, a docstring (inputs, outputs, which helpers are
-  used, and any assumptions you made when generating from scratch), and a real body.
-- Prefer runnable logic over stubs. If you must assume the shape of an input the context does
-  not define, state that assumption in the docstring and proceed with a sensible implementation.
+ - Write a complete function: a def signature, a docstring (inputs, outputs, which helpers are
+     used, and any assumptions you made when generating from scratch), and a real body.
+ - Prefer runnable logic over stubs. Do not invent project class names, helper names, or
+     signatures; call retrieved helpers by their exact names when available.
+ - If you must assume the shape of an input the context does not define, state that assumption
+     in the docstring and build a thin adapter around real project helpers rather than stubbing
+     or re-declaring them.
 
 Output rules:
 - Return ONLY a valid JSON array, no preamble, no markdown fences, no extra text.
@@ -2085,7 +2099,7 @@ def _render_candidates_for_coverage(functions: List[Dict]) -> str:
             "name": fn.get("name"),
             "signature": fn.get("signature"),
             "docstring": fn.get("docstring"),
-            "code": (fn.get("code") or "")[:100],   # code for every candidate, not just a presumed "best" #originally was [:1500]
+            "code": (fn.get("code") or "")[:1200],   # code for every candidate, not just a presumed "best" #originally was [:1500]
         })
     return json.dumps(rendered, indent=2)
 

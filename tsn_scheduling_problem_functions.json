@@ -14,30 +14,8 @@
     "code": "def require_instance(func):\n    \"\"\"Decorator: call self.no_instance_assigned() if no usecase is active.\"\"\"\n    def wrapper(self, *args, **kwargs):\n        if not getattr(self, \"usecase\", None):\n            return self.no_instance_assigned()\n        return func(self, *args, **kwargs)\n    wrapper.__name__ = func.__name__\n    return wrapper\n"
   },
   {
-    "name": "wrapper",
-    "class_name": null,
-    "signature": "def wrapper(self, *args, **kwargs):",
-    "docstring": "Inner wrapper function produced by the require_instance decorator. Calls self.no_instance_assigned() and returns early if self.usecase is not set; otherwise delegates to the decorated function with all original arguments.",
-    "parameters": [
-      {
-        "name": "self",
-        "default": null
-      },
-      {
-        "name": "*args",
-        "default": null
-      },
-      {
-        "name": "**kwargs",
-        "default": null
-      }
-    ],
-    "module": "tsn_scheduling_problem.py",
-    "code": "def wrapper(self, *args, **kwargs):\n    if not getattr(self, \"usecase\", None):\n        return self.no_instance_assigned()\n    return func(self, *args, **kwargs)\n"
-  },
-  {
     "name": "__init__",
-    "class_name": "InstanceContext()",
+    "class_name": "InstanceContext",
     "signature": "def __init__(self, parent, instance):",
     "docstring": "Initialises an InstanceContext with a reference to the parent TSNScheduling object and the instance (Usecase) to be activated within the context.",
     "parameters": [
@@ -59,7 +37,7 @@
   },
   {
     "name": "__enter__",
-    "class_name": "InstanceContext()",
+    "class_name": "InstanceContext",
     "signature": "def __enter__(self):",
     "docstring": "Sets parent.usecase to the given instance and calls parent.build_metadata() once per unique instance (tracked by object id). Returns the parent object so it can be used in a with-block.",
     "parameters": [
@@ -73,7 +51,7 @@
   },
   {
     "name": "__exit__",
-    "class_name": "InstanceContext()",
+    "class_name": "InstanceContext",
     "signature": "def __exit__(self, exc_type, exc_value, traceback):",
     "docstring": "Clears parent.usecase to None when exiting the context block. Does not remove the instance from the metadata-built set so that cached metadata is preserved for future use.",
     "parameters": [
@@ -99,7 +77,7 @@
   },
   {
     "name": "__init__",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def __init__(self, problem_definition, ContextHandler=InstanceContext, **kwargs):",
     "docstring": "Initialises the TSNScheduling problem with a config file path. Creates UsecaseGenerator and InstancesLoader helpers, sets up context handling, and initialises the instance list and config_matrix to None.",
     "parameters": [
@@ -125,9 +103,9 @@
   },
   {
     "name": "build_metadata",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def build_metadata(self):",
-    "docstring": "Build config_matrix and attach customGraph to each stream dict.\n- Expects self.usecase to be set.\n- Uses make_default_stream_config(stream) which returns (config_column, custom_graph).",
+    "docstring": "CALL_FORM: instance method. Builds config_matrix and attaches customGraph to each stream dict. Expects an active usecase.",
     "parameters": [
       {
         "name": "self",
@@ -139,9 +117,9 @@
   },
   {
     "name": "initialize_problem",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def initialize_problem(self):",
-    "docstring": "Initialises the TSNConstraintEvaluator after metadata has been built. Determines the number of decision variables, checks whether routing and task placement are fixed, and constructs the evaluator accordingly.",
+    "docstring": "CALL_FORM: instance method. Initialises TSNConstraintEvaluator after metadata has been built and selects routing/task-placement checks.",
     "parameters": [
       {
         "name": "self",
@@ -153,9 +131,9 @@
   },
   {
     "name": "use_instance",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def use_instance(self, instance):",
-    "docstring": "Return a context manager that sets .usecase to instance inside a with-block.",
+    "docstring": "CALL_FORM: instance method. Returns a context manager that sets .usecase to the provided instance inside a with-block.",
     "parameters": [
       {
         "name": "self",
@@ -171,7 +149,7 @@
   },
   {
     "name": "no_instance_assigned",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def no_instance_assigned(self):",
     "docstring": "Raises a ValueError indicating that no use-case instance is currently active. Should be called (or returned) by any method that requires self.usecase to be set.",
     "parameters": [
@@ -185,7 +163,7 @@
   },
   {
     "name": "instantiate",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def instantiate(self, export=False):",
     "docstring": "Generates a new scheduling use case from the problem's config file, appends it to self.instances, and returns it. Optionally exports the use case to a JSON file.",
     "parameters": [
@@ -203,9 +181,9 @@
   },
   {
     "name": "import_scheduling_usecase",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def import_scheduling_usecase(self, file_path, remove_routing=False, fix_task_placement=False):",
-    "docstring": "Loads a previously exported use case from a JSON file and returns a Usecase object. Optionally removes path routing and fixes talker/listener placements before returning.",
+    "docstring": "CALL_FORM: instance method. Loads a previously exported use case from JSON, optionally removes routing and fixes task placement, then returns the Usecase.",
     "parameters": [
       {
         "name": "self",
@@ -229,9 +207,9 @@
   },
   {
     "name": "generate_scheduling_usecase",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def generate_scheduling_usecase(self, config_file, export=False, usecases_folder='./problem_instances/'):",
-    "docstring": "Generates a single use case from a config file using UsecaseGenerator.generateUC. Optionally saves the use case to the usecases_folder directory. Returns the Usecase object.",
+    "docstring": "CALL_FORM: instance method. Generates one use case from a config file using UsecaseGenerator.generateUC and optionally exports it.",
     "parameters": [
       {
         "name": "self",
@@ -255,7 +233,7 @@
   },
   {
     "name": "generate_incremental_usecases",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def generate_incremental_usecases(self, config_file, export=False, usecases_folder='./problem_instances/'):",
     "docstring": "Generates a sequence of use cases incrementally (one additional stream at a time) using UsecaseGenerator.ucGenerator. Optionally exports each use case. Returns the list of Usecase objects.",
     "parameters": [
@@ -281,7 +259,7 @@
   },
   {
     "name": "get_config",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def get_config(self):",
     "docstring": "Returns the configuration string of the currently active use case by delegating to usecase.get_config(). Requires an active instance.",
     "parameters": [
@@ -295,7 +273,7 @@
   },
   {
     "name": "get_task",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def get_task(self):",
     "docstring": "Returns a tuple (fixPath, is_fully_fixed) indicating whether routing paths are fixed and whether both talker and listener placements are fully determined (numplacesTalker == numplaceslistener == 1).",
     "parameters": [
@@ -309,7 +287,7 @@
   },
   {
     "name": "n_ports",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def n_ports(self):",
     "docstring": "Property returning the total number of ports in the active use case's graph.",
     "parameters": [
@@ -323,7 +301,7 @@
   },
   {
     "name": "n_streams",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def n_streams(self):",
     "docstring": "Property returning the number of streams in the active use case.",
     "parameters": [
@@ -337,9 +315,9 @@
   },
   {
     "name": "port_id_to_name",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def port_id_to_name(self):",
-    "docstring": "1-based port id -> name mapping. includes 0 -> '' as before.",
+    "docstring": "CALL_FORM: property. Returns a 1-based port id -> name mapping and includes 0 -> ''.",
     "parameters": [
       {
         "name": "self",
@@ -351,9 +329,9 @@
   },
   {
     "name": "port_name_to_id",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def port_name_to_id(self):",
-    "docstring": "name -> 1-based port id mapping. includes '' -> 0.",
+    "docstring": "CALL_FORM: property. Returns a name -> 1-based port id mapping and includes '' -> 0.",
     "parameters": [
       {
         "name": "self",
@@ -365,9 +343,9 @@
   },
   {
     "name": "ports",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def ports(self):",
-    "docstring": "Return ports as a dict keyed by 1-based port id (value is the port data), \nwith destPort modified using self.port_name_to_id.",
+    "docstring": "CALL_FORM: property. Returns ports as a dict keyed by 1-based port id with destPort normalized to integer ids.",
     "parameters": [
       {
         "name": "self",
@@ -379,9 +357,9 @@
   },
   {
     "name": "port_id_to_node",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def port_id_to_node(self):",
-    "docstring": "Property returning a dict mapping 1-based port id to the name of the source node that owns that port, plus 0 mapped to an empty string.",
+    "docstring": "CALL_FORM: property. Returns a dict mapping 1-based port id to its source node name.",
     "parameters": [
       {
         "name": "self",
@@ -393,9 +371,9 @@
   },
   {
     "name": "nodes",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def nodes(self):",
-    "docstring": "Property returning a dict mapping each node name to a tuple of (index, procDelay) for all nodes in the active use-case graph.",
+    "docstring": "CALL_FORM: property. Returns a dict mapping each node name to (index, procDelay) for the active graph.",
     "parameters": [
       {
         "name": "self",
@@ -407,9 +385,9 @@
   },
   {
     "name": "n_nodes",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def n_nodes(self):",
-    "docstring": "Property returning the total number of nodes in the active use-case graph.",
+    "docstring": "CALL_FORM: property. Returns the total number of nodes in the active use-case graph.",
     "parameters": [
       {
         "name": "self",
@@ -421,9 +399,9 @@
   },
   {
     "name": "node_to_port_id",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def node_to_port_id(self):",
-    "docstring": "Property returning three dicts: egress_map (node -> list of egress port ids), ingress_map (node -> list of ingress port ids), and adjacent_egress_map (node -> list of egress port ids of incoming neighbours).",
+    "docstring": "CALL_FORM: property. Returns egress_map, ingress_map, and adjacent_egress_map as three node->port-id dictionaries.",
     "parameters": [
       {
         "name": "self",
@@ -435,7 +413,7 @@
   },
   {
     "name": "next_prev_hops",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def next_prev_hops(self, hop):",
     "docstring": "hop= the egress port of the current hop",
     "parameters": [
@@ -453,9 +431,9 @@
   },
   {
     "name": "macro_cycle",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def macro_cycle(self):",
-    "docstring": "LCM of stream intervals.",
+    "docstring": "CALL_FORM: property. Returns the LCM of all stream intervals (the macro-cycle).",
     "parameters": [
       {
         "name": "self",
@@ -467,9 +445,9 @@
   },
   {
     "name": "streams",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def streams(self):",
-    "docstring": "Return streams enriched with port ids where needed.\nThis property will create a new list each call (shallow copies).",
+    "docstring": "CALL_FORM: property. Returns streams enriched with port ids where needed and creates a new shallow-copied list each call.",
     "parameters": [
       {
         "name": "self",
@@ -481,9 +459,9 @@
   },
   {
     "name": "links",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def links(self):",
-    "docstring": "Property returning a list of link dicts for the active use case with sourcePort and destPort values replaced by their 1-based integer port ids.",
+    "docstring": "CALL_FORM: property. Returns link dicts with sourcePort and destPort converted to 1-based integer ids.",
     "parameters": [
       {
         "name": "self",
@@ -495,7 +473,7 @@
   },
   {
     "name": "_frame_size",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def _frame_size(cls, stream):",
     "docstring": "Compute the frame size in bits *with tolerance*.",
     "parameters": [
@@ -513,7 +491,7 @@
   },
   {
     "name": "hops_costs",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def hops_costs(self, frame_size):",
     "docstring": "Cost of forwarding a frame from one egress port.",
     "parameters": [
@@ -531,9 +509,9 @@
   },
   {
     "name": "network_borders",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def network_borders(self, graph):",
-    "docstring": "Return egress ports of switches that are connected to listeners (ports on switch->host edges).",
+    "docstring": "CALL_FORM: instance method. Returns egress ports of switches that are connected to listeners.",
     "parameters": [
       {
         "name": "self",
@@ -549,7 +527,7 @@
   },
   {
     "name": "configure_stream_ports",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def configure_stream_ports(self, ports_in, ports_out):",
     "docstring": "After instantiating the problem, the streams can be independently configured using this function to force using some ports and excluding some other ports.\n                                ------------------------------     ------------\n                                | customGraph | config_column|      seedGraph\n                     -----------------------------------------     ------------\n                    always on   |    exist    |       1      |        exist\n                     -----------------------------------------     ------------\n                    always off/ |  removed    |              |       exist in        \n                    concurent of|  from the   |       0      |      some seeds            \n                    an always on|   graph     |              |      but not in            \n                     -----------------------------------------      some others\n                    free to use |    exist    |       0      |        seeds\n                    ------------------------------------------     ------------ \n                    \nBuild config_column and a pruned custom_graph for the stream based on ports_in / ports_out.\n- ports_in: dict with keys 'talker','listener','switch' listing egress-port names to force active\n- ports_out: dict with keys 'talker','listener','switch' listing ports to force inactive\nReturns (config_column (np.array len n_ports), custom_graph (networkx DiGraph)).",
     "parameters": [
@@ -571,9 +549,9 @@
   },
   {
     "name": "get_concurrent_ports",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def get_concurrent_ports(self, egports, typ=None):",
-    "docstring": "Return a list of edges (u,v,data) that are \"concurrent\" with the given egress ports.\n- typ in {'switch','talker','listener'}.",
+    "docstring": "CALL_FORM: instance method. Returns edges that are concurrent with the given egress ports; typ controls whether talker, listener, or switch concurrency is computed.",
     "parameters": [
       {
         "name": "self",
@@ -593,9 +571,9 @@
   },
   {
     "name": "make_default_stream_config",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def make_default_stream_config(self, stream):",
-    "docstring": "[generate a subgraph by removing all deactivated nodes and edges (i.e. that are not allowed to be used)]\nBuild default (config_column, custom_graph) for a stream dict.\nstream is a dict with keys like 'tlkrPssblPlcmnt', 'lstnsrPssblPlcmnt', optionally 'pathLists'.",
+    "docstring": "CALL_FORM: instance method. Builds the default (config_column, custom_graph) for a stream dict from its placement and path restrictions.",
     "parameters": [
       {
         "name": "self",
@@ -611,9 +589,9 @@
   },
   {
     "name": "make_stream_config",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def make_stream_config(self, stream, always_in, always_out, overwrite=False, as_idx=True):",
-    "docstring": "Build (config_column, custom_graph) from explicit always_in / always_out lists.\n- always_in/out are either indices (0-based) or port names depending on as_idx flag.",
+    "docstring": "CALL_FORM: instance method. Builds (config_column, custom_graph) from explicit always_in / always_out lists.",
     "parameters": [
       {
         "name": "self",
@@ -645,7 +623,7 @@
   },
   {
     "name": "hop_cost_eg2eg",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def hop_cost_eg2eg(self, cur_egp, next_egp, frame_size):",
     "docstring": "Cost of forwarding a frame from one egress port to the egress port at next hop.\n\nParameters\n----------\ncur_egp : str\n    Current egress port name.\nnext_egp : str\n    Next egress port name.\nframe_size : float\n    Frame size in bits (with tolerance applied).\n\nReturns\n-------\nfloat\n    Delay in nanoseconds.",
     "parameters": [
@@ -671,7 +649,7 @@
   },
   {
     "name": "bfs_forward",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def bfs_forward(self, graph, start_port, stream):",
     "docstring": "Forward BFS from a talker port to compute minimum delay budgets.\n\nParameters\n----------\ngraph : networkx.DiGraph\n    The usecase graph.\nstart_port : str\n    Egress port name of the talker host.\nstream : dict\n    Stream definition.\n\nReturns\n-------\ndict\n    Mapping of next-egress-port -> {current-egress-port: min_delay}",
     "parameters": [
@@ -697,7 +675,7 @@
   },
   {
     "name": "bfs_backward",
-    "class_name": "TSNScheduling()",
+    "class_name": "TSNScheduling",
     "signature": "def bfs_backward(self, graph, end_port, stream):",
     "docstring": "Backward BFS from a listener ingress port to compute maximum\nremaining delay budgets.\n\nParameters\n----------\ngraph : networkx.DiGraph\n    The usecase graph.\nend_port : str\n    Ingress port name of the listener host.\nstream : dict\n    Stream definition.\n\nReturns\n-------\ndict\n    Mapping of current-egress-port -> {previous-egress-port: max_delay}",
     "parameters": [
@@ -723,7 +701,7 @@
   },
   {
     "name": "drawFattree",
-    "class_name": "TSNScheduling()",
+    "class_name": null,
     "signature": "def drawFattree(graph, ax=None, node_size=300, font_size=12, **kwds):",
     "docstring": "Draw a fat-tree style layout for the given graph.\n\nParameters\n----------\ngraph : networkx.Graph\n    The graph to draw.\nax : matplotlib.axes.Axes or None\n    Axis to draw into. If None, a new figure is created.\nnode_size : int\n    Size of nodes.\nfont_size : int\n    Size of labels.\nkwds : dict\n    Extra keyword arguments passed to nx.draw.",
     "parameters": [
@@ -753,7 +731,7 @@
   },
   {
     "name": "plot_all_stream_custom_graphs",
-    "class_name": "TSNScheduling()",
+    "class_name": null,
     "signature": "def plot_all_stream_custom_graphs(customGraphs, ncols=3, figsize=(18, 12), **draw_kwds):",
     "docstring": "Plot all stream custom graphs side by side using the fat-tree layout.\n\nParameters\n----------\nusecase : object\n    Must have `.streams`, where each stream is a dict with \"customGraph\".\nncols : int\n    Number of subplot columns.\nfigsize : tuple\n    Overall figure size.\ndraw_kwds : dict\n    Extra args passed to drawFattree (e.g. node_color, edge_color).",
     "parameters": [
