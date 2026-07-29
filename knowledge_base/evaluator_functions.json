@@ -1,0 +1,501 @@
+[
+  {
+    "function_name": "__init__",
+    "class_name": "TSNConstraintEvaluator",
+    "signature": "def __init__(self, problem, weights=None, check_routing=True, check_task_placement=True, scheduling_type: ScheduleEncodingType=ScheduleEncodingType.PRIORITY):",
+    "docstring": "CALL_FORM: instance initializer. Merges penalty weights, selects active violation checks, and precomputes the masks and hop costs needed for evaluation.",
+    "nl_summary": "Sets up the rule-checker for a network scheduling problem. It stores how much each kind of mistake should be penalized and prepares lookup tables ahead of time so later checks run fast. Users might ask: 'create a checker that tells me if my schedule is valid'; 'set up scoring with my own penalty weights'; 'how do I start evaluating solutions for my network'.",
+    "parameters": [
+      {
+        "parameter_name": "self",
+        "default": null,
+        "description": "The TSNConstraintEvaluator instance being initialised; every precomputed mask and setting is stored on it."
+      },
+      {
+        "parameter_name": "problem",
+        "default": null,
+        "description": "The TSNScheduling problem object supplying network/stream metadata (n_nodes, n_ports, n_streams, ports, streams, node/port maps) used to precompute masks."
+      },
+      {
+        "parameter_name": "weights",
+        "default": null,
+        "description": "Optional dict of user penalty weights merged over the defaults; only keys relevant to the active checks are kept (None means use defaults)."
+      },
+      {
+        "parameter_name": "check_routing",
+        "default": true,
+        "description": "Boolean flag; when True adds the flow-conservation and flow-continuity routing checks to the active constraint set."
+      },
+      {
+        "parameter_name": "check_task_placement",
+        "default": true,
+        "description": "Boolean flag; when True adds the per-stream host-role (talker/listener placement) check to the active constraint set."
+      },
+      {
+        "parameter_name": "scheduling_type",
+        "default": "ScheduleEncodingType.PRIORITY",
+        "description": "ScheduleEncodingType (PRIORITY or START_TIME) selecting which scheduling checks run and how genes are interpreted (priority vs start time)."
+      }
+    ],
+    "module": "evaluator.py",
+    "code": "def __init__(self, problem, weights=None, check_routing=True, check_task_placement=True, \n             scheduling_type: ScheduleEncodingType = ScheduleEncodingType.PRIORITY):\n    # Default penalty weights\n    default_weights = {\n        # task placement\n        \"talker_not_fixed\": 1,\n        \"listener_not_fixed\": 1,\n        \"stray_talker\": 1,\n        \"stray_listener\": 1,\n        \"talker_listener_overlap\": 1,\n        # routing\n        \"backwarding\": 1,\n        \"flow_conservation\": 1,\n        \"looping\": 1,\n        \"disconnected_path\": 1,\n        # scheduling\n        \"priority_conflicts\": 1,\n        \"maxlatency_violations\": 1,\n        \"stream_window_sequence\":1,\n        \"interleaving\":1,\n        \"macrocycle_overlap\":1,\n        \"talker_offset\":1\n    }\n\n    # Merge with user-supplied weights\n    merged_weights = {**default_weights, **(weights or {})}\n\n    # Determine which violation functions are active\n    self.scheduling_type = scheduling_type\n    self.active_checks = []\n    relevant_weight_keys = set()\n\n    if check_task_placement:\n        self.active_checks.append(self._per_stream_host_role_violations)\n        relevant_weight_keys.update([\n            \"talker_not_fixed\",\n            \"listener_not_fixed\",\n            \"stray_talker\",\n            \"stray_listener\",\n            \"talker_listener_overlap\"\n        ])\n\n    if check_routing:\n        self.active_checks.extend([\n            self._per_stream_flow_conservation_violations,\n            self._per_stream_flow_continuity_violations\n        ])\n        relevant_weight_keys.update([\n            \"backwarding\",\n            \"flow_conservation\",\n            \"looping\",\n            \"disconnected_path\"\n        ])\n\n    # Always check scheduling\n    if self.scheduling_type.value == ScheduleEncodingType.PRIORITY.value:\n        self.active_checks.extend([\n            self._per_stream_priority_conflicts,\n            self._per_stream_latency_violations_priority\n        ])\n        relevant_weight_keys.update([\n            \"maxlatency_violations\",\n            \"priority_conflicts\"\n        ])\n    if self.scheduling_type.value == ScheduleEncodingType.START_TIME.value:\n        self.active_checks.extend([\n            self._per_stream_window_sequence_violations,\n            self._per_stream_macrocycle_overlap_violations,\n            self._per_stream_talker_offset_violations,\n            self._per_stream_latency_violations_start_time\n        ])\n        relevant_weight_keys.update([\n            \"maxlatency_violations\",\n            \"stream_window_sequence\",\n            \"interleaving\",\n            \"macrocycle_overlap\",\n            \"talker_offset\"\n        ])\n\n    # Keep only relevant weights\n    self.weights = {k: merged_weights[k] for k in relevant_weight_keys}\n    self.n_constr = len(relevant_weight_keys)\n    self.violations_keys = relevant_weight_keys\n\n    #############################################################\n    self._violation_evaluation_cache = {}\n    self._metrics_evaluation_cache = {}\n    ##############################################################\n\n    n_nodes = problem.n_nodes\n    n_ports = problem.n_ports\n    n_streams = problem.n_streams\n\n    self.n_streams =n_streams\n    self.n_ports = n_ports\n\n    self.macro_cycle = getattr(problem.usecase, \"macro_cycle\", 0)  # fallback if missing\n    ports = problem.ports                        # dict keyed by port id (1-based)\n    streams = problem.streams\n    self.hosts = getattr(problem.usecase, \"hosts\", [])\n    self.nodes = problem.nodes\n\n    self.port_id_to_node = problem.port_id_to_node\n    self.egress_map, self.ingress_map, self.adjacent_map = problem.node_to_port_id \n\n    ############### precompute ports/streams data ################\n    self.port_speeds = np.zeros(n_ports, dtype=float)\n    for p_idx in range(n_ports):\n        pid = p_idx + 1\n        pdata = ports[pid]\n        self.port_speeds[p_idx] = pdata[\"speed\"]\n\n    self.stream_maxLatencies = [] \n    stream_intervals = []\n    self.windLengths = np.zeros((n_ports, n_streams), dtype=float)\n    self.all_hops_costs = np.zeros((n_ports, n_streams))\n    stream_potential = []\n    eps = 1e-9\n    for s_idx, stream in enumerate(streams):\n        stream_potential.append(len(stream[\"customGraph\"].edges())) # total potential\n        self.stream_maxLatencies.append(stream[\"maxLatency\"])\n        stream_intervals.append(stream[\"interval\"])\n\n        # precompute hops costs for latency evaluation\n        frame_size = problem.usecase._frame_size(s_idx)\n        self.all_hops_costs[:, s_idx] = problem.hops_costs(frame_size)\n        # precompute windLengths\n        for p_idx in range(n_ports):\n            self.windLengths[p_idx, s_idx] = (frame_size / max(self.port_speeds[p_idx] * MBPS_2_BPNS, eps))\n\n    self.stream_potential = stream_potential\n    self.stream_intervals = np.asarray(stream_intervals, dtype=int)\n    streams_pairwise_gcl = np.gcd(self.stream_intervals[:, None], self.stream_intervals[None, :])\n    streams_pairwise_gcl[streams_pairwise_gcl == 0] = 1   # safety\n    self.streams_pairwise_gcl = streams_pairwise_gcl # (S,S)\n    self.streams_pairwise_gcl_inv = 1.0 / self.streams_pairwise_gcl[None, None, :, :]\n\n    stream_pairwise_windowSum = (self.windLengths[:, :, None] + self.windLengths[:, None, :]) # (P,S,S)\n    self.stream_pairwise_windowSum = stream_pairwise_windowSum\n    # used to filter self-comparison for stream overlap\n    self.pair_mask = ~np.eye(n_streams, dtype=bool)\n\n    ################# nodes masks #####################\n    node_index = {name: nid for name, (nid, _) in self.nodes.items()}\n\n    node_egress_mask  = np.zeros((n_nodes, n_ports), dtype=int)\n    node_ingress_mask  = np.zeros((n_nodes, n_ports), dtype=int)\n    egress_to_node_mask  = np.zeros((n_nodes, n_ports), dtype=int)\n\n    for name, n_idx in node_index.items():\n        node_egress_mask[n_idx, np.array(self.egress_map[name])-1]=1\n        node_ingress_mask[n_idx, np.array(self.ingress_map[name])-1]=1\n        egress_to_node_mask[n_idx, np.array(self.adjacent_map[name])-1]=1\n\n    host_mask = np.zeros((n_nodes), dtype=int)\n    for host in self.hosts:\n        host_mask[node_index[host]] = 1\n\n    self.host_mask = host_mask\n    self.switch_mask = 1-host_mask      \n\n    self.egress_mask = node_egress_mask\n    self.ingress_mask = node_ingress_mask\n    self.to_node_mask = egress_to_node_mask\n\n    ################# ports masks #####################\n    adjacency_mask = np.zeros((n_ports, n_ports), dtype=int)\n    next_hop_matrix = np.zeros((n_ports, n_ports), dtype=int)\n\n    next_hop_list = [[] for _ in range(n_ports)]\n\n\n    for pid in range(1, n_ports + 1):\n        p_idx = pid - 1\n        pdata = ports[pid]\n        dst_node = pdata[\"destNode\"]\n        dst_port = pdata[\"destPort\"]\n\n        adjacency_mask[pid - 1, dst_port-1] = 1  \n\n        next_ports = self.egress_map.get(dst_node, []) if dst_node not in self.hosts else []\n        next_hop_list[p_idx] = list(dict.fromkeys(next_ports))\n\n        next_eg_indices = [p-1 for p in next_ports]\n        next_hop_matrix[p_idx, next_eg_indices] = 1\n\n    self.adjacency_mask = adjacency_mask #\n    self.next_hop_list = next_hop_list\n    next_hop_matrix = csr_matrix(next_hop_matrix)\n\n    self.next_hop_matrix = next_hop_matrix\n    ################ CSR connectivity ################\n    self._upstream_ports = np.repeat(np.arange(n_ports), np.diff(next_hop_matrix.indptr))\n    self._downstream_ports = next_hop_matrix.indices\n\n    ################# streams masks #####################\n    talker_mask        = np.zeros((n_ports, n_streams), dtype=int)\n    listener_mask      = np.zeros((n_ports, n_streams), dtype=int)\n    listener_adj_mask  = np.zeros((n_ports, n_streams), dtype=int)\n\n    self.stream_talker_ports = [] ##########\n    self.stream_listener_adj_ports = [] ########## \n\n    for s_idx, stream in enumerate(problem.usecase.streams):\n\n        # 1) Talker ports (1-based)\n        t_nodes = stream.get(\"tlkrPssblPlcmnt\", [])\n        tps = []\n        for t_node in t_nodes:\n            t_ports = self.egress_map[t_node]\n            tps +=t_ports\n            talker_mask[np.array(t_ports) - 1, s_idx] = 1\n        self.stream_talker_ports.append(np.array(tps, dtype=int) if tps else np.array([], dtype=int))\n\n        # 2) Listener ports (1-based, stored as list of lists)\n        lst_lists = stream.get(\"lstnsrPssblPlcmnt\", [])\n        lst_nodes = [l for sub in lst_lists for l in sub]\n        lps = []\n        for lst_node in lst_nodes:\n            lst_ports = self.ingress_map[lst_node]\n            listener_mask[np.array(lst_ports) - 1, s_idx] = 1\n\n            lst_adj_ports = self.adjacent_map[lst_node]\n            lps += lst_adj_ports\n            listener_adj_mask[np.array(lst_adj_ports) - 1, s_idx] = 1\n        self.stream_listener_adj_ports.append(np.array(lps, dtype=int) if lps else np.array([], dtype=int))\n\n    # Save masks\n    self.talker_mask = talker_mask # ports that can be talker\n    self.listener_mask = listener_mask # ports that can be listener\n    self.listener_adj_mask = listener_adj_mask # ports that reach to listener\n\n    hosts_port_mask = node_egress_mask[host_mask==1].sum(0)\n    hosts_adj_port_mask = egress_to_node_mask[host_mask==1].sum(0)\n    self.stray_talker_mask = (1 - talker_mask) * hosts_port_mask[:,None]\n    self.stray_listener_mask = (1 - listener_adj_mask) * hosts_adj_port_mask[:,None]\n"
+  },
+  {
+    "function_name": "_per_stream_host_role_violations",
+    "class_name": "TSNConstraintEvaluator",
+    "signature": "def _per_stream_host_role_violations(self, chromosome):",
+    "docstring": "CALL_FORM: instance method. Computes per-stream host-role violations and returns a (5, n_streams) array.",
+    "nl_summary": "Checks whether each data flow starts at the right sender and ends at the right receiver. It counts mistakes like a flow with no sender, an extra sender, or a sender and receiver sitting on the same machine. Users might ask: 'check if my flows start and end at the right devices'; 'find flows with a missing or wrong sender'; 'why is my traffic assigned to the wrong machine'.",
+    "parameters": [
+      {
+        "parameter_name": "self",
+        "default": null,
+        "description": "The evaluator instance, providing the precomputed talker/listener/stray masks and adjacency used by the check."
+      },
+      {
+        "parameter_name": "chromosome",
+        "default": null,
+        "description": "A (n_ports, n_streams) solution matrix where an entry > 0 marks the port active for that stream; used to count talker/listener placement violations."
+      }
+    ],
+    "module": "evaluator.py",
+    "code": "def _per_stream_host_role_violations(self, chromosome):\n    act = chromosome > 0          # bool (no astype)\n\n    # Boolean masking (no integer multiply)\n    active_talkers   = act & self.talker_mask\n    active_listeners = act & self.listener_adj_mask\n\n    # Per-stream counts\n    talker_count   = active_talkers.sum(axis=0)\n    listener_count = active_listeners.sum(axis=0)\n\n    # Stray per-stream (reduce directly)\n    stray_talker   = (act & self.stray_talker_mask).sum(axis=0)\n    stray_listener = (act & self.stray_listener_mask).sum(axis=0)\n\n    # Matrix multiply (dominant cost)\n    downstream = self.adjacency_mask @ active_listeners\n\n    # Overlap per-stream\n    overlap = (active_talkers & downstream).sum(axis=0)\n\n    return np.vstack([\n        np.abs(talker_count - 1),      # talker_not_fixed\n        np.abs(listener_count - 1),    # listener_not_fixed\n        overlap,                       # talker_listener_overlap\n        stray_talker,                  # stray_talker\n        stray_listener                 # stray_listener\n    ])\n"
+  },
+  {
+    "function_name": "group_connected_ports",
+    "class_name": "TSNConstraintEvaluator",
+    "signature": "def group_connected_ports(self, chromosome, s_idx):",
+    "docstring": "CALL_FORM: instance method. Groups connected active ports using the adjacency precomputed in __init__.",
+    "nl_summary": "Takes one data flow and groups the network links it uses into connected clusters. Links that touch each other end up in the same group, which shows whether the flow forms one unbroken path or several disconnected pieces. Users might ask: 'show me which links of my flow are actually connected'; 'is my path in one piece or broken up'; 'group the connected parts of a route'.",
+    "parameters": [
+      {
+        "parameter_name": "self",
+        "default": null,
+        "description": "The evaluator instance; supplies the precomputed next_hop_list adjacency and the UnionFind helper."
+      },
+      {
+        "parameter_name": "chromosome",
+        "default": null,
+        "description": "The (n_ports, n_streams) solution matrix whose active ports for the given stream are grouped by connectivity."
+      },
+      {
+        "parameter_name": "s_idx",
+        "default": null,
+        "description": "Index of the stream (chromosome column) whose active ports are being grouped."
+      }
+    ],
+    "module": "evaluator.py",
+    "code": "def group_connected_ports(self, chromosome, s_idx):\n    \"\"\"Group connected active ports using the adjacency precomputed in __init__.\"\"\"\n    active_ports = [p + 1 for p in np.nonzero(chromosome[:, s_idx])[0]]\n    if not active_ports:\n        return []\n    pid_set = set(active_ports)\n    uf = self.UnionFind(active_ports)\n    for pid in active_ports:\n        for nb in self.next_hop_list[pid - 1]:\n            if nb in pid_set:\n                uf.union(pid, nb)\n    groups = {}\n    for pid in active_ports:\n        root = uf.find(pid)\n        groups.setdefault(root, set()).add(int(pid))\n    return list(groups.values())\n"
+  },
+  {
+    "function_name": "talker_listener_groups",
+    "class_name": "TSNConstraintEvaluator",
+    "signature": "def talker_listener_groups(self, groups, talker_ids, listener_ids):",
+    "docstring": "CALL_FORM: instance method. Returns the talker and listener group(s) if any group contains both.",
+    "nl_summary": "Looks through the connected clusters of a flow and finds the one holding the sender and the one holding the receiver. If the same cluster holds both, the sender can actually reach the receiver. Users might ask: 'can my sender actually reach my receiver'; 'find which part of the route has the source and the destination'; 'did source and destination end up in the same connected piece'.",
+    "parameters": [
+      {
+        "parameter_name": "self",
+        "default": null,
+        "description": "The evaluator instance (the method only uses instance binding, not stored state)."
+      },
+      {
+        "parameter_name": "groups",
+        "default": null,
+        "description": "List of port-id sets (connected components) produced by group_connected_ports for one stream."
+      },
+      {
+        "parameter_name": "talker_ids",
+        "default": null,
+        "description": "Iterable of the stream's candidate talker port ids, used to find which group contains a talker."
+      },
+      {
+        "parameter_name": "listener_ids",
+        "default": null,
+        "description": "Iterable of the stream's candidate listener-adjacent port ids, used to find which group contains a listener."
+      }
+    ],
+    "module": "evaluator.py",
+    "code": "def talker_listener_groups(self, groups, talker_ids, listener_ids):\n    \"\"\"True if any group contains at least one talker port and one listener port.\"\"\"\n    talker_group = None\n    listener_group = None\n\n    for group in groups:\n        if group & set(talker_ids):\n            talker_group = group\n        if group & set(listener_ids):\n            listener_group = group\n    return talker_group, listener_group\n"
+  },
+  {
+    "function_name": "group_penalty",
+    "class_name": "TSNConstraintEvaluator",
+    "signature": "def group_penalty(self, group, k):",
+    "docstring": "CALL_FORM: instance method. Computes a connectivity penalty for a group of active ports and returns k if the group is None.",
+    "nl_summary": "Gives a penalty score to a cluster of links based on how far it is from being a clean connected path. A missing cluster gets the full penalty, and extra or redundant links push the score up. Users might ask: 'how bad is this broken route'; 'score how disconnected my path is'; 'penalize routes with loops or extra links'.",
+    "parameters": [
+      {
+        "parameter_name": "self",
+        "default": null,
+        "description": "The evaluator instance; supplies port_id_to_node to map ports to their owning nodes."
+      },
+      {
+        "parameter_name": "group",
+        "default": null,
+        "description": "A set of connected port ids, or None; None yields the maximum disconnection penalty k."
+      },
+      {
+        "parameter_name": "k",
+        "default": null,
+        "description": "The stream's total potential (edge count) used as the baseline/maximum penalty for a disconnected group."
+      }
+    ],
+    "module": "evaluator.py",
+    "code": "def group_penalty(self, group, k):\n    if group is None:\n        return k  # completely disconnected group\n\n    active_nodes = {self.port_id_to_node[pid] for pid in group}\n\n    n_nodes = len(active_nodes)\n    n_edges = len(group)\n\n    raw = k - n_nodes + (n_edges - n_nodes) / 2\n    return int(max(0, raw))\n"
+  },
+  {
+    "function_name": "_per_stream_flow_continuity_violations",
+    "class_name": "TSNConstraintEvaluator",
+    "signature": "def _per_stream_flow_continuity_violations(self, chromosome):",
+    "docstring": "Checks whether each stream's active ports form a connected path from talker to listener using Union-Find grouping. Returns a (1, n_streams) array of continuity violation counts.",
+    "nl_summary": "Checks whether every data flow has one unbroken path from its sender to its receiver. Flows whose links do not join up all the way through are counted as broken. Users might ask: 'find flows whose path is broken'; 'check that traffic can actually get from source to destination'; 'which streams have gaps in their route'.",
+    "parameters": [
+      {
+        "parameter_name": "self",
+        "default": null,
+        "description": "The evaluator instance; provides the grouping helpers and precomputed talker/listener ports and stream potentials."
+      },
+      {
+        "parameter_name": "chromosome",
+        "default": null,
+        "description": "The (n_ports, n_streams) solution matrix checked for a connected talker-to-listener path per stream."
+      }
+    ],
+    "module": "evaluator.py",
+    "code": "def _per_stream_flow_continuity_violations(self, chromosome):\n    n = self.n_streams\n    v = np.zeros(n, dtype=int)  # 1D is faster to write into\n\n    # Local bindings (avoids repeated attribute lookup)\n    group_connected_ports = self.group_connected_ports\n    talker_listener_groups = self.talker_listener_groups\n    group_penalty = self.group_penalty\n\n    stream_talker_ports = self.stream_talker_ports\n    stream_listener_adj_ports = self.stream_listener_adj_ports\n    stream_potential = self.stream_potential\n\n    for s_idx in range(n):\n        groups = group_connected_ports(chromosome, s_idx)\n\n        talker_group, listener_group = talker_listener_groups(\n            groups,\n            stream_talker_ports[s_idx],\n            stream_listener_adj_ports[s_idx],\n        )\n\n        if (talker_group is not None and listener_group is not None and talker_group is listener_group):\n            continue\n\n        k = stream_potential[s_idx]\n        v[s_idx] = (group_penalty(talker_group, k) + group_penalty(listener_group, k))\n\n    return v[np.newaxis, :]\n"
+  },
+  {
+    "function_name": "_per_stream_flow_conservation_violations",
+    "class_name": "TSNConstraintEvaluator",
+    "signature": "def _per_stream_flow_conservation_violations(self, chromosome):",
+    "docstring": "Checks flow conservation, backwarding, and looping violations at switch nodes for each stream. Returns a (3, n_streams) array of backwarding, flow_conservation, and looping violation counts.",
+    "nl_summary": "Checks the routing rules at each switch for every data flow. It counts traffic going backwards, traffic that enters a switch but never leaves (or leaves without entering), and traffic that loops round in circles. Users might ask: 'find loops in my routing'; 'check if traffic goes backwards or disappears at a switch'; 'why does my flow circle around the network'.",
+    "parameters": [
+      {
+        "parameter_name": "self",
+        "default": null,
+        "description": "The evaluator instance; provides egress/ingress/adjacency and switch masks used to test conservation."
+      },
+      {
+        "parameter_name": "chromosome",
+        "default": null,
+        "description": "The (n_ports, n_streams) solution matrix checked for backwarding, flow-conservation and looping at switch nodes."
+      }
+    ],
+    "module": "evaluator.py",
+    "code": "def _per_stream_flow_conservation_violations(self, chromosome):\n    # Local bindings (faster attribute access)\n    egress_mask = self.egress_mask\n    ingress_mask = self.ingress_mask\n    adjacency_mask = self.adjacency_mask\n    switch_mask = self.switch_mask.astype(bool)\n\n    # Binary activation\n    act = (chromosome > 0).astype(int)  # (P, S)\n\n    # Compute adjacency once\n    adj_act = adjacency_mask @ act     # (P, S)\n\n    # Broadcast masks\n    active_egp = egress_mask[:, :, None] * act[None, :, :]      # (N,P,S)\n    active_ing = ingress_mask[:, :, None] * adj_act[None, :, :] # (N,P,S)\n\n    # Degrees (avoid building active_ieg_per_node)\n    in_deg  = active_ing.sum(axis=1)   # (N,S)\n    out_deg = active_egp.sum(axis=1)   # (N,S)\n\n    # ---- Violations ----\n\n    # backwarding (intersection count without explicit temp array)\n    backwarding = (active_egp & active_ing).sum(axis=(0, 1))\n\n    # Only switch nodes\n    in_sw  = in_deg[switch_mask]\n    out_sw = out_deg[switch_mask]\n\n    flow_conservation = np.abs(in_sw - out_sw).sum(axis=0)\n    looping = np.maximum(0, in_sw - 1).sum(axis=0)\n\n    # Stack into (3, S)\n    return np.vstack((\n        backwarding,\n        flow_conservation,\n        looping\n    ))\n"
+  },
+  {
+    "function_name": "_per_stream_priority_conflicts",
+    "class_name": "TSNConstraintEvaluator",
+    "signature": "def _per_stream_priority_conflicts(self, chromosome):",
+    "docstring": "Detects priority conflicts where two streams share the same priority label on the same port. Returns a (1, n_streams) array counting the number of conflicting port-priority assignments per stream.",
+    "nl_summary": "Finds cases where two data flows are given the same priority level on the same network port. That clash means the switch cannot tell which one should go first. Users might ask: 'find flows fighting over the same priority'; 'check for duplicate priority assignments on a port'; 'why do two streams have the same priority'.",
+    "parameters": [
+      {
+        "parameter_name": "self",
+        "default": null,
+        "description": "The evaluator instance; uses n_streams to linearise (port, priority) pairs for duplicate detection."
+      },
+      {
+        "parameter_name": "chromosome",
+        "default": null,
+        "description": "The (n_ports, n_streams) matrix whose positive entries are priority labels; duplicates on the same port count as conflicts."
+      }
+    ],
+    "module": "evaluator.py",
+    "code": "def _per_stream_priority_conflicts(self, chromosome):\n    # Flatten ports × streams\n    flat = chromosome.reshape(-1, self.n_streams)  # shape (n_ports, n_streams)\n\n    # Indices of active entries\n    rows, cols = np.nonzero(flat > 0)\n\n    # Corresponding values (priority labels)\n    labels = flat[rows, cols]\n\n    # Linearize (row, label) to detect duplicates\n    lin = rows * (self.n_streams + 1) + labels  # +1 to avoid zero conflicts\n\n    # Count occurrences\n    counts = np.bincount(lin, minlength=flat.shape[0] * (self.n_streams + 1))\n\n    # Duplicates = counts > 1\n    mask_active = counts[lin] > 1\n\n    # Allocate output\n    v = np.zeros(self.n_streams, dtype=int)\n\n    # Sum conflicts per stream\n    np.add.at(v, cols[mask_active], 1)\n\n    return v[np.newaxis, :]\n"
+  },
+  {
+    "function_name": "_per_stream_latency_violations_priority",
+    "class_name": "TSNConstraintEvaluator",
+    "signature": "def _per_stream_latency_violations_priority(self, chromosome):",
+    "docstring": "Computes end-to-end latency for each stream under a priority-based schedule by sorting port assignments by priority and accumulating hop costs. Returns a (1, n_streams) binary array indicating which streams exceed their maxLatency.",
+    "nl_summary": "Works out how long each data flow takes to travel end to end when flows are ordered by priority. It then flags every flow that arrives later than its allowed deadline. Users might ask: 'which flows miss their deadline'; 'compute end to end delay for priority scheduling'; 'check whether my traffic is too slow'.",
+    "parameters": [
+      {
+        "parameter_name": "self",
+        "default": null,
+        "description": "The evaluator instance; supplies precomputed all_hops_costs and per-stream maxLatencies."
+      },
+      {
+        "parameter_name": "chromosome",
+        "default": null,
+        "description": "The (n_ports, n_streams) matrix of priority labels used to order hops and accumulate end-to-end latency per stream."
+      }
+    ],
+    "module": "evaluator.py",
+    "code": "def _per_stream_latency_violations_priority(self, chromosome):\n    n_ports, n_streams = self.n_ports, self.n_streams\n\n    active_mask = chromosome > 0\n    big_num = 1_000_000\n\n    # Replace inactive entries with big number so they sort to the end\n    priorities_for_sort = np.where(active_mask, chromosome, big_num)\n\n    # Sort priorities along each port\n    sorted_indices = np.argsort(priorities_for_sort, axis=1)\n    row_idx = np.arange(n_ports)[:, None]\n\n    # Reorder hops and active_mask according to sorted priorities\n    sorted_hops = np.take_along_axis(self.all_hops_costs, sorted_indices, axis=1)\n    sorted_mask = np.take_along_axis(active_mask, sorted_indices, axis=1)\n\n    # Zero out inactive entries\n    sorted_hops *= sorted_mask\n\n    # Cumulative sum along each port\n    cumsum_delays = np.cumsum(sorted_hops, axis=1)\n\n    # Map cumulative delays back to original stream order\n    cumulative_delays = np.zeros_like(chromosome, dtype=float)\n    cumulative_delays[row_idx, sorted_indices] = cumsum_delays\n\n    # Sum per stream\n    total_latency = (cumulative_delays * active_mask).sum(axis=0)\n\n    # Compare against max latency\n    violations = (total_latency > self.stream_maxLatencies).astype(int)\n\n    return violations[np.newaxis, :]\n"
+  },
+  {
+    "function_name": "_per_stream_latency_violations_start_time",
+    "class_name": "TSNConstraintEvaluator",
+    "signature": "def _per_stream_latency_violations_start_time(self, chromosome):",
+    "docstring": "chromosome[p, s] = transmission start time (0 = inactive)",
+    "nl_summary": "Works out the end to end travel time of each data flow when the plan gives exact send times instead of priorities. It flags flows whose total delay goes over their allowed limit. Users might ask: 'check deadlines when I schedule exact start times'; 'measure delay for a time triggered schedule'; 'which streams are late with fixed send times'.",
+    "parameters": [
+      {
+        "parameter_name": "self",
+        "default": null,
+        "description": "The evaluator instance; supplies windLengths and per-stream maxLatencies."
+      },
+      {
+        "parameter_name": "chromosome",
+        "default": null,
+        "description": "The (n_ports, n_streams) matrix of transmission start times (0 = inactive) from which per-stream latency is computed."
+      }
+    ],
+    "module": "evaluator.py",
+    "code": "def _per_stream_latency_violations_start_time(self, chromosome):\n    \"\"\"\n    chromosome[p, s] = transmission start time (0 = inactive)\n    \"\"\"\n\n    active = chromosome > 0\n\n    # Replace inactive entries so they don't affect min/max\n    start_min = np.where(active, chromosome, np.inf)\n    start_max = np.where(active, chromosome, -np.inf)\n\n    # Per-stream earliest and latest transmission\n    t_min = start_min.min(axis=0)\n    t_max = start_max.max(axis=0)\n\n    # Transmission window (use worst-case hop window)\n    # windLengths already = transmission duration per port/stream\n    max_window = np.where(active, self.windLengths, 0).max(axis=0)\n\n    # Accumulated latency\n    latency = (t_max - t_min) + max_window\n\n    # Streams with no activity → no violation\n    latency = np.where(np.isfinite(t_min), latency, 0)\n\n    violations = (latency > self.stream_maxLatencies).astype(int)\n\n    return violations[np.newaxis, :]\n"
+  },
+  {
+    "function_name": "_per_stream_talker_offset_violations",
+    "class_name": "TSNConstraintEvaluator",
+    "signature": "def _per_stream_talker_offset_violations(self, chromosome):",
+    "docstring": "chromosome[p, s] = start time (0 = inactive)",
+    "nl_summary": "Checks that each data flow actually begins at its sender rather than somewhere in the middle of the network. It flags flows whose first transmission time is missing or does not line up with the sender. Users might ask: 'check that flows start at the sender'; 'find streams with a bad start time at the source'; 'why does my traffic begin in the wrong place'.",
+    "parameters": [
+      {
+        "parameter_name": "self",
+        "default": null,
+        "description": "The evaluator instance; supplies the talker mask and per-stream intervals."
+      },
+      {
+        "parameter_name": "chromosome",
+        "default": null,
+        "description": "The (n_ports, n_streams) matrix of start times; a talker starting at or after its stream interval is flagged."
+      }
+    ],
+    "module": "evaluator.py",
+    "code": "def _per_stream_talker_offset_violations(self, chromosome):\n    \"\"\"\n    chromosome[p, s] = start time (0 = inactive)\n    \"\"\"\n\n    active = chromosome > 0\n\n    # Active talker entries\n    talker_active = self.talker_mask & active\n\n    # Extract talker start time\n    talker_times = np.where(talker_active, chromosome, 0)\n    talker_offset = talker_times.max(axis=0)\n\n    intervals = self.stream_intervals\n\n    violations = (\n        (talker_offset >= intervals)\n    ).astype(int)\n\n    return violations[np.newaxis, :]\n"
+  },
+  {
+    "function_name": "_per_stream_macrocycle_overlap_violations",
+    "class_name": "TSNConstraintEvaluator",
+    "signature": "def _per_stream_macrocycle_overlap_violations(self, chromosome):",
+    "docstring": "Detect periodic window overlaps over the macro-cycle.\nImplements the periodic-interval collision test: \n    (phase1 - phase2) mod gcd(interval1, interval2) < window1 + window2; where phase = start % interval\nchromosome[p,s] = start time (0 = inactive)",
+    "nl_summary": "Checks whether two repeating transmissions ever collide on the same port over the full repeating cycle. Because flows repeat at different rates it uses a periodic collision test rather than comparing single sends. Users might ask: 'do my repeating transmissions ever crash into each other'; 'find time slot collisions across the whole cycle'; 'check overlaps between flows with different periods'.",
+    "parameters": [
+      {
+        "parameter_name": "self",
+        "default": null,
+        "description": "The evaluator instance; supplies stream intervals, pairwise gcd, window sums and the self-comparison mask."
+      },
+      {
+        "parameter_name": "chromosome",
+        "default": null,
+        "description": "The (n_ports, n_streams) matrix of start times used to detect periodic transmission-window overlaps between streams on a port."
+      }
+    ],
+    "module": "evaluator.py",
+    "code": "def _per_stream_macrocycle_overlap_violations(self, chromosome):\n    \"\"\"\n    Detect periodic window overlaps over the macro-cycle.\n    Implements the periodic-interval collision test: \n        (phase1 - phase2) mod gcd(interval1, interval2) < window1 + window2; where phase = start % interval\n    chromosome[p,s] = start time (0 = inactive)\n    \"\"\"\n\n    active = chromosome > 0  # (P,S)\n\n    # --- normalize start times into stream phase\n    phase = chromosome % self.stream_intervals[None, :]\n\n    # --- pairwise start-time differences (P,S,S) without abs\n    diff = phase[:, :, None] - phase[:, None, :]\n\n    # --- periodic phase difference using precomputed gcd\n    delta = np.mod(diff, self.streams_pairwise_gcl)\n\n    # --- overlap condition\n    overlap = delta < self.stream_pairwise_windowSum\n\n    # remove self comparisons\n    overlap &= self.pair_mask\n\n    # require both streams active on same port\n    both_active = active[:, :, None] & active[:, None, :]\n    overlap &= both_active\n\n    # --- count violations per stream\n    # (sum over ports and partner streams)\n    v = overlap.sum(axis=(0, 2))\n\n    return v[np.newaxis, :]\n"
+  },
+  {
+    "function_name": "_per_stream_window_sequence_violations",
+    "class_name": "TSNConstraintEvaluator",
+    "signature": "def _per_stream_window_sequence_violations(self, chromosome):",
+    "docstring": "chromosome[p, s] = start time (0 = inactive)\n\nEnforces two scheduling constraints:\n-------------------------------------------------------\n1) INTRA-STREAM SEQUENCING (causality)\n\n    Constraint per connection (u → d): chromosome[d, s] >= chromosome[u, s] + hop_cost[u, s]\n\nPrevents a frame leaving a downstream port before it\narrives from upstream. Violations are marked at the downstream port (d).\n-------------------------------------------------------\n2) INTER-STREAM FIFO (slot stealing / interleaving)\n\nFor two streams s1,s2 on the same port:\n    (t11 - t21)*(t12 - t22) >= 0\nmeaning arrival order must equal departure order.\nPrevents one stream stealing another stream’s slot.",
+    "nl_summary": "Checks two timing rules: a frame cannot leave a switch before it has arrived, and two flows must leave a port in the same order they arrived. It flags flows that break the order of events or steal another flow's turn. Users might ask: 'check that my timing makes physical sense'; 'find flows that send before they receive'; 'is one stream stealing another one's time slot'.",
+    "parameters": [
+      {
+        "parameter_name": "self",
+        "default": null,
+        "description": "The evaluator instance; supplies upstream/downstream port connectivity and hop costs."
+      },
+      {
+        "parameter_name": "chromosome",
+        "default": null,
+        "description": "The (n_ports, n_streams) matrix of start times checked for intra-stream causality and inter-stream FIFO (slot-stealing) violations."
+      }
+    ],
+    "module": "evaluator.py",
+    "code": "def _per_stream_window_sequence_violations(self, chromosome):\n    \"\"\"\n    chromosome[p, s] = start time (0 = inactive)\n\n    Enforces two scheduling constraints:\n    -------------------------------------------------------\n    1) INTRA-STREAM SEQUENCING (causality)\n\n        Constraint per connection (u → d): chromosome[d, s] >= chromosome[u, s] + hop_cost[u, s]\n\n    Prevents a frame leaving a downstream port before it\n    arrives from upstream. Violations are marked at the downstream port (d).\n    -------------------------------------------------------\n    2) INTER-STREAM FIFO (slot stealing / interleaving)\n\n    For two streams s1,s2 on the same port:\n        (t11 - t21)*(t12 - t22) >= 0\n    meaning arrival order must equal departure order.\n    Prevents one stream stealing another stream’s slot.\n    \"\"\"\n    n_ports, n_streams = self.n_ports, self.n_streams\n    upstream_ports = self._upstream_ports\n    downstream_ports = self._downstream_ports\n\n    if upstream_ports.size == 0:\n        return np.zeros((n_streams,), dtype=int)\n\n    upstream_start = chromosome[upstream_ports]          # (connections, S)\n    downstream_start = chromosome[downstream_ports]      # (connections, S)\n\n    upstream_active = upstream_start > 0\n    downstream_active = downstream_start > 0\n    # Only check connections where stream exists at both ends\n    valid = upstream_active & downstream_active\n    # Required arrival time at downstream\n    enqueuing_start = upstream_start + self.all_hops_costs[upstream_ports] # per connection\n\n    # -------------------------------------------------\n    # PART 1 — INTRA-STREAM SEQUENCING\n    # -------------------------------------------------\n    connection_violations = valid & (downstream_start < enqueuing_start)\n    # Accumulate violations at downstream ports\n    violations = np.zeros((n_ports, n_streams), dtype=bool)\n    np.maximum.at(\n        violations,\n        (downstream_ports[:, None], np.arange(n_streams)),\n        connection_violations\n    )\n    # Sum violations per stream\n    seq_v  = violations.sum(axis=0)\n    # -------------------------------------------------\n    # PART 2 — INTER-STREAM FIFO (slot stealing)\n    # -------------------------------------------------\n    active = chromosome > 0\n\n    eg_queue_arrival = np.zeros((n_ports, n_streams), dtype=float)           \n    np.maximum.at(\n        eg_queue_arrival,\n        (downstream_ports[:, None], np.arange(n_streams)),\n        enqueuing_start\n    )\n\n    arr_diff = eg_queue_arrival[:, :, None] - eg_queue_arrival[:, None, :]\n    dep_diff = chromosome[:, :, None] - chromosome[:, None, :]\n\n    interleave = (arr_diff * dep_diff) < 0\n    interleave &= self.pair_mask\n    both_active = active[:, :, None] & active[:, None, :]\n    interleave &= both_active\n\n    fifo_v = interleave.sum(axis=(0,2))\n\n    return np.vstack((seq_v[np.newaxis, :], fifo_v[np.newaxis, :]))\n"
+  },
+  {
+    "function_name": "per_stream_all_violations",
+    "class_name": "TSNConstraintEvaluator",
+    "signature": "def per_stream_all_violations(self, chromosome):",
+    "docstring": "CALL_FORM: instance method. Runs all active violation checks and returns a stacked (n_constraints, n_streams) violation array; results are cached by chromosome bytes.",
+    "nl_summary": "Runs every enabled rule check on a candidate solution and returns all the problem counts together, one row per rule and one column per data flow. Results are remembered, so asking about the same solution again is instant. Users might ask: 'run all the checks on my solution'; 'give me every rule violation per flow'; 'what is wrong with this schedule'.",
+    "parameters": [
+      {
+        "parameter_name": "self",
+        "default": null,
+        "description": "The evaluator instance; runs every function in its active_checks and caches the result."
+      },
+      {
+        "parameter_name": "chromosome",
+        "default": null,
+        "description": "The (n_ports, n_streams) solution matrix evaluated by all active constraint checks (results cached by its bytes)."
+      }
+    ],
+    "module": "evaluator.py",
+    "code": "def per_stream_all_violations(self, chromosome):\n    key = chromosome.tobytes()\n    # get violations\n    cached = self._violation_evaluation_cache.get(key)\n    if cached is not None:\n        per_stream_violations = cached\n    else:\n        # List to hold violation arrays\n        all_v = []\n\n        # Collect results as (1, S) arrays and append to list\n        for check_function in self.active_checks:\n            all_v.append(check_function(chromosome))               \n\n        per_stream_violations = np.vstack(all_v)\n\n        self._violation_evaluation_cache[key] = per_stream_violations\n    # Concatenate all violation arrays along the first axis (rows)\n    return per_stream_violations\n"
+  },
+  {
+    "function_name": "feasible_streams",
+    "class_name": "TSNConstraintEvaluator",
+    "signature": "def feasible_streams(self, chromosome):",
+    "docstring": "CALL_FORM: instance method. Returns a boolean array of length n_streams indicating which streams have zero violations.",
+    "nl_summary": "Tells you which data flows are completely problem free in a candidate solution. It returns a simple yes or no for every flow. Users might ask: 'which of my flows are valid'; 'show me the streams with no problems'; 'how many of my flows actually work'.",
+    "parameters": [
+      {
+        "parameter_name": "self",
+        "default": null,
+        "description": "The evaluator instance; delegates to per_stream_all_violations."
+      },
+      {
+        "parameter_name": "chromosome",
+        "default": null,
+        "description": "The (n_ports, n_streams) solution matrix; a stream is feasible when it has zero violations across all checks."
+      }
+    ],
+    "module": "evaluator.py",
+    "code": "def feasible_streams(self, chromosome):\n    violations_array = self.per_stream_all_violations(chromosome)\n    infeasible_streams = np.any(violations_array > 0, axis=0)\n    return ~infeasible_streams\n"
+  },
+  {
+    "function_name": "compute_metrics",
+    "class_name": "TSNConstraintEvaluator",
+    "signature": "def compute_metrics(self, chromosome, alpha=0.9, eps=1e-09):",
+    "docstring": "CALL_FORM: instance method. Computes vectorized performance metrics (congestion, imbalance, path length).",
+    "nl_summary": "Measures how good a working solution is, beyond just being legal. It reports how crowded the busiest links are, how unevenly traffic is spread, and how long the routes are. Users might ask: 'how good is this solution'; 'measure congestion and load balance'; 'are my paths longer than they need to be'.",
+    "parameters": [
+      {
+        "parameter_name": "self",
+        "default": null,
+        "description": "The evaluator instance; supplies windLengths, macro_cycle, port_speeds and the metrics cache."
+      },
+      {
+        "parameter_name": "chromosome",
+        "default": null,
+        "description": "The (n_ports, n_streams) solution matrix from which congestion, utilisation, imbalance and path-length metrics are derived."
+      },
+      {
+        "parameter_name": "alpha",
+        "default": 0.9,
+        "description": "Weight between mean and std of port utilisation in the congestion score; default 0.9 favours mean utilisation."
+      },
+      {
+        "parameter_name": "eps",
+        "default": 1e-09,
+        "description": "Small constant added to denominators to avoid division by zero when normalising loads/utilisation (default 1e-9)."
+      }
+    ],
+    "module": "evaluator.py",
+    "code": "def compute_metrics(self, chromosome, alpha=0.9, eps=1e-9):\n    \"\"\"Vectorized performance metrics (congestion, imbalance, path length).\"\"\"\n    key = chromosome.tobytes()\n    cached = self._metrics_evaluation_cache.get(key)\n    if cached is not None:\n        metrics = cached\n    else:\n        load_per_port = np.sum((chromosome > 0).astype(float) * self.windLengths, axis=1)\n        util = load_per_port / np.maximum(self.macro_cycle * self.port_speeds, eps)\n\n        avg_util = float(np.clip(np.nanmean(util), 0, 1))\n        std_util = float(np.clip(np.nanstd(util), 0, 1))\n        congestion_score = float(np.clip(alpha * avg_util + (1 - alpha) * std_util, 0, 1))\n\n        mean_load = float(np.mean(load_per_port))\n        if mean_load <= eps:\n            load_imbalance = 1.0\n        else:\n            imbalance = float(np.std(load_per_port) / mean_load)\n            load_imbalance = float(min(imbalance, 1.0) if np.isfinite(imbalance) else 1.0)\n\n        active_per_stream = np.count_nonzero(chromosome > 0, axis=0)\n        avg_path_len = float(np.mean(active_per_stream))\n        path_len_score = float(np.clip(avg_path_len / (self.n_ports + eps), 0, 1))\n\n        metrics = np.array([congestion_score, avg_util, std_util, load_imbalance, path_len_score, avg_path_len])\n        self._metrics_evaluation_cache[key] = metrics\n    # Return the metrics as an array\n    return metrics\n"
+  },
+  {
+    "function_name": "evaluate",
+    "class_name": "TSNConstraintEvaluator",
+    "signature": "def evaluate(self, chromosome):",
+    "docstring": "CALL_FORM: instance method. Evaluates a chromosome and returns (violations_summed_per_constraint, metrics_array).",
+    "nl_summary": "The main scoring entry point: hand it a candidate solution and it gives back the total count of each broken rule plus the quality measurements. This is what an optimizer calls on every candidate it tries. Users might ask: 'score this solution'; 'evaluate my schedule'; 'give me the fitness of this candidate'.",
+    "parameters": [
+      {
+        "parameter_name": "self",
+        "default": null,
+        "description": "The evaluator instance; combines violation counting and metric computation."
+      },
+      {
+        "parameter_name": "chromosome",
+        "default": null,
+        "description": "The (n_ports, n_streams) solution matrix evaluated into summed per-constraint violations and a metrics array."
+      }
+    ],
+    "module": "evaluator.py",
+    "code": "def evaluate(self, chromosome):\n    key = chromosome.tobytes()\n    # get violations\n    per_stream_violations = self.per_stream_all_violations(chromosome)\n\n    # get metrics\n    metrics = self.compute_metrics(chromosome)\n\n    return per_stream_violations.sum(axis=1), metrics\n"
+  },
+  {
+    "function_name": "suggest_corrections",
+    "class_name": "TSNConstraintEvaluator",
+    "signature": "def suggest_corrections(self, Y):",
+    "docstring": "CALL_FORM: instance method. Computes per-gene removal pressure, addition pressure, and value-correction bias for a batch of chromosomes.",
+    "nl_summary": "Looks at a batch of candidate solutions and points out which individual choices should be dropped, added, or changed. It is used to nudge an optimizer towards valid solutions instead of only telling it the score. Users might ask: 'tell me how to fix my solution'; 'which links should I remove or add'; 'give repair hints to the optimizer'.",
+    "parameters": [
+      {
+        "parameter_name": "self",
+        "default": null,
+        "description": "The evaluator instance; supplies all masks, connectivity and scheduling parameters used to build the correction biases."
+      },
+      {
+        "parameter_name": "Y",
+        "default": null,
+        "description": "A batch of chromosomes shaped (n_chromosomes, n_ports, n_streams); returns per-gene removal, addition and value-change biases guiding repair/mutation."
+      }
+    ],
+    "module": "evaluator.py",
+    "code": "def suggest_corrections(self, Y):\n\n    adj_port_mask= self.to_node_mask[None, :, :, None]\n    egress_mask = self.egress_mask[None, :, :, None]\n    switch_mask = self.switch_mask[None, :, None]\n    talker_mask   = self.talker_mask[None,:,:]\n    listener_adj_mask = self.listener_adj_mask[None,:,:]\n    adjacency_mask = self.adjacency_mask\n    stream_intervals = self.stream_intervals[None, None, :]\n\n    act = Y > 0\n    adj_act = (adjacency_mask @ act)\n    expanded_act = act[:, None, :, :]  # (I,N, P,S)\n    expanded_adj_act = adj_act[:, None, :, :]\n\n    active_egp = egress_mask & expanded_act\n    active_adj_egp = adj_port_mask & expanded_act\n\n    out_deg = active_egp.sum(axis=2) \n    in_deg = active_adj_egp.sum(axis=2)\n\n    # switches state\n    active_switch_egp = out_deg * switch_mask\n    active_switch_adj_egp = in_deg * switch_mask\n\n    active_hosts_egp = out_deg * (1-switch_mask)\n    active_hosts_adj_egp = in_deg * (1-switch_mask)\n\n    # hosts (talkers and listenres) state\n    active_talker_egp = active_egp.sum(axis=1) * talker_mask\n    active_listener_adj_ing = active_adj_egp.sum(axis=1) * listener_adj_mask\n\n    n_talkers = active_talker_egp.sum(axis=1) \n    n_listeners = active_listener_adj_ing.sum(axis=1)\n\n    forwarding_hosts = ((active_hosts_egp == 1) & (active_hosts_adj_egp == 1))[:,:,None,:]\n\n    # switches grouping\n    overloaded_switches = (active_switch_adj_egp > 1)[:,:,None,:]\n    sourced_switches = ((active_switch_adj_egp == 0) & (active_switch_egp > 0))[:,:,None,:] \n    sinked_switches = ((active_switch_adj_egp > 0) & (active_switch_egp==0))[:,:,None,:]\n\n    # hosts grouping\n    too_many_talkers = n_talkers > 1\n    missing_talker = n_talkers < 1\n    too_many_listeners = n_listeners > 1\n    missing_listener = n_listeners < 1\n\n    # removal pressure\n    remove_bias = (\n        2 * too_many_talkers[:, None, :] * active_talker_egp # remove extra talkers\n        + 2 * too_many_listeners[:, None, :] * active_listener_adj_ing # remove extra listeners\n        + 5 * ((active_adj_egp + active_egp) & forwarding_hosts).sum(axis=1) # Encourage moving talker and listener elsewhere\n        + (active_adj_egp & overloaded_switches).sum(axis=1) # remove looping\n        + (active_egp & sourced_switches).sum(axis=1) # remove blankstart switches\n        + (active_adj_egp & sinked_switches).sum(axis=1) # remove deadend switches\n        + (expanded_adj_act & expanded_act).sum(axis=1) # remove backwarding\n    )\n\n    # addition pressure\n    add_bias = (\n         missing_talker[:, None, :] * talker_mask # activate talker\n        +missing_listener[:, None, :] * listener_adj_mask # activate listener\n        +(egress_mask & sinked_switches).sum(axis=1) # extend deadend switches\n        + (adj_port_mask & sourced_switches).sum(axis=1) # extend blankstart switches\n    )\n\n    add_bias*=(1-self.stray_talker_mask)*(1-self.stray_listener_mask) # avoid useless activations\n\n    # priority pressure\n    if self.scheduling_type.value == ScheduleEncodingType.PRIORITY.value:\n        counts = (Y[:, :, :, None] == Y[:, :, None, :]).sum(axis=2)\n        conflict_mask = (counts > 1)[:, None, :, :] #& act\n        gene_value_bias = conflict_mask.astype(int) #change conflicting priority\n    elif self.scheduling_type.value == ScheduleEncodingType.START_TIME.value:\n        n_chromosomes, n_ports, n_streams = Y.shape\n\n        upstream_ports = self._upstream_ports\n        downstream_ports = self._downstream_ports\n        all_hops_costs = self.all_hops_costs\n\n        stream_pairwise_windowSum = self.stream_pairwise_windowSum[None]\n        streams_pairwise_gcl = self.streams_pairwise_gcl[None, None, :, :]\n        pair_mask = self.pair_mask[None, None]\n\n        # Gather per-connection start times\n        upstream_start = Y[:, upstream_ports, :]       # (I, connections, S)\n        downstream_start = Y[:, downstream_ports, :]   # (I, connections, S)\n\n        upstream_active = upstream_start > 0\n        downstream_active = downstream_start > 0\n        valid = upstream_active & downstream_active\n\n        # Required arrival time at downstream (broadcast correctly)\n        enqueuing_start = upstream_start + all_hops_costs[upstream_ports][None, :, :]\n\n        connection_bias = np.where(valid & (downstream_start < enqueuing_start),\n                           enqueuing_start - downstream_start,\n                           0)\n\n        sequencing_bias_downstream = np.zeros_like(Y, dtype=int) # (I, P, S)\n        sequencing_bias_upstream = np.zeros_like(Y, dtype=int) # (I, P, S)\n        eg_queue_arrival = np.zeros((n_chromosomes, n_ports, n_streams), dtype=float) # !!!!\n        for i in range(n_chromosomes):\n            np.maximum.at(\n                sequencing_bias_downstream[i],\n                (downstream_ports[:, None], np.arange(n_streams)),\n                connection_bias[i]\n            )\n            np.maximum.at(\n                sequencing_bias_upstream[i],\n                (upstream_ports[:, None], np.arange(n_streams)),\n                connection_bias[i]\n            )\n        # ---  interleaving bias ---\n            np.maximum.at(                                             # !!!!\n                eg_queue_arrival[i],\n                (downstream_ports[:, None], np.arange(n_streams)),\n                enqueuing_start[i]\n            )\n\n        arr_diff = eg_queue_arrival[:, :, :, None] - eg_queue_arrival[:, :, None, :]\n        dep_diff = Y[:, :, :, None] - Y[:, :, None, :]\n\n        interleave = (arr_diff * dep_diff) < 0\n        interleave &= pair_mask\n        act = Y > 0\n        both_active = act[:, :, :, None] & act[:, :, None, :]  # require both streams active\n        interleave &= both_active\n\n        sign_upstream = np.sign(arr_diff)\n        sign_downstream = np.sign(dep_diff)\n\n        pressure_down = sign_upstream * np.abs(dep_diff) * interleave\n        pressure_up = sign_downstream * np.abs(arr_diff) * interleave\n\n        downstream_bias = np.sum(pressure_down, axis=3)\n\n        upstream_bias_tmp = np.sum(pressure_up, axis=3)\n        upstream_bias = np.zeros_like(Y)\n        for i in range(n_chromosomes):\n            np.add.at(\n                upstream_bias[i],\n                (upstream_ports[:, None], np.arange(n_streams)),\n                upstream_bias_tmp[i, upstream_ports, :]\n            )\n        interleaving_pressure = upstream_bias + downstream_bias\n        # ---  talker offset bias ---\n        # Compute per-stream latest talker start\n        talker_times = np.where(active_talker_egp > 0, Y, 0)               # (I, P, S)\n        talker_offset = talker_times.max(axis=1, keepdims=True)            # (I, 1, S)\n        # violation = talker too late\n        talker_bias = np.maximum(0, talker_offset - stream_intervals)  # (I, 1, S)\n\n        # ---  maxlatency bias ---\n        t_max = np.where(act, Y, -np.iinfo(Y.dtype).max).max(axis=1, keepdims=True)\n        latency_limit = talker_offset + np.asarray(self.stream_maxLatencies)[None,None,:]\n        end_time = Y + self.windLengths[None,:,:]\n        is_latest_active = (Y == t_max) & act\n        latency_bias = (latency_limit - end_time) * (end_time > latency_limit)  * is_latest_active\n\n        # --- macrocycle_bias overlap bias ---\n        phase = Y % stream_intervals\n        diff = phase[:, :, :, None] - phase[:, :, None, :]\n        delta = diff - np.floor(diff * self.streams_pairwise_gcl_inv) * streams_pairwise_gcl\n\n        # diff = Y[:, :, :, None] - Y[:, :, None, :] # (I,P,S,S) # pairwise start differences\n        # delta = diff - streams_pairwise_gcl * np.floor(diff / streams_pairwise_gcl)\n        overlap = delta < stream_pairwise_windowSum # overlap condition\n        overlap &= pair_mask                  # remove self comparisons\n        overlap &= both_active\n        # signed cyclic direction\n        half_g = streams_pairwise_gcl / 2\n        signed_delta = np.where(delta <= half_g, delta, delta - streams_pairwise_gcl)\n        # overlap magnitude\n        overlap_depth = stream_pairwise_windowSum - delta\n        overlap_depth = np.maximum(overlap_depth, 0)\n        overlap_depth *= overlap\n\n        gene_value_bias =  np.stack([\n            sequencing_bias_downstream # (sequencing) move forward early downstream windows at switches\n            , - sequencing_bias_upstream # (sequencing) move backward late upstream windows\n            , - talker_bias  * talker_mask # (talker offset) talker out of 1st period\n            , + (np.sign(signed_delta) * overlap_depth).sum(axis=3) # (macrocycle overlap) overlapping slots repel each other\n            , + np.maximum(upstream_bias, 0) # (interleaving) move forward owner at upstream\n            , + np.minimum(upstream_bias, 0) # (interleaving) move backward thief at uptream \n            , + np.maximum(downstream_bias, 0) # (interleaving) move forward thief at downstream\n            , + np.minimum(downstream_bias, 0) # (interleaving) move backward owner at downstream\n            , + latency_bias # (maxlatency) move latest window bakward\n        ], axis=1).astype(int)\n\n    else:\n        gene_value_bias = expanded_act\n\n    #####################################\n    remove_bias *= act\n    add_bias    *= (~act) & (adj_act == 0) # avoid backward connection and talker/listener overlap\n    gene_value_bias  = gene_value_bias * expanded_act\n\n    return remove_bias, add_bias, gene_value_bias    "
+  },
+  {
+    "function_name": "__init__",
+    "class_name": "TSNConstraintEvaluator",
+    "sub_class_name": "UnionFind",
+    "signature": "def __init__(self, elements):",
+    "docstring": "Initialises the union-find structure: every element starts out as its own parent, i.e. its own separate set.",
+    "nl_summary": "Starts a small helper that keeps track of which items belong to the same group. At the beginning every item sits alone in its own group. Users might ask: 'set up group tracking for connected parts'; 'start a union find helper'; 'how do I track which pieces are joined together'.",
+    "parameters": [
+      {
+        "parameter_name": "self",
+        "default": null,
+        "description": "The UnionFind instance being initialised with each element as its own parent."
+      },
+      {
+        "parameter_name": "elements",
+        "default": null,
+        "description": "Iterable of items (port ids) seeding the union-find structure, each starting as its own set root."
+      }
+    ],
+    "module": "evaluator.py",
+    "code": "def __init__(self, elements):\n    self.parent = {e: e for e in elements}\n"
+  },
+  {
+    "function_name": "find",
+    "class_name": "TSNConstraintEvaluator",
+    "sub_class_name": "UnionFind",
+    "signature": "def find(self, x):",
+    "docstring": "Finds the root representative of element x using path compression. Recursively follows parent pointers and flattens the tree.",
+    "nl_summary": "Looks up which group an item currently belongs to. It also shortens the lookup path along the way so later lookups are faster. Users might ask: 'which group does this item belong to'; 'find the representative of a set'; 'look up the cluster an item is in'.",
+    "parameters": [
+      {
+        "parameter_name": "self",
+        "default": null,
+        "description": "The UnionFind instance holding the parent-pointer mapping."
+      },
+      {
+        "parameter_name": "x",
+        "default": null,
+        "description": "The element whose set root is looked up; path compression flattens the tree during the search."
+      }
+    ],
+    "module": "evaluator.py",
+    "code": "def find(self, x):\n    if self.parent[x] != x:\n        self.parent[x] = self.find(self.parent[x])\n    return self.parent[x]\n"
+  },
+  {
+    "function_name": "union",
+    "class_name": "TSNConstraintEvaluator",
+    "sub_class_name": "UnionFind",
+    "signature": "def union(self, x, y):",
+    "docstring": "Merges the sets containing x and y. If they have different roots, sets the root of y's set to point to the root of x's set.",
+    "nl_summary": "Merges two groups into a single one. If the two items are already in the same group nothing changes. Users might ask: 'join these two groups together'; 'merge two connected sets'; 'combine clusters that touch each other'.",
+    "parameters": [
+      {
+        "parameter_name": "self",
+        "default": null,
+        "description": "The UnionFind instance holding the parent-pointer mapping."
+      },
+      {
+        "parameter_name": "x",
+        "default": null,
+        "description": "First element; its set root becomes the parent of y's root when the two roots differ."
+      },
+      {
+        "parameter_name": "y",
+        "default": null,
+        "description": "Second element; its set root is attached under x's root to merge the two sets."
+      }
+    ],
+    "module": "evaluator.py",
+    "code": "def union(self, x, y):\n    rx, ry = self.find(x), self.find(y)\n    if rx != ry:\n        self.parent[ry] = rx\n"
+  }
+]

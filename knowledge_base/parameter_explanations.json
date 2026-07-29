@@ -1,0 +1,134 @@
+{
+  "numhosts": {
+    "meaning": "The number of end stations that can send or receive traffic",
+    "used_for": "Defining the network topology"
+  },
+  "numswitchs": {
+    "meaning": "The number of nodes forwarding the traffic between the end stations",
+    "used_for": "Defining the network topology"
+  },
+  "portspeed": {
+    "meaning": "The speed of traffic transmission at the egress ports of the switches and end stations",
+    "used_for": "Configuring traffic transmission"
+  },
+  "procdelay": {
+    "meaning": "The time needed by the switches to process a traffic frame",
+    "used_for": "Configuring switch processing delay"
+  },
+  "propdelay": {
+    "meaning": "The time needed by the traffic to propagate in the links from an egress port of a switch to an ingress port of the next switch",
+    "used_for": "Configuring link propagation delay"
+  },
+  "linkBw": {
+    "meaning": "The bandwidth of the link",
+    "used_for": "Configuring link bandwidth"
+  },
+  "queuecountperport": {
+    "meaning": "The number of queues available in the egress ports",
+    "used_for": "Configuring queue allocation"
+  },
+  "graphConfig": {
+    "meaning": "A dictionary defining the type and parameters of the network graph",
+    "used_for": "Defining the network graph structure"
+  },
+  "numofstreamsperinstance": {
+    "meaning": "The number of streams",
+    "used_for": "Defining the number of streams"
+  },
+  "maxstrpernode": {
+    "meaning": "The maximum number of streams that can be sourced from a single node",
+    "used_for": "Configuring stream allocation per node"
+  },
+  "period_range": {
+    "meaning": "The cycle of the streams",
+    "used_for": "Defining stream periods"
+  },
+  "numberframes_range": {
+    "meaning": "The number of frames per stream within a cycle",
+    "used_for": "Defining stream frame counts"
+  },
+  "datasize_range": {
+    "meaning": "The size of a frame",
+    "used_for": "Defining frame sizes"
+  },
+  "maxlatency_range": {
+    "meaning": "The maximum latency constraint of a stream",
+    "used_for": "Defining stream latency constraints"
+  },
+  "numplacestalker": {
+    "meaning": "The number of end stations where the talker can possibly be placed",
+    "used_for": "Configuring talker placement"
+  },
+  "numplaceslistener": {
+    "meaning": "The number of end stations where the listener can possibly be placed",
+    "used_for": "Configuring listener placement"
+  },
+  "numlistenersperstr": {
+    "meaning": "The maximum number of listeners that can be placed in the same node",
+    "used_for": "Configuring listener allocation per node"
+  },
+  "routing": {
+    "meaning": "A dictionary defining the routing configuration",
+    "used_for": "Defining routing behavior"
+  },
+  "fixPath": {
+    "meaning": "A boolean indicating pre-routing",
+    "used_for": "Enabling pre-routing"
+  },
+  "shortestPath": {
+    "meaning": "A boolean defining routing method",
+    "used_for": "Selecting routing method"
+  },
+  "generation": {
+    "meaning": "A dictionary defining experiment scenario generation",
+    "used_for": "Defining experiment generation"
+  },
+  "incrementation": {
+    "meaning": "A boolean defining whether streams used in an experiment are included in the next experiment",
+    "used_for": "Enabling stream incrementation"
+  },
+  "expiration": {
+    "meaning": "A dictionary defining the life span of streams",
+    "used_for": "Defining stream expiration"
+  },
+  "finite_duration": {
+    "meaning": "A boolean indicating whether the stream is finite or continuous during an experiment",
+    "used_for": "Enabling finite stream duration"
+  },
+  "start": {
+    "meaning": "The minimum number of cycles a finite stream can live",
+    "used_for": "Defining minimum stream duration"
+  },
+  "stop": {
+    "meaning": "The maximum number of cycles a finite stream can live",
+    "used_for": "Defining maximum stream duration"
+  },
+  "typ": {
+    "meaning": "The type of network graph",
+    "used_for": "Selecting graph type"
+  },
+  "k": {
+    "meaning": "The parameter of the fat-tree graph",
+    "used_for": "Configuring fat-tree graph"
+  },
+  "prob": {
+    "meaning": "The probability of connection between nodes in the Erdos-Renyi graph",
+    "used_for": "Configuring Erdos-Renyi graph"
+  },
+  "numcoreswitches": {
+    "meaning": "The number of core switches in the Erdos-Renyi and Barabasi-Albert graphs",
+    "used_for": "Configuring core switches"
+  },
+  "Minnodedegreepersw": {
+    "meaning": "The minimum number of connections per switch in the Erdos-Renyi graph",
+    "used_for": "Configuring minimum node degree"
+  },
+  "minnodedegreepersw": {
+    "meaning": "The minimum number of connections per switch in the Barabasi-Albert graph",
+    "used_for": "Configuring minimum node degree"
+  },
+  "numEdgN": {
+    "meaning": "The number of edge switches in the Barabasi-Albert graph",
+    "used_for": "Configuring edge switches"
+  }
+}
