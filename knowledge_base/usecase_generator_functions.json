@@ -957,7 +957,7 @@
     "class_name": "Usecase",
     "signature": "def to_file(self, jsnPath=None, ucFileName=None):",
     "docstring": "CALL_FORM: instance method. Serialises the use case to a JSON file and returns the filename used.",
-    "nl_summary": "Saves the whole scenario to a JSON file so you can load it again later. If you do not give a name, one is built from the scenario's settings. Users might ask: 'save my scenario to disk'; 'export the network to a file'; 'write the use case out as json'.",
+    "nl_summary": "Saves the whole scenario to a JSON file on disk — this is the one to use when you want a file you can load back in later. It first builds the data by calling to_json, then writes it out with indenting; if you do not give a folder it saves into the current one, and if you do not give a name it builds one from the scenario's settings string so the filename describes the configuration. It prints a confirmation and hands back the filename it used. Users might ask: 'save my scenario to disk'; 'export the network to a file I can reload later'; 'write the use case out as a json file'.",
     "parameters": [
       {
         "parameter_name": "self",
@@ -983,7 +983,7 @@
     "class_name": "Usecase",
     "signature": "def to_json(self):",
     "docstring": "CALL_FORM: instance method. Serialises the use case to a Python dict containing topology and streams, omitting customGraph from each stream entry.",
-    "nl_summary": "Turns the scenario into a plain dictionary of its layout and data flows, ready to be written out. The internal per-flow sub-networks are left out because they can be rebuilt. Users might ask: 'convert my scenario to a dictionary'; 'serialize the use case'; 'get the json form of my network'.",
+    "nl_summary": "Builds the scenario's data as a plain Python dictionary and hands it straight back to you — nothing is written to disk. It collects the network layout plus every data flow, deliberately leaving out each flow's customGraph (its pruned per-flow sub-network) because that is a live graph object that can be rebuilt instead of stored. Use this when you want the data in memory to look at or pass somewhere else; use to_file when you actually want a saved file. Users might ask: 'get my scenario as a dictionary'; 'convert the use case to json data without saving it'; 'what does the exported use case data look like'.",
     "parameters": [
       {
         "parameter_name": "self",
@@ -999,7 +999,7 @@
     "class_name": "Usecase",
     "signature": "def topology2json(self, source='sourcePort', target='destPort', name='name', key='key', linkSym='links', nodeSym='nodes'):",
     "docstring": "CALL_FORM: instance method. Exports the graph topology to JSON-like dict form and permanently mutates the graph by adding port attributes.",
-    "nl_summary": "Turns the network layout into a plain dictionary of devices and links. Note that it also permanently adds port details to the layout as a side effect. Users might ask: 'export just the topology'; 'convert my network layout to json'; 'get the nodes and links as data'.",
+    "nl_summary": "Turns just the network layout — the devices and the links between them — into a plain dictionary, leaving the data flows out entirely. Be careful: it also permanently adds port details onto the graph as it goes, so calling it changes your scenario rather than only reading from it. It is the helper that to_json runs first, before adding the flows on top. Users might ask: 'export only the network layout'; 'get the nodes and links as plain data'; 'convert my topology to json without the streams'.",
     "parameters": [
       {
         "parameter_name": "self",
