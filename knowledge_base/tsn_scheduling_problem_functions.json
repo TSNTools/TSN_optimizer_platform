@@ -156,7 +156,7 @@
     "class_name": "TSNScheduling",
     "signature": "def use_instance(self, instance):",
     "docstring": "CALL_FORM: instance method. Returns a context manager that sets .usecase to the provided instance inside a with-block.",
-    "nl_summary": "Sets a use case active for the problem by opening a with-block around it — entering that block is what actually activates the scenario and triggers building the config matrix. This is the one function you call to make a scenario the active one before doing anything else with it. Users might ask: 'how do I set a use case active to build the config matrix'; 'activate a scenario so I can start working with it'; 'switch the problem to use this test network'.",
+    "nl_summary": "Makes a generated use case the active one for the problem — entering this with-block is what activates the scenario and instantiates the problem for it, triggering the config-matrix build. This is the function you call after generating a use case, any time you need to set it active or instantiate the problem for it before running anything else. Users might ask: 'how do I instantiate the problem for a use case I just generated'; 'set a use case active to build the config matrix'; 'activate this scenario so I can start working with it'.",
     "parameters": [
       {
         "parameter_name": "self",
@@ -193,7 +193,7 @@
     "class_name": "TSNScheduling",
     "signature": "def instantiate(self, export=False):",
     "docstring": "Generates a new scheduling use case from the problem's config file, appends it to self.instances, and returns it. Optionally exports the use case to a JSON file.",
-    "nl_summary": "Builds a brand new random network scenario from your configuration and keeps it in the problem's list. It can also save that scenario to a file. Users might ask: 'generate a new test network'; 'create a scenario from my config'; 'make me a new problem instance'.",
+    "nl_summary": "Creates a brand new random network scenario from your configuration and keeps it in the problem's list — it does NOT take an existing use case as input and cannot activate or reuse one you already generated elsewhere; every call builds an independent scenario from scratch. To make an already-generated use case the active one instead (e.g. one produced by generate_incremental_usecases), use use_instance. Users might ask: 'generate a new test network'; 'create a scenario from my config'; 'make me a new problem instance' — but NOT 'activate a use case I already have' or 'instantiate the problem for a use case I generated', which is use_instance's job, not this one.",
     "parameters": [
       {
         "parameter_name": "self",
@@ -214,7 +214,7 @@
     "class_name": "TSNScheduling",
     "signature": "def import_scheduling_usecase(self, file_path, remove_routing=False, fix_task_placement=False):",
     "docstring": "CALL_FORM: instance method. Loads a previously exported use case from JSON, optionally removes routing and fixes task placement, then returns the Usecase.",
-    "nl_summary": "Loads a scenario you saved earlier from a JSON file. As it loads it can optionally strip out the routes or lock the sender and receiver positions. Users might ask: 'load a saved network from a file'; 'import a use case json'; 'reopen the scenario I exported'.",
+    "nl_summary": "Loads a scenario/use case/usecase saved earlier from a JSON file. As it loads it can optionally strip out the routes or lock the sender and receiver positions. Users might ask: 'load a saved network from a file'; 'import a use case json'; 'reopen the scenario I exported'.",
     "parameters": [
       {
         "parameter_name": "self",
