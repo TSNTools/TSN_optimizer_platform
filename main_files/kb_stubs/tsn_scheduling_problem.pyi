@@ -1,0 +1,36 @@
+# Type stub for the facts tsn_scheduling_problem.py never states about itself.
+#
+# DELIBERATELY PARTIAL. Every class carries __getattr__ -> Any, so a member not listed
+# here is permitted rather than reported missing: enumerating all 108 library members
+# would be a maintenance burden, and nonexistent attributes are already covered by
+# _unknown_kb_attributes. What belongs here is only what a type checker cannot infer
+# from untyped source and what has actually gone wrong.
+from typing import Any, ContextManager, List, Optional
+from usecase_generator import Usecase
+
+class InstanceContext:
+    def __getattr__(self, name: str) -> Any: ...
+    def __enter__(self) -> TSNScheduling: ...
+    def __exit__(self, *args: Any) -> None: ...
+
+class TSNScheduling:
+    # problem_definition is a CONFIG FILE PATH, stored as self.config_file and later
+    # handed to UsecaseGenerator.generateUC. Passing a Usecase here is the real fault
+    # seen in a generated run: it binds fine and leaves the problem with no use case.
+    def __init__(self, problem_definition: str, ContextHandler: Any = ...,
+                 **kwargs: Any) -> None: ...
+    def __getattr__(self, name: str) -> Any: ...
+    usecase: Optional[Usecase]
+    evaluator: Any
+    config_file: str
+    instances: List[Usecase]
+    def use_instance(self, instance: Usecase) -> ContextManager[TSNScheduling]: ...
+    def instantiate(self, export: bool = ...) -> Usecase: ...
+    @property
+    def n_ports(self) -> int: ...
+    @property
+    def n_streams(self) -> int: ...
+    @property
+    def n_nodes(self) -> int: ...
+    @property
+    def macro_cycle(self) -> int: ...
